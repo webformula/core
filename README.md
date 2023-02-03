@@ -54,6 +54,8 @@ export default new class extends Page {
   pageTitle = 'Page'; // html page title
   someVar = 'Some var';
   clickIt_bound = this.clickIt.bind(this);
+
+  userInput;
   
   // can be configures with `registerPage(PageClass, '/one')`
   routes = ['/one', 'one/:id'];
@@ -65,6 +67,7 @@ export default new class extends Page {
   connectedCallback() {
     // called on element hookup to dome. May not be rendered yet
 
+    this.userInput = 'some user input';
     console.log(this.urlParameters()); // { id: 'value' }
     console.log(this.searchParameters()); // { id: 'value' }
   }
@@ -96,6 +99,9 @@ export default new class extends Page {
     return /*html*/`
       <div>Page Content</div>
       <div>${this.someVar}</div>
+
+      <!-- escape html input -->
+      <div>${this.escape(this.userInput)}</div>
 
       <!-- "page" will reference the current page class -->
       <button onclick="page.clickIt()">Click Method</button>
