@@ -1,7 +1,7 @@
 export default class Page {
   pageTitle;
-  /** ['/a', '/b']; */
-  routes;
+  /** ['/a', '/a/:id']; */
+  routes = [];
 
   #urlParameters;
   #searchParameters;

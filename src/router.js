@@ -4,11 +4,12 @@ const wildcardRegex = /\*/g;
 const replaceWidCardString = '(?:.*)';
 const followedBySlashRegexString = '(?:\/$|$)';
 const routeConfigs = [];
+let notFoundPage;
 
-// TODO make routes work with no SPA enabled
+// TODO make routes work with no SPA enabled (#hashes only)
 
-/** intercept links to create single page app with normal urls
- * The backend will need to support this
+/** Intercept links to create single page app with normal urls
+ *  The backend will need to support URL routing for first page load
  */
 export function enableSPA() {
   window.paxCoreSPA = true;
@@ -34,8 +35,9 @@ export function enableSPA() {
  *   Routes can be passed in here or configured in the Page
  * 
  *   routes = ['/one', '/one/:id'];
+ *   notFound: designate a page as the not found page
 */
-export function registerPage(pageClass, routes) {
+export function registerPage(pageClass, routes, notFound = false) {
   routes = routes || pageClass.routes;
 
   if (!routes) {
@@ -55,8 +57,21 @@ export function registerPage(pageClass, routes) {
     const match = location.pathname.match(routeRegex);
     if (match !== null) hookupAndRender(location);
   });
+
+  if (notFound) notFoundPage = { pageClass: pageClass.constructor };
+  finalCheck();
 }
 
+
+// check to see if no page was hooked up
+let finalCallTimer;
+function finalCheck() {
+  clearTimeout(finalCallTimer);
+  finalCallTimer = setTimeout(() => {
+    finalCallTimer = undefined;
+    if (!window.page && notFoundPage) hookupAndRender(location);
+  }, 0);
+}
 
 
 
@@ -107,20 +122,16 @@ function hookupAndRender(locationObject, back = false) {
   if (back === false && currentPage && url === location.pathname) return handleHashChange(locationObject);
 
   const path = url || location.pathname; // TODO check why defaulting is needed
-  const routeMatch = matchRoute(path);
+  let routeMatch = matchRoute(path);
   if (currentPage === path) return;
 
   // TODO not found
   if (!routeMatch) {
-    // if (notFoundPage) {
-    //   routeMatch = {
-    //     ...notFoundPage,
-    //     urlParameters: {}
-    //   };
-    // } else {
-    console.warn(`No page found for url: ${url}`);
-    return;
-    // }
+    if (notFoundPage) routeMatch = notFoundPage;
+    else {
+      console.warn(`No page found for url: ${url}`);
+      return;
+    }
   }
 
   const nextPage = routeMatch.pageClass ? new routeMatch.pageClass() : {};

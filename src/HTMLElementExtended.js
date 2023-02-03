@@ -30,10 +30,13 @@ export default class HTMLElementExtended extends HTMLElement {
   constructor() {
     super();
 
-    // fastest way to call render while making sure all class variables exist
-    //   Other options would be setTimeout or calling from connectedCallback. Both are slower
     if (this.#hasTemplate) {
-      nextTick(() => {
+      /** Render as soon as possible while making sure all class variables exist
+       *    The other 2 options would be to use setTimeout or call render in connectedCallback
+       *    setTimeout is slower
+       *    connectedCallback would force the extending class to call super.connectedCallback()
+       */
+      nextTickPoly(() => {
         this.#prepareRender();
         this.render();
       });
@@ -83,7 +86,7 @@ export default class HTMLElementExtended extends HTMLElement {
   // If template is set then initial rendering will happen automatically
   render() {
     if (this.#rendered) this.beforeRender();
-    if (!this.useTemplate) this.#templateElement.innerHTML = this.template();
+    if (!this.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
     this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
     this.#rendered = true;
     this.afterRender();
@@ -113,7 +116,7 @@ export default class HTMLElementExtended extends HTMLElement {
 
 /** Used as a nextTick method
  *    The other 2 options would be to use setTimeout or call render in connectedCallback
- *    SetTimeout is slower
+ *    setTimeout is slower
  *    connectedCallback would force the extending class to call super.connectedCallback()
  */
 const nextTickNode = document.createTextNode('');
@@ -130,7 +133,7 @@ const observeCallback = () => {
 };
 const observe = new MutationObserver(observeCallback);
 
-function nextTick(callback) {
+function nextTickPoly(callback) {
   nextTickQueue.push(callback);
   if (nextTickObserving === false) {
     observe.observe(nextTickNode, { characterData: true });
