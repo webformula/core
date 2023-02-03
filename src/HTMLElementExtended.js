@@ -15,16 +15,16 @@ export default class HTMLElementExtended extends HTMLElement {
   useShadowRoot = false;
 
   /** Use template element to clone from
-   *   If your template uses dynamic templates you want to set this to false
-   */
+   *   If your template uses dynamic templates you want to set this to false */
   useTemplate = true;
 
   #rendered = false;
   #templateString;
   #templateElement;
-  // browser may or may not include the word "function" so we need to run an includes check
-  #hasTemplate = !this.template.toString().includes("template() {return /*html*/'';}");
+  // browser may or may not include the word "function" so we need to run an includes check. This string comes from default method
+  #hasTemplate = !this.template.toString().includes('template(){return""}');
   #root = this;
+  #classId = hashCodeForId(this.constructor.toString());
 
 
   constructor() {
@@ -34,7 +34,6 @@ export default class HTMLElementExtended extends HTMLElement {
     //   Other options would be setTimeout or calling from connectedCallback. Both are slower
     if (this.#hasTemplate) {
       nextTick(() => {
-        // console.log(this.constructor.name)
         this.#prepareRender();
         this.render();
       });
@@ -58,9 +57,7 @@ export default class HTMLElementExtended extends HTMLElement {
    *    }
    *  }
    */
-  template() {
-    return /*html*/``;
-  }
+  template(){return""}
 
   /** For html file is loaded as raw text and uses template liters
    *  ./page.html
@@ -96,13 +93,12 @@ export default class HTMLElementExtended extends HTMLElement {
     this.#templateString = this.template();
 
     if (this.useTemplate) {
-      // TODO will this.constructor.name if no name is given to class?
-      if (!templateElements[this.constructor.name]) {
-        templateElements[this.constructor.name] = document.createElement('template');
-        templateElements[this.constructor.name].innerHTML = this.#templateString;
+      if (!templateElements[this.#classId]) {
+        templateElements[this.#classId] = document.createElement('template');
+        templateElements[this.#classId].innerHTML = this.#templateString;
       }
 
-      this.#templateElement = templateElements[this.constructor.name];
+      this.#templateElement = templateElements[this.#classId];
     } else {
       this.#templateElement = document.createElement('template');
     }
@@ -136,4 +132,8 @@ function nextTick(callback) {
     nextTickObserving = true;
     nextTickNode.data = nextTickNodeData++;
   }
+}
+
+function hashCodeForId(str) {
+  return Array.from(str).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0)
 }
