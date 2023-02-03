@@ -11,7 +11,7 @@ Simple no thrills micro framework. Super performant and light-weight!
 - HTMLElementExtended adds templates and rendering to webcomponents
 
 
-The goal of this project is to fill the gap of the modern web browser for creating web applications. The modern DOM is full a great features and has many more coming. This reduces the need to have full fledged frameworks. With less custom code our websites are faster, smaller and easier to debug.
+The goal of this project is to fill the gaps of the modern web browser for creating web applications. The modern DOM is full a great features and has many more coming. This reduces the need to have full fledged frameworks. With less custom code websites are faster, smaller and easier to debug.
 
 
 # Links
