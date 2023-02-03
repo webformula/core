@@ -185,7 +185,7 @@ customElements.define('my-check-button', class MyCheckButtonElement extends HTML
   }
 
   onClick() {
-    console.log('clicked)
+    console.log('clicked');
   }
 
   template() {
