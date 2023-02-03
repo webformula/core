@@ -97,7 +97,7 @@ export default new class extends Page {
       <div>Page Content</div>
       <div>${this.someVar}</div>
 
-      <!-- `page` will reference the current page class -->
+      <!-- "page" will reference the current page class -->
       <button onclick="page.clickIt()">Click Method</button>
       <button id="event-listener-button">Event listener</button>
       <button onclick="page.changeValueAndRender()">Change value and render</button>
