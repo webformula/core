@@ -92,6 +92,11 @@ export default class HTMLElementExtended extends HTMLElement {
     this.afterRender();
   }
 
+  stringifyStyleSheet(sheet) {
+    if (!sheet) return '';
+    return [...sheet.cssRules].map(rule => rule.cssText).join('\n');
+  }
+
   #prepareRender() {
     this.#templateString = this.template();
 

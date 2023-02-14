@@ -1,0 +1,107 @@
+<h3 style="margin-top: 12px; margin-bottom: 0; font-weight: 300;">Webpack bundling</h3>
+<h6 style="margin-top: 0; font-weight: 300;">Develop and build with webpack</h6>
+
+
+<h5 style="margin-top: 0; margin-bottom: 0; font-weight: 300;">Links</h5>
+<ul class="links">
+  <li><a href="#install">Install</a></li>
+  <li><a href="#config">Config</a></li>
+  <li><a href="#scripts">Page.json scripts</a></li>
+</ul>
+
+
+<section style="margin-top: 48px;">
+  <mdw-card id="install">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Install</div>
+    </div>
+    <pre>
+      <code class="language-javascript">
+  ${`// Minimal
+  npm install @webformula/core webpack webpack-cli webpack-dev-server
+  
+  // Suggested addons
+  npm install css-loader style-loader html-loader html-webpack-plugin copy-webpack-plugin`}
+      </code>
+    </pre>
+  </mdw-card>
+
+  <mdw-card id="config">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">webpack.config.js</div>
+    </div>
+    <pre>
+      <code class="language-javascript">
+  ${`import HtmlWebpackPlugin from 'html-webpack-plugin';
+  import CopyPlugin from 'copy-webpack-plugin';
+  
+  export default {
+    entry: {
+      app: {
+        import: './src/app.js', filename: process.env.WEBPACK_SERVE ? '[name].js' : '[name].[contenthash].js'
+      }
+    },
+    output: { clean: true },
+    plugins: [
+      new HtmlWebpackPlugin({
+        filename: 'index.html',
+        template: './src/index.html',
+        chunks: ['app']
+      }),
+      new CopyPlugin({
+        patterns: [
+          { from: 'src/favicon.ico', to: '' }
+        ]
+      })
+    ],
+    devServer: {
+      static: { directory: './src' },
+      historyApiFallback: true
+    },
+    devtool: process.env.WEBPACK_SERVE ? 'inline-source-map' : undefined,
+    module: {
+      rules: [
+        {
+          test: /\.css$/i,
+          oneOf: [
+            {
+              assert: { type: 'css' },
+              loader: 'css-loader',
+              options: { exportType: 'css-style-sheet' }
+            },
+            {
+              use: [
+                'style-loader',
+                { loader: 'css-loader' }
+              ]
+            }
+          ]
+        },
+        {
+          test: /\.html$/,
+          use: ['html-loader']
+        }
+      ]
+    }
+  };`}
+      </code>
+    </pre>
+  </mdw-card>
+
+
+  <mdw-card id="scripts">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Package.json scripts</div>
+    </div>
+    <pre>
+      <code class="language-json">
+  ${`"scripts": {
+    "start": "webpack serve --open --mode development",
+    "start-production": "NODE_ENV=production webpack serve --open --mode production",
+    "start-no-open": "webpack serve --mode development",
+    "build": "NODE_ENV=production webpack --mode production"
+  }`}
+      </code>
+    </pre>
+  </mdw-card>
+</section>
