@@ -14,11 +14,17 @@ let notFoundPage;
 export function enableSPA() {
   window.paxCoreSPA = true;
 
-  document.addEventListener('click', async event => {
+  document.addEventListener('click', event => {
     if (!event.target.matches('[href]')) return;
 
     // allow external links
-    if (event.target.getAttribute('href').includes('://')) return;
+    if (event.target.getAttribute('href').includes('://')) {
+      const target = event.target.getAttribute('target');
+      if (['_blank', '_self', '_parent', '_top'].includes(target)) {
+        window.open(event.target.getAttribute('href'), target).focus();
+      }
+      return;
+    }
 
     event.preventDefault();
     hookupAndRender(new URL(event.target.href));

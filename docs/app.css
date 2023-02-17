@@ -13,12 +13,14 @@ ul {
 }
 
 ul li::before {
-  content: "\2022";
+  /* content: "\2022"; */
+  content: "";
   color: rgb(41, 41, 41);
   font-weight: bold;
-  display: inline-block;
-  width: 1em;
-  margin-left: -1em;
+  /* display: inline-block; */
+  width: 24px;
+  /* margin-left: -1em; */
+  margin-left: -24px;
 }
 
 section {
