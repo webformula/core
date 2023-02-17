@@ -1,3 +1,8 @@
+/dist/*
+!/dist/core.js
+!/dist/core.js.gz
+
+
 # Logs
 logs
 *.log
@@ -80,7 +85,6 @@ typings/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/

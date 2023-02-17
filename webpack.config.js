@@ -1,5 +1,7 @@
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import CopyPlugin from 'copy-webpack-plugin';
+import CompressionPlugin from 'compression-webpack-plugin';
+
 
 
 const plugins = [
@@ -15,9 +17,14 @@ const plugins = [
   })
 ];
 
+if (process.env.NODE_ENV === 'production') {
+  plugins.push(new CompressionPlugin({ exclude: [/.html$/] }));
+}
+
 export default {
   entry: {
-    docs: { import: './docs/app.js', filename: process.env.WEBPACK_SERVE ? '[name].js' : '[name].[contenthash].js' }
+    docs: { import: './docs/app.js', filename: process.env.WEBPACK_SERVE ? '[name].js' : '[name].[contenthash].js' },
+    core: { import: './index.js', filename: 'core.js' }
   },
   output: {
     clean: true

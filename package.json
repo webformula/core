@@ -1,6 +1,6 @@
 {
   "name": "@webformula/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
   "main": "index.js",
   "type": "module",
@@ -22,7 +22,8 @@
   "homepage": "https://github.com/webformula/core#readme",
   "devDependencies": {
     "@webformula/core": "file:./index.js",
-    "@webformula/material": "^0.3.0",
+    "@webformula/material": "^0.4.0",
+    "compression-webpack-plugin": "^10.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
     "html-loader": "^4.2.0",
