@@ -68,6 +68,9 @@ export default {
       }
     ]
   },
+  optimization: {
+    usedExports: false
+  },
   performance: {
     hints: false
   }
