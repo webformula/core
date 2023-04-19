@@ -44,22 +44,22 @@ export function enableSPA() {
  *   notFound: designate a page as the not found page
 */
 export function registerPage(pageClass, routes, notFound = false) {
-  routes = routes || pageClass.routes;
+  // combine routes from page and register. Fix starting and trailing slashes
+  routes = [...new Set([routes, ...(pageClass.routes || [])])]
+    .map(route => `/${route.replace(/\/$/, '').replace(/^\//, '')}`);
 
   if (!routes) {
     console.warn('No routes provided for page');
     return;
   }
 
-  [].concat(routes).forEach(value => {
-    // TODO check for dup route
+  routes.forEach(value => {
     const routeRegex = buildRouteRegex(value);
-    [].concat(routes).forEach(value => routeConfigs.push({
+    routeConfigs.push({
       route: value,
       routeRegex,
       pageClass: pageClass.constructor
-    }));
-
+    });
     const match = location.pathname.match(routeRegex);
     if (match !== null) hookupAndRender(location);
   });
@@ -102,13 +102,16 @@ function matchRoute(path) {
   if (!found) return;
 
   const match = path.match(found.routeRegex);
+  const searchParameters = Object.fromEntries(new URLSearchParams(location.search.split(/\?(.*)?$/).slice(1).join('')).entries());
+
   return {
     ...found,
-    urlParameters: match.groups
+    urlParameters: match.groups,
+    searchParameters
   };
 }
 
-function doesUrlMatchWindowLocation(url) {
+function doesPathMatchWindowLocation(url) {
   if (url === location.href) return true;
   if (url === location.pathname) return true;
   return false;
@@ -123,19 +126,17 @@ function handleHashChange(locationObject) {
 
 
 function hookupAndRender(locationObject, back = false) {
-  const url = locationObject.pathname;
+  const path = locationObject.pathname;
   const currentPage = window.page;
-  if (back === false && currentPage && url === location.pathname) return handleHashChange(locationObject);
+  if (back === false && currentPage && path === location.pathname) return handleHashChange(locationObject);
 
-  const path = url || location.pathname; // TODO check why defaulting is needed
   let routeMatch = matchRoute(path);
   if (currentPage === path) return;
 
-  // TODO not found
   if (!routeMatch) {
     if (notFoundPage) routeMatch = notFoundPage;
     else {
-      console.warn(`No page found for url: ${url}`);
+      console.warn(`No page found for path: ${path}`);
       return;
     }
   }
@@ -143,16 +144,15 @@ function hookupAndRender(locationObject, back = false) {
   const nextPage = routeMatch.pageClass ? new routeMatch.pageClass() : {};
 
   // handle state change.
-  const urlMatches = doesUrlMatchWindowLocation(url);
-  if (!urlMatches) {
-    window.history.pushState({}, '', `${url}${locationObject.hash}`);
+  const pathMatches = doesPathMatchWindowLocation(path);
+  if (!pathMatches) {
+    window.history.pushState({}, '', `${path}${locationObject.hash}`);
     window.dispatchEvent(new Event('locationchange'));
 
-    // the urls can match when hitting the back button to the same page or only the hash changes
+    // the paths can match when hitting the back button to the same page or only the hash changes
   } else if (back === true) {
     // there is a delay in the render when hitting the back. this will account for that
     setTimeout(() => {
-      window.history.pushState({}, '', `${url}${locationObject.hash}`);
       window.dispatchEvent(new Event('locationchange'));
     }, 0);
   }
@@ -170,9 +170,10 @@ function hookupAndRender(locationObject, back = false) {
 
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
+
   nextPage._setUrlData({
     urlParameters: routeMatch.urlParameters,
-    searchParameters: {} // TODO 
+    searchParameters: routeMatch.searchParameters || {}
   });
 
   nextPage.render();

@@ -83,7 +83,7 @@ export default class Page {
     urlParameters: {},
     searchParameters: {}
   }) {
-    this._urlParameters = params?.urlParameters || {};
-    this._searchParameters = params?.searchParameters || {};
+    this.#urlParameters = params?.urlParameters || {};
+    this.#searchParameters = params?.searchParameters || {};
   }
 }
