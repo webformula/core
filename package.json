@@ -1,6 +1,6 @@
 {
   "name": "@webformula/core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
   "main": "index.js",
   "type": "module",
