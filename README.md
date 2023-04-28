@@ -23,8 +23,8 @@ The goal of this project is to fill the gaps of the modern web browser for creat
 
 ### **Main app file**
 ```javascript
-import { registerPage, enableSPA } from '@webformula/core';
-enableSPA();
+import { registerPage, enableLinkIntercepts } from '@webformula/core';
+enableLinkIntercepts();
 
 import one from './pages/one/page.js';
 import two from './pages/two/page.js';
