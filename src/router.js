@@ -12,7 +12,7 @@ let notFoundPage;
  *  The backend will need to support URL routing for first page load
  */
 export function enableLinkIntercepts() {
-  window.paxCoreLinkIntercepts = true;
+  window.webformulaCoreLinkIntercepts = true;
   document.addEventListener('click', event => {
     if (!event.target.matches('[href]')) return;
 
