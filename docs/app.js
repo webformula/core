@@ -4,8 +4,8 @@ import './dracula.css';
 import './app.css';
 import '@webformula/material';
 
-import { registerPage, enableSPA } from '@webformula/core';
-enableSPA();
+import { registerPage, enableLinkIntercepts } from '@webformula/core';
+enableLinkIntercepts();
 
 
 import home from './pages/home/page.js';
