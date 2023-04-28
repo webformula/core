@@ -3,17 +3,16 @@ const parameterRegex = /([:*])(\w+)/g;
 const wildcardRegex = /\*/g;
 const replaceWidCardString = '(?:.*)';
 const followedBySlashRegexString = '(?:\/$|$)';
+const ignoreHashRegexString = '(#(.*))?';
 const routeConfigs = [];
 let notFoundPage;
 
-// TODO make routes work with no SPA enabled (#hashes only)
 
 /** Intercept links to create single page app with normal urls
  *  The backend will need to support URL routing for first page load
  */
-export function enableSPA() {
-  window.paxCoreSPA = true;
-
+export function enableLinkIntercepts() {
+  window.paxCoreLinkIntercepts = true;
   document.addEventListener('click', event => {
     if (!event.target.matches('[href]')) return;
 
@@ -31,11 +30,12 @@ export function enableSPA() {
     // the prevent default keeps the link from loosing focus
     event.target.blur();
   });
-
-  window.addEventListener('popstate', event => {
-    hookupAndRender(new URL(event.currentTarget.location), true);
-  });
 }
+
+window.addEventListener('popstate', event => {
+  hookupAndRender(new URL(event.currentTarget.location), true);
+});
+
 
 /** Register Page classes
  *   Routes can be passed in here or configured in the Page
@@ -85,7 +85,11 @@ function finalCheck() {
 // used to match and parse urls
 function buildRouteRegex(route) {
   let regex;
-  if (route.match(containsVariableOrWildcardRegex) === null) regex = new RegExp(`^${route}$`);
+  if (route.match(containsVariableOrWildcardRegex) === null) {
+    // Do not allow hashes on root or and hash links
+    if (route.trim() === '/' || route.includes('#')) regex = new RegExp(`^${route}$`);
+    else regex = new RegExp(`^${route}${ignoreHashRegexString}$`);
+  }
   else regex = new RegExp(
     `^${route
       .replace(parameterRegex, (_full, _dots, name) => `(?<${name}>[^\/]+)`)
@@ -93,7 +97,6 @@ function buildRouteRegex(route) {
     }${followedBySlashRegexString}$`,
     ''
   );
-
   return regex;
 }
 
@@ -111,45 +114,49 @@ function matchRoute(path) {
   };
 }
 
-function doesPathMatchWindowLocation(url) {
+function doesURLMatchWindowLocation(url) {
+  if (url === location.href.replace(location.origin, '')) return true;
   if (url === location.href) return true;
   if (url === location.pathname) return true;
   return false;
 }
 
-function handleHashChange(locationObject) {
-  const hash = locationObject.hash;
-  if (hash === location.hash) return;
-  window.history.pushState({}, '', hash);
-  if (hash) window.dispatchEvent(new Event('hashchange'));
-}
-
 
 function hookupAndRender(locationObject, back = false) {
-  const path = locationObject.pathname;
+  const url = locationObject.href.replace(locationObject.origin, '');
   const currentPage = window.page;
-  if (back === false && currentPage && path === location.pathname) return handleHashChange(locationObject);
-
-  let routeMatch = matchRoute(path);
-  if (currentPage === path) return;
+  let routeMatch = matchRoute(url);
+  const samePage = currentPage?.constructor === routeMatch?.pageClass;
+  const hashMatches = samePage && locationObject.hash === location.hash;
 
   if (!routeMatch) {
     if (notFoundPage) routeMatch = notFoundPage;
     else {
-      console.warn(`No page found for path: ${path}`);
+      console.warn(`No page found for url: ${url}`);
       return;
     }
+  }
+
+  // handle hash changes on same url
+  if (back == false && samePage) {
+    if (!hashMatches) {
+      window.history.pushState({}, '', url);
+      if (locationObject.hash && !hashMatches) window.dispatchEvent(new Event('hashchange'));
+    }
+    return;
   }
 
   const nextPage = routeMatch.pageClass ? new routeMatch.pageClass() : {};
 
   // handle state change.
-  const pathMatches = doesPathMatchWindowLocation(path);
-  if (!pathMatches) {
-    window.history.pushState({}, '', `${path}${locationObject.hash}`);
+  const urlMatches = doesURLMatchWindowLocation(url);
+  if (!urlMatches) {
+    window.history.pushState({}, '', url);
     window.dispatchEvent(new Event('locationchange'));
 
-    // the paths can match when hitting the back button to the same page or only the hash changes
+
+    // TODO look into removing this location change
+    // the urls can match when hitting the back button to the same page or only the hash changes
   } else if (back === true) {
     // there is a delay in the render when hitting the back. this will account for that
     setTimeout(() => {
@@ -157,7 +164,6 @@ function hookupAndRender(locationObject, back = false) {
     }, 0);
   }
 
-  const hashMatches = locationObject.hash === location.hash;
   if (locationObject.hash && !hashMatches) window.dispatchEvent(new Event('hashchange'));
 
   // handle hash change when previous url has hash
