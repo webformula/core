@@ -50,7 +50,7 @@ window.addEventListener('hashchange', () => {
 ```javascript
 import { Page } from '@webformula/core';
 
-export default new class extends Page {
+export default class extends Page {
   static pageTitle = 'Page';
   static templatePath = 'pages/one.html'; // use this or the template method
 
@@ -128,7 +128,7 @@ export default new class extends Page {
 import { Page } from '@webformula/core';
 import html from './page.html';
 
-export default new class extends Page {
+export default class extends Page {
   static pageTitle = 'Page'; // html page title
   someVar = 'Some var';
 
