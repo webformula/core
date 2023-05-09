@@ -69,8 +69,8 @@ export default new class extends Page {
     // called on element hookup to dome. May not be rendered yet
 
     this.userInput = 'some user input';
-    console.log(this.urlParameters()); // { id: 'value' }
-    console.log(this.searchParameters()); // { id: 'value' }
+    console.log(this.urlParameters); // { id: 'value' }
+    console.log(this.searchParameters); // { id: 'value' }
   }
 
   disconnectedCallback() {
