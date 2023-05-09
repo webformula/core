@@ -1,16 +1,14 @@
 export default class Page {
-  pageTitle;
+  static pageTitle;
   /** ['/a', '/a/:id']; */
-  routes = [];
+  static routes = [];
+  static templatePath = '';
 
   #urlParameters;
   #searchParameters;
+  #route;
 
-  constructor(pageTitle, routes) {
-    this.pageTitle = pageTitle;
-    this.routes = routes;
-  }
-
+  constructor() { }
 
   get searchParameters() {
     return this.#searchParameters;
@@ -18,6 +16,10 @@ export default class Page {
 
   get urlParameters() {
     return this.#urlParameters;
+  }
+
+  get route() {
+    return this.#route;
   }
 
   // override
@@ -81,9 +83,11 @@ export default class Page {
   // called by router
   _setUrlData(params = {
     urlParameters: {},
-    searchParameters: {}
+    searchParameters: {},
+    route: ''
   }) {
     this.#urlParameters = params?.urlParameters || {};
     this.#searchParameters = params?.searchParameters || {};
+    this.#route = params?.route;
   }
 }

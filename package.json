@@ -22,7 +22,7 @@
   "homepage": "https://github.com/webformula/core#readme",
   "devDependencies": {
     "@webformula/core": "file:./index.js",
-    "@webformula/material": "^0.4.0",
+    "@webformula/material": "^0.7.0",
     "compression-webpack-plugin": "^10.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
