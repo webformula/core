@@ -7,11 +7,14 @@ const replaceWidCardString = '(?:.*)';
 const followedBySlashRegexString = '(?:\/$|$)';
 const ignoreHashRegexString = '(#(.*))?';
 const routeConfigs = [];
+const isBrowser = typeof window !== 'undefined';
 let notFoundPage;
 
-window.addEventListener('popstate', event => {
-  hookupAndRender(new URL(event.currentTarget.location), true);
-});
+if (isBrowser) {
+  window.addEventListener('popstate', event => {
+    hookupAndRender(new URL(event.currentTarget.location), true);
+  });
+}
 
 export function registerPage(pageClass, routes, {
   notFound,

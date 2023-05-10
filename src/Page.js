@@ -1,4 +1,4 @@
-export default class Page {
+export class Page {
   static pageTitle;
   /** ['/a', '/a/:id']; */
   static routes = [];

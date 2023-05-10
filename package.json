@@ -3,9 +3,15 @@
   "version": "0.7.1",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
   "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./index.js",
+    "./server": "./src/server.js"
+  },
   "type": "module",
   "scripts": {
     "start": "webpack serve --open --mode development",
+    "start-server": "nodemon server-example/server.js",
     "start-production": "NODE_ENV=production webpack serve --open --mode production",
     "start-no-open": "webpack serve --mode development",
     "build": "NODE_ENV=production webpack --mode production"
@@ -21,14 +27,18 @@
   },
   "homepage": "https://github.com/webformula/core#readme",
   "devDependencies": {
-    "@webformula/core": "file:./index.js",
+    "@webformula/core": "file:./",
     "@webformula/material": "^0.7.0",
+    "compression": "^1.7.4",
     "compression-webpack-plugin": "^10.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
+    "express": "^4.18.2",
     "html-loader": "^4.2.0",
     "html-webpack-plugin": "^5.5.0",
+    "nodemon": "^2.0.22",
     "style-loader": "^3.3.1",
+    "uglify-js": "^3.17.4",
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^4.11.1"

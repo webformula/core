@@ -1,7 +1,7 @@
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import CopyPlugin from 'copy-webpack-plugin';
 import CompressionPlugin from 'compression-webpack-plugin';
-
+import UglifyJS from 'uglify-js';
 
 
 const plugins = [
@@ -12,7 +12,23 @@ const plugins = [
   }),
   new CopyPlugin({
     patterns: [
-      { from: 'docs/favicon.ico', to: '' }
+      { from: 'docs/favicon.ico', to: '' },
+      {
+        from: 'src/core.js',
+        to: 'server/',
+        transform: (content) => {
+          const result = UglifyJS.minify(content.toString());
+          return result.code;
+        }
+      },
+      {
+        from: 'src/Page.js',
+        to: 'server/',
+        transform: (content) => {
+          const result = UglifyJS.minify(content.toString());
+          return result.code;
+        }
+      }
     ]
   })
 ];
