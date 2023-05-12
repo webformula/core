@@ -313,7 +313,7 @@ async function fetchPage(url) {
   if (json.notFound && json.templateId && document.body.querySelector(`template#${json.templateId}`)) {
     return json;
   }
-  const Page = await import(json.pageClassPath);
+  const Page = await import(`${json.pageClassPath}`);
   const template = document.createElement('template');
   template.id = json.templateId;
   template.innerHTML = json.html;
