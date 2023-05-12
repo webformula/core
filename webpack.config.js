@@ -14,15 +14,7 @@ const plugins = [
     patterns: [
       { from: 'docs/favicon.ico', to: '' },
       {
-        from: 'src/core.js',
-        to: 'server/',
-        transform: (content) => {
-          const result = UglifyJS.minify(content.toString());
-          return result.code;
-        }
-      },
-      {
-        from: 'src/Page.js',
+        from: 'src/client.js',
         to: 'server/',
         transform: (content) => {
           const result = UglifyJS.minify(content.toString());
@@ -40,7 +32,7 @@ if (process.env.NODE_ENV === 'production') {
 export default {
   entry: {
     docs: { import: './docs/app.js', filename: process.env.WEBPACK_SERVE ? '[name].js' : '[name].[contenthash].js' },
-    core: { import: './index.js', filename: 'core.js' }
+    core: { import: './src/client.js', filename: 'client.js' }
   },
   output: {
     clean: true

@@ -1,11 +1,11 @@
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { matchRouteConfig, buildRouteRegex, cleanRoutes } from "./helpers.js";
+import { matchRouteConfig, buildRouteRegex, cleanRoutes } from "./client.js";
 
 
 const webformulaDev = process.env.WEBFORMULA_DEV === 'true' ? true : process.env.WEBFORMULA_DEV === 'false' ? false : undefined;
 const isDev = webformulaDev !== undefined ? webformulaDev : process.env.NODE_ENV !== 'production';
-const prefetchPageRegex = /^\/prefetch-page/;
+const prefetchPageRegex = /^\/fetch-page/;
 const routeConfigs = [];
 const config = {
   baseDir: '',
@@ -18,16 +18,15 @@ export function coreMiddleware(baseDir = '') {
 
   Promise.all([
     readFile(path.resolve(baseDir, 'index.html'), { encoding: 'utf8' }),
-    readFile(!isDev ? 'dist/server/core.js' : 'src/core.js', { encoding: 'utf8' }),
-    readFile(!isDev ? 'dist/server/Page.js' : 'src/Page.js', { encoding: 'utf8' })
-  ]).then(([index, core, page]) => {
+    readFile(isDev ? 'src/client.js' : 'dist/server/client.js', { encoding: 'utf8' })
+  ]).then(([index, client]) => {
     config.indexTemplate = index;
-    config.appCode = `${core}\n${page}`;
+    config.appCode = client;
   }).catch(e => console.log(e));
 
   return async (req, res, next) => {
     if (req.url === '/webformula.js') return handleAppCode(req, res);
-    // if (req.url === '/prefetch-app') return prefetchPages(req, res);
+    if (req.url === '/prefetch-pages') return prefetchRouteConfig(req, res);
     if ((await handleRoute(req, res))) return;
     next();
   };
@@ -73,23 +72,45 @@ export async function registerPage(pageClassPath, routes, {
       templateId: templatePath && templatePath.replace(/\//g, '').replace(/\./g, ''),
       notFound
     });
+
+    if (notFound && !config.notFoundRoute) {
+      config.notFoundRoute = {
+        route: value,
+        routeRegex,
+        pageClassPath,
+        templatePath,
+        templateId: templatePath && templatePath.replace(/\//g, '').replace(/\./g, ''),
+        notFound
+      };
+    }
   });
 }
 
+function urlExtension(url) {
+  if (!url.includes('.')) return '';
+  return url.split(/[#?]/)[0].split('.').pop().trim();
+}
 
 async function handleRoute(req, res) {
-  const routeMatch = matchRouteConfig(req.url.replace(prefetchPageRegex, ''), routeConfigs);
-  if (!routeMatch) return false;
+  let routeMatch = matchRouteConfig(req.url.replace(prefetchPageRegex, ''), routeConfigs);
+  const isFetchPage = req.url.startsWith('/fetch-page');
+  if (!routeMatch) {
+    if (config.notFoundRoute && (['document', 'empty'].includes(req.headers['sec-fetch-dest']) || !urlExtension(req.url))) {
+      // if (isFetchPage) return res.send({ notFoundInvalid: true });
+      routeMatch = config.notFoundRoute;
+    } else return false;
+  }
 
   const html = await readFile(path.resolve(config.baseDir, routeMatch.templatePath), { encoding: 'utf8' });
 
-  if (req.url.startsWith('/prefetch-page')) {
+  if (isFetchPage) {
     // res.set('Cache-Control', 'public, max-age=31557600');
     res.send({
-      pageClassPath: routeMatch.pageClassPath,
+      pageClassPath: path.join('/', routeMatch.pageClassPath),
       html,
       route: routeMatch.route,
-      templateId: routeMatch.templateId
+      templateId: routeMatch.templateId,
+      notFound: routeMatch.notFound
     });
   } else {
     res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -107,7 +128,7 @@ async function handleRoute(req, res) {
         window._webformulaServerSide = true;
         import { registerPage, enableLinkIntercepts } from '@webformula/core';
         import Page from '${path.join('/', routeMatch.pageClassPath)}';
-        registerPage(Page, '${routeMatch.route}', { templateId: '${routeMatch.templateId}' });
+        registerPage(Page, '${routeMatch.route}', { templateId: '${routeMatch.templateId}', notFound: ${!!routeMatch.notFound} });
         enableLinkIntercepts();
       </script>
     `);
@@ -120,4 +141,16 @@ async function handleRoute(req, res) {
 function handleAppCode(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'public, max-age=100' });
   res.end(config.appCode);
+}
+
+function prefetchRouteConfig(req, res) {
+  // res.set('Cache-Control', 'public, max-age=31557600');
+  res.send(routeConfigs.map(v => ({
+    templatePath: v.templatePath,
+    pageClassPath: v.pageClassPath,
+    route: v.route,
+    // routeRegex: v.routeRegex.toString(),
+    templateId: v.templateId,
+    notFound: v.notFound
+  })));
 }

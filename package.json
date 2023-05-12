@@ -2,10 +2,10 @@
   "name": "@webformula/core",
   "version": "0.7.1",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
-  "main": "index.js",
+  "main": "src/client.js",
   "exports": {
-    ".": "./index.js",
-    "./client": "./index.js",
+    ".": "./src/client.js",
+    "./client": "./src/client.js",
     "./server": "./src/server.js"
   },
   "type": "module",

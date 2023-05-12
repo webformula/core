@@ -15,3 +15,5 @@ app.listen(port, () => {
 
 
 registerPage('pages/home/page.js', '/');
+registerPage('pages/one/page.js', '/one');
+registerPage('pages/notfound/page.js', '/notfound', { notFound: true });
