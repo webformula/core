@@ -2,7 +2,7 @@ import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { matchRouteConfig, buildRouteRegex, cleanRoutes } from "./client.js";
 
-
+const leadingPeriodRegex = /^\./;
 const webformulaDev = process.env.WEBFORMULA_DEV === 'true' ? true : process.env.WEBFORMULA_DEV === 'false' ? false : undefined;
 const isDev = webformulaDev !== undefined ? webformulaDev : process.env.NODE_ENV !== 'production';
 const prefetchPageRegex = /^\/fetch-page/;
@@ -13,8 +13,11 @@ const config = {
   appCode: ''
 };
 
-export function coreMiddleware(baseDir = '') {
+export function coreMiddleware(baseDir = '', { importMap }) {
   config.baseDir = baseDir;
+  config.importMap = importMap || {};
+  config.importMap['@webformula/core'] = './webformula.js';
+  config.importMapPaths = Object.values(config.importMap).map(v => v.replace(leadingPeriodRegex, ''));
 
   Promise.all([
     readFile(path.resolve(baseDir, 'index.html'), { encoding: 'utf8' }),
@@ -43,13 +46,28 @@ export async function registerPage(pageClassPath, routes, {
   try {
     const modulePath = path.resolve(config.baseDir, pageClassPath);
     await access(modulePath);
-    const page = await import(modulePath);
+    const file = await readFile(modulePath, { encoding: 'utf-8' });
+
+    // parse routes variable
+    let pageClassRoutes = [];
+    const routesIndex = file.indexOf('static routes');
+    if (routesIndex > 0) {
+      const routesArray = file.slice(routesIndex + file.slice(routesIndex).indexOf('['), routesIndex + file.slice(routesIndex).indexOf(']') + 1);
+      pageClassRoutes = eval(routesArray);
+    }
+
+    // parse templatePath variable
+    const templatePathIndex = file.indexOf('static templatePath');
+    if (templatePathIndex > 0) {
+      const firstQuoteIndex = templatePathIndex + file.slice(templatePathIndex).search(/\'|\"/);
+      const templatePathString = file.slice(firstQuoteIndex, firstQuoteIndex + 1 + file.slice(firstQuoteIndex + 1).search(/\'|\"/) + 1);
+      templatePath = eval(templatePathString);
+    }
 
     // combine routes from page and register
-    routes = cleanRoutes([...new Set([...[].concat(routes || []), ...(page.default?.routes || [])])]);
+    routes = cleanRoutes([...new Set([...[].concat(routes || []), ...(pageClassRoutes)])]);
 
     if (routes.length === 0) throw Error('No routes found for page');
-    templatePath = page.default.templatePath;
   } catch (e) {
     console.log(e)
     throw Error('page class module cannot be found', pageClassPath);
@@ -97,6 +115,7 @@ async function fetchPage(req, res) {
 
 async function handleRoute(req, res) {
   const routeMatch = getRoute(req.url);
+  if (routeMatch?.importMap) return false;
   if (!routeMatch) return false;
 
   const html = await readFile(path.resolve(config.baseDir, routeMatch.templatePath), { encoding: 'utf8' });
@@ -104,7 +123,7 @@ async function handleRoute(req, res) {
   res.end(`
     <script type="importmap">
       { "imports": {
-          "@webformula/core": "./webformula.js"
+          ${Object.entries(config.importMap).map(([a, b]) => `"${a}": "${b}"`).join(',\n')}
       } }
     </script>
     <link rel="modulepreload" href="webformula.js">
@@ -125,6 +144,8 @@ async function handleRoute(req, res) {
 
 function getRoute(url) {
   const routeMatch = matchRouteConfig(url, routeConfigs);
+  if (!routeMatch && config.importMapPaths.includes(url)) return { importMap: true };
+
   if (!routeMatch && config.notFoundRoute && !urlExtension(url)) return config.notFoundRoute;
   return routeMatch;
 }
