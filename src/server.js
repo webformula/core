@@ -27,6 +27,7 @@ export function coreMiddleware(baseDir = '') {
   return async (req, res, next) => {
     if (req.url === '/webformula.js') return handleAppCode(req, res);
     if (req.url === '/prefetch-pages') return prefetchRouteConfig(req, res);
+    if (req.url.startsWith('/fetch-page') && (await fetchPage(req, res))) return;
     if ((await handleRoute(req, res))) return;
     next();
   };
@@ -73,70 +74,60 @@ export async function registerPage(pageClassPath, routes, {
       notFound
     });
 
-    if (notFound && !config.notFoundRoute) {
-      config.notFoundRoute = {
-        route: value,
-        routeRegex,
-        pageClassPath,
-        templatePath,
-        templateId: templatePath && templatePath.replace(/\//g, '').replace(/\./g, ''),
-        notFound
-      };
-    }
+    if (notFound && !config.notFoundRoute) config.notFoundRoute = routeConfigs[routeConfigs.length - 1];
   });
 }
 
-function urlExtension(url) {
-  if (!url.includes('.')) return '';
-  return url.split(/[#?]/)[0].split('.').pop().trim();
-}
-
-async function handleRoute(req, res) {
-  let routeMatch = matchRouteConfig(req.url.replace(prefetchPageRegex, ''), routeConfigs);
-  const isFetchPage = req.url.startsWith('/fetch-page');
-  if (!routeMatch) {
-    if (config.notFoundRoute && (['document', 'empty'].includes(req.headers['sec-fetch-dest']) || !urlExtension(req.url))) {
-      // if (isFetchPage) return res.send({ notFoundInvalid: true });
-      routeMatch = config.notFoundRoute;
-    } else return false;
-  }
-
+async function fetchPage(req, res) {
+  const routeMatch = getRoute(req.url.replace(prefetchPageRegex, ''));
+  if (!routeMatch) return false;
+  
   const html = await readFile(path.resolve(config.baseDir, routeMatch.templatePath), { encoding: 'utf8' });
-
-  if (isFetchPage) {
-    // res.set('Cache-Control', 'public, max-age=31557600');
-    res.send({
-      pageClassPath: path.join('/', routeMatch.pageClassPath),
-      html,
-      route: routeMatch.route,
-      templateId: routeMatch.templateId,
-      notFound: routeMatch.notFound
-    });
-  } else {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(`
-      <script type="importmap">
-        { "imports": {
-            "@webformula/core": "./webformula.js"
-        } }
-      </script>
-      <link rel="modulepreload" href="webformula.js">
-      <link rel="modulepreload" href="${routeMatch.pageClassPath}">
-      ${config.indexTemplate}
-      <template id="${routeMatch.templateId}">${html}</template>
-      <script type="module">
-        window._webformulaServerSide = true;
-        import { registerPage, enableLinkIntercepts } from '@webformula/core';
-        import Page from '${path.join('/', routeMatch.pageClassPath)}';
-        registerPage(Page, '${routeMatch.route}', { templateId: '${routeMatch.templateId}', notFound: ${!!routeMatch.notFound} });
-        enableLinkIntercepts();
-      </script>
-    `);
-  }
+  // res.set('Cache-Control', 'public, max-age=31557600');
+  res.send({
+    pageClassPath: path.join('/', routeMatch.pageClassPath),
+    html,
+    route: routeMatch.route,
+    templateId: routeMatch.templateId,
+    notFound: routeMatch.notFound
+  });
 
   return true;
 }
 
+async function handleRoute(req, res) {
+  const routeMatch = getRoute(req.url);
+  if (!routeMatch) return false;
+
+  const html = await readFile(path.resolve(config.baseDir, routeMatch.templatePath), { encoding: 'utf8' });
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.end(`
+    <script type="importmap">
+      { "imports": {
+          "@webformula/core": "./webformula.js"
+      } }
+    </script>
+    <link rel="modulepreload" href="webformula.js">
+    <link rel="modulepreload" href="${routeMatch.pageClassPath}">
+    ${config.indexTemplate}
+    <template id="${routeMatch.templateId}">${html}</template>
+    <script type="module">
+      window._webformulaServerSide = true;
+      import { registerPage, enableLinkIntercepts } from '@webformula/core';
+      import Page from '${path.join('/', routeMatch.pageClassPath)}';
+      registerPage(Page, '${routeMatch.route}', { templateId: '${routeMatch.templateId}', notFound: ${!!routeMatch.notFound} });
+      enableLinkIntercepts();
+    </script>
+  `);
+
+  return true;
+}
+
+function getRoute(url) {
+  const routeMatch = matchRouteConfig(url, routeConfigs);
+  if (!routeMatch && config.notFoundRoute && !urlExtension(url)) return config.notFoundRoute;
+  return routeMatch;
+}
 
 function handleAppCode(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'public, max-age=100' });
@@ -153,4 +144,9 @@ function prefetchRouteConfig(req, res) {
     templateId: v.templateId,
     notFound: v.notFound
   })));
+}
+
+function urlExtension(url) {
+  if (!url.includes('.')) return '';
+  return url.split(/[#?]/)[0].split('.').pop().trim();
 }
