@@ -3,12 +3,12 @@
   "version": "0.7.1",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
   "main": "src/client.js",
+  "type": "module",
   "exports": {
     ".": "./src/client.js",
     "./client": "./src/client.js",
     "./server": "./src/server.js"
   },
-  "type": "module",
   "scripts": {
     "start": "webpack serve --open --mode development",
     "start-server": "nodemon server-example/server.js",
@@ -28,7 +28,7 @@
   "homepage": "https://github.com/webformula/core#readme",
   "devDependencies": {
     "@webformula/core": "file:./",
-    "@webformula/material": "^0.7.0",
+    "@webformula/material": "file:../material",
     "compression": "^1.7.4",
     "compression-webpack-plugin": "^10.0.0",
     "copy-webpack-plugin": "^11.0.0",

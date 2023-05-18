@@ -4,7 +4,7 @@ import './dracula.css';
 import './app.css';
 import '@webformula/material';
 
-import { registerPage, enableLinkIntercepts } from '@webformula/core';
+import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
 enableLinkIntercepts();
 
 

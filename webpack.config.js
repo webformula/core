@@ -32,7 +32,7 @@ if (process.env.NODE_ENV === 'production') {
 export default {
   entry: {
     docs: { import: './docs/app.js', filename: process.env.WEBPACK_SERVE ? '[name].js' : '[name].[contenthash].js' },
-    core: { import: './src/client.js', filename: 'client.js' }
+    // core: { import: './src/client.js', filename: 'client.js' }
   },
   output: {
     clean: true
