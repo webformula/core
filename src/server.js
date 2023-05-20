@@ -1,173 +1,159 @@
-import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { matchRouteConfig, buildRouteRegex, cleanRoutes } from "./client.js";
+import { access, readFile } from 'node:fs/promises';
+import esbuild from 'esbuild';
+import { getExtension, buildRouteRegex, matchRouteConfig, cleanRoutes, buildTemplateId  } from './helpers.js';
 
-const leadingPeriodRegex = /^\./;
-const webformulaDev = process.env.WEBFORMULA_DEV === 'true' ? true : process.env.WEBFORMULA_DEV === 'false' ? false : undefined;
-const isDev = webformulaDev !== undefined ? webformulaDev : process.env.NODE_ENV !== 'production';
-const prefetchPageRegex = /^\/fetch-page/;
-const routeConfigs = [];
-const config = {
-  baseDir: '',
-  indexTemplate: '',
-  appCode: ''
+
+const cssFilterRegex = /\.css$/;
+const importMatcher = /import(?<name>.+?)from(?<path>.+?)(;|\n)/g;
+const registerPageMatcher = /registerPage\((?<pageClass>.+?)\,(?<routes>.+?)(,|\))(.+\{(?<options>.+?)\}\s?\))?;?/g;
+const staticRoutesMatcher = /static routes\s=\s(?<content>.+?)(;|\n)/;
+const templatePathMatcher = /static templatePath\s=\s(?<content>.+?)(;|\n)/;
+const appConfig = {
+  pageConfigs: [],
+  routeConfigs: []
 };
 
-export function coreMiddleware(baseDir = '', { importMap }) {
-  config.baseDir = baseDir;
-  config.importMap = importMap || {};
-  config.importMap['@webformula/core'] = './webformula.js';
-  config.importMapPaths = Object.values(config.importMap).map(v => v.replace(leadingPeriodRegex, ''));
 
-  Promise.all([
-    readFile(path.resolve(baseDir, 'index.html'), { encoding: 'utf8' }),
-    readFile(isDev ? 'src/client.js' : 'dist/server/client.js', { encoding: 'utf8' })
-  ]).then(([index, client]) => {
-    config.indexTemplate = index;
-    config.appCode = client;
-  }).catch(e => console.log(e));
+export function coreMiddleware(baseDir = 'app/') {
+  appConfig.baseDir = baseDir;
+  // appConfig.minify = params.minify === false ? false : true;
+  // appConfig.sourcemaps = !!params.sourcemaps;
+
+  init();
 
   return async (req, res, next) => {
-    if (req.url === '/webformula.js') return handleAppCode(req, res);
-    if (req.url === '/prefetch-pages') return prefetchRouteConfig(req, res);
-    if (req.url.startsWith('/fetch-page') && (await fetchPage(req, res))) return;
+    if (getExtension(req.url) === 'js' && (await handleChunks(req, res))) return;
     if ((await handleRoute(req, res))) return;
     next();
   };
 }
 
-
-export async function registerPage(pageClassPath, routes, {
-  notFound
-} = { notFound: false }) {
-  if (!pageClassPath) throw Error('requires pageClassPath');
-
-  let templatePath;
-  try {
-    const modulePath = path.resolve(config.baseDir, pageClassPath);
-    await access(modulePath);
-    const file = await readFile(modulePath, { encoding: 'utf-8' });
-
-    // parse routes variable
-    let pageClassRoutes = [];
-    const routesIndex = file.indexOf('static routes');
-    if (routesIndex > 0) {
-      const routesArray = file.slice(routesIndex + file.slice(routesIndex).indexOf('['), routesIndex + file.slice(routesIndex).indexOf(']') + 1);
-      pageClassRoutes = eval(routesArray);
-    }
-
-    // parse templatePath variable
-    const templatePathIndex = file.indexOf('static templatePath');
-    if (templatePathIndex > 0) {
-      const firstQuoteIndex = templatePathIndex + file.slice(templatePathIndex).search(/\'|\"/);
-      const templatePathString = file.slice(firstQuoteIndex, firstQuoteIndex + 1 + file.slice(firstQuoteIndex + 1).search(/\'|\"/) + 1);
-      templatePath = eval(templatePathString);
-    }
-
-    // combine routes from page and register
-    routes = cleanRoutes([...new Set([...[].concat(routes || []), ...(pageClassRoutes)])]);
-
-    if (routes.length === 0) throw Error('No routes found for page');
-  } catch (e) {
-    console.log(e)
-    throw Error('page class module cannot be found', pageClassPath);
-  }
-
-  if (templatePath) {
-    try {
-      await access(path.resolve(config.baseDir, templatePath));
-    } catch (e) {
-      throw Error('templatePath cannot be found', templatePath);
-    }
-  }
-
-  routes.forEach(value => {
-    const routeRegex = buildRouteRegex(value);
-    routeConfigs.push({
-      route: value,
-      routeRegex,
-      pageClassPath,
-      templatePath,
-      templateId: templatePath && templatePath.replace(/\//g, '').replace(/\./g, ''),
-      notFound
+const plugin = {
+  name: 'plugins',
+  setup(build) {
+    build.onLoad({ filter: appConfig.appFileRegex }, async () => ({ contents: appConfig.appFile }));
+    build.onLoad({ filter: cssFilterRegex }, async args => {
+      const css = await readFile(args.path, 'utf8');
+      const contents = `
+        const styles = new CSSStyleSheet();
+        styles.replaceSync(\`${css.replaceAll(/[`$]/gm, '\\$&')}\`);
+        export default styles;`;
+      return { contents };
     });
+  }
+};
 
-    if (notFound && !config.notFoundRoute) config.notFoundRoute = routeConfigs[routeConfigs.length - 1];
+async function init() {
+  const [ indexFile, appFile ] = await Promise.all([
+    readFile(path.resolve(appConfig.baseDir, 'index.html'), 'utf8'),
+    readFile(path.resolve(appConfig.baseDir, 'app.js'), 'utf8')
+  ]);
+  let appFileContent = appFile;
+  const appFileData = await parseAppFileData(appFile);
+  appFileData.forEach(({ importLine, registerLine, config }, i, arr) => {
+    appConfig.pageConfigs.push(config);
+    config.routes.forEach(({ route, regex }) => {
+      appConfig.routeConfigs.push({
+        route,
+        regex,
+        pageConfig: config
+      });
+    });
+    appFileContent = appFileContent
+      .replace(importLine, '')
+      .replace(registerLine, i !== arr.length - 1 ? '' : `registerAppConfig(${JSON.stringify(arr.map(({ config }) => ({
+        ...config,
+        routes: config.routes.map(v => ({
+          route: v.route,
+          regex: v.regex.toString
+        }))
+      })))});`);
   });
+
+  const appFilePath = path.join(appConfig.baseDir, 'app.js');
+  appConfig.appFile = appFileContent;
+  appConfig.indexFile = indexFile;
+  appConfig.appFileRegex = new RegExp(appFilePath);
+
+  const bundle = await esbuild.build({
+    entryPoints: [appFilePath, ...appFileData.map(r => path.join(appConfig.baseDir, r.config.pageClassPath))],
+    bundle: true,
+    write: false,
+    splitting: true,
+    outdir: 'temp',
+    format: 'esm',
+    plugins: [plugin],
+    minify: true
+  });
+
+  appConfig.outputFiles = bundle.outputFiles;
 }
 
-async function fetchPage(req, res) {
-  const routeMatch = getRoute(req.url.replace(prefetchPageRegex, ''));
-  if (!routeMatch) return false;
-  
-  const html = await readFile(path.resolve(config.baseDir, routeMatch.templatePath), { encoding: 'utf8' });
-  // res.set('Cache-Control', 'public, max-age=31557600');
-  res.send({
-    pageClassPath: path.join('/', routeMatch.pageClassPath),
-    html,
-    route: routeMatch.route,
-    templateId: routeMatch.templateId,
-    notFound: routeMatch.notFound
-  });
+async function parseAppFileData(appFile) {
+  const importMatches = [...appFile.matchAll(importMatcher)];
+  return await Promise.all([...appFile.matchAll(registerPageMatcher)].map(async match => {
+    const pageClass = match.groups.pageClass.trim();
+    const options = match.groups.options ? eval(`({${match.groups.options}})`) : {};
+    const importMatch = importMatches.find(({ groups }) => groups.name.trim() === pageClass);
+    return {
+      importLine: importMatch[0],
+      registerLine: match[0],
+      config: await buildPageConfig(
+        importMatch.groups.path.replace(/'/g, '"').match(/"(.+)"/)[1],
+        JSON.parse(match.groups.routes.trim().replace(/'|"/g, '"')),
+        options
+      )
+    };
+  }));
+}
 
+async function buildPageConfig(pageClassPath, routes, { notFound }) {
+  const modulePath = path.resolve(appConfig.baseDir, pageClassPath);
+  const file = await readFile(modulePath, 'utf-8');
+
+  const routesMatch = file.match(staticRoutesMatcher);
+  const pageClassRoutes = routesMatch === null ? [] : eval(routesMatch.groups.content);
+  routes = cleanRoutes([...new Set([...[].concat(routes || []), ...(pageClassRoutes)])]);
+  if (routes.length === 0) throw Error('No routes found for page');
+
+  const templatePathMatch = file.match(templatePathMatcher);
+  const templatePath = templatePathMatch === null ? undefined : templatePathMatch.groups.content.trim().replace(/'|"/g, '');
+  if (templatePath) await access(path.resolve(appConfig.baseDir, templatePath));
+
+  const routeConfig = {
+    pageClassPath,
+    templatePath,
+    notFound,
+    routes: routes.map(route => ({
+      route,
+      regex: buildRouteRegex(route)
+    }))
+  };
+  if (notFound) appConfig.notFoundRoute = routeConfig;
+  return routeConfig;
+}
+
+async function handleChunks(req, res) {
+  const match = appConfig.outputFiles.find(v => v.path.includes(req.url));
+  if (!match) return false;
+
+  res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'public, max-age=100' });
+  res.end(match.text);
   return true;
 }
 
 async function handleRoute(req, res) {
-  const routeMatch = getRoute(req.url);
-  if (routeMatch?.importMap) return false;
+  const routeMatch = matchRouteConfig(req.url, appConfig.routeConfigs);
   if (!routeMatch) return false;
 
-  const html = await readFile(path.resolve(config.baseDir, routeMatch.templatePath), { encoding: 'utf8' });
+  const html = await readFile(path.resolve(appConfig.baseDir, routeMatch.pageConfig.templatePath), 'utf8');
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(`
-    <script type="importmap">
-      { "imports": {
-          ${Object.entries(config.importMap).map(([a, b]) => `"${a}": "${b}"`).join(',\n')}
-      } }
-    </script>
-    <link rel="modulepreload" href="webformula.js">
-    <link rel="modulepreload" href="${routeMatch.pageClassPath}">
-    ${config.indexTemplate}
-    <template id="${routeMatch.templateId}">${html}</template>
-    <script type="module">
-      window._webformulaServerSide = true;
-      import { registerPage, enableLinkIntercepts } from '@webformula/core';
-      import Page from '${path.join('/', routeMatch.pageClassPath)}';
-      registerPage(Page, '${routeMatch.route}', { templateId: '${routeMatch.templateId}', notFound: ${!!routeMatch.notFound} });
-      enableLinkIntercepts();
-    </script>
+    <link rel="modulepreload" href="${routeMatch.pageConfig.pageClassPath}">
+    ${appConfig.indexFile}
+    <template id="${buildTemplateId(routeMatch.pageConfig.templatePath)}">${html}</template>
   `);
 
   return true;
-}
-
-function getRoute(url) {
-  const routeMatch = matchRouteConfig(url, routeConfigs);
-  if (!routeMatch && config.importMapPaths.includes(url)) return { importMap: true };
-
-  if (!routeMatch && config.notFoundRoute && !urlExtension(url)) return config.notFoundRoute;
-  return routeMatch;
-}
-
-function handleAppCode(req, res) {
-  res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'public, max-age=100' });
-  res.end(config.appCode);
-}
-
-function prefetchRouteConfig(req, res) {
-  // res.set('Cache-Control', 'public, max-age=31557600');
-  res.send(routeConfigs.map(v => ({
-    templatePath: v.templatePath,
-    pageClassPath: v.pageClassPath,
-    route: v.route,
-    // routeRegex: v.routeRegex.toString(),
-    templateId: v.templateId,
-    notFound: v.notFound
-  })));
-}
-
-function urlExtension(url) {
-  if (!url.includes('.')) return '';
-  return url.split(/[#?]/)[0].split('.').pop().trim();
 }

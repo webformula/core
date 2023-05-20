@@ -1,7 +1,8 @@
-import './theme.css';
-import './font.css';
-import './dracula.css';
-import './app.css';
+import theme from './theme.css' assert { type: 'css' };
+// import font from './font.css' assert { type: 'css' };
+import dracula from './dracula.css' assert { type: 'css' };
+import app from './app.css' assert { type: 'css' };
+
 import '@webformula/material';
 
 import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
@@ -18,20 +19,20 @@ registerPage(gettingStarted, '/getting-started');
 registerPage(webpack, '/webpack');
 
 
-window.addEventListener('load', () => {
-  hljs.highlightAll();
-  if (location.hash) {
-    setTimeout(() => {
-      handleHashAnchor(location.hash, false);
-    });
-  }
-});
+// window.addEventListener('load', () => {
+//   hljs.highlightAll();
+//   if (location.hash) {
+//     setTimeout(() => {
+//       handleHashAnchor(location.hash, false);
+//     });
+//   }
+// });
 
-window.addEventListener('locationchange', () => {
-  setTimeout(() => {
-    hljs.highlightAll();
-  });
-});
+// window.addEventListener('locationchange', () => {
+//   setTimeout(() => {
+//     hljs.highlightAll();
+//   });
+// });
 
 window.addEventListener('hashchange', () => {
   if (!location.hash) return;

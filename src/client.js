@@ -1,72 +1,82 @@
-const leadingSlashRegex = /^\//;
-const trailingSlashRegex = /\/$/;
-const containsVariableOrWildcardRegex = /\/:|\*/g;
-const parameterRegex = /([:*])(\w+)/g;
-const wildcardRegex = /\*/g;
-const replaceWidCardString = '(?:.*)';
-const followedBySlashRegexString = '(?:\/$|$)';
-const ignoreHashRegexString = '(#(.*))?';
+import page from '../server-example/pages/notfound/page.js';
+import { cleanRoutes, buildRouteRegex, matchPath, buildTemplateId, matchRouteConfig  } from './helpers.js';
+
 const isBrowser = typeof window !== 'undefined';
-const routeConfigs = [];
-let notFoundPage;
-let prefetchAppComplete = false;
+const pageTemplateFetchQueue = [];
+const pageClassFetchQueue = [];
+const appConfig = {
+  pageConfigs: [],
+  routeConfigs: []
+};
 
 
 if (isBrowser) {
   window.addEventListener('popstate', event => {
     hookupAndRender(new URL(event.currentTarget.location), true);
   });
-
-  addEventListener('DOMContentLoaded', () => {
-    if (window._webformulaServerSide === true) prefetchApp();
-  });
 }
 
+export function registerAppConfig(configs) {
+  configs.forEach(config => {
+    const pageConfig = {
+      pageClassPath: config.pageClassPath,
+      templatePath: config.templatePath,
+      notFound: config.notFound,
+      routes: config.routes.map(({ route }) => ({
+        route,
+        regex: buildRouteRegex(route)
+      }))
+    };
+
+    if (config.notFound) appConfig.notFoundRoute = pageConfig;
+    appConfig.pageConfigs.push(pageConfig);
+    pageConfig.routes.forEach(({ route, regex }) => {
+      appConfig.routeConfigs.push({
+        route,
+        regex,
+        pageConfig
+      });
+    });
+
+    handlePageFiles(pageConfig);
+  });
+
+  hookupAndRender(location);
+  runPageClassFetchQueue();
+  runPageTemplateFetchQueue();
+}
+if (isBrowser) window.registerAppConfig = registerAppConfig;
 
 export function registerPage(pageClass, routes, {
-  notFound,
-  templateId
-} = { notFound: false, templateId: '' }) {
+  notFound
+} = { notFound: false }) {
   // combine routes from page and register. Fix starting and trailing slashes
   routes = cleanRoutes([...new Set([...[].concat(routes || []), ...(pageClass.routes || [])])]);
-
   if (!routes) return console.warn('No routes provided for page');
 
   let containsCurrent = false;
-  routes.forEach(route => {
-    const routeRegex = buildRouteRegex(route);
-    routeConfigs.push({
-      pageClass,
+  const pageConfig = {
+    pageClass,
+    templatePath: pageClass.templatePath,
+    notFound,
+    routes: routes.map(route => {
+      const regex = buildRouteRegex(route);
+      if (matchPath(location.pathname, regex)) containsCurrent = true;
+      return {
+        route,
+        regex
+      };
+    })
+  };
+  if (notFound) appConfig.notFoundRoute = pageConfig;
+  appConfig.pageConfigs.push(pageConfig);
+  config.routes.forEach(({ route, regex }) => {
+    appConfig.routeConfigs.push({
       route,
-      routeRegex,
-      templateId
+      regex,
+      pageConfig
     });
-    if (notFound && !notFoundPage) notFoundPage = {
-      pageClass,
-      route,
-      routeRegex,
-      templateId
-    };
-
-    if (matchPath(location.pathname, routeRegex)) containsCurrent = true;
   });
-
-
-  if (templateId) {
-    const template = document.body.querySelector(`template#${templateId}`);
-    // store template in string incase template element is removed by user
-    if (template) routeConfigs.templateFileData = template.innerHTML;
-  }
-
-  if (pageClass.templatePath && !routeConfigs.templateFileData) {
-    routeConfigs.initialLoadPage = containsCurrent;
-    routeConfigs.templateFileAbort = new AbortController();
-    routeConfigs.templateFetchPromise = fetch(pageClass.templatePath, { priority: containsCurrent === true ? 'high' : 'low', signal: routeConfigs.templateFileAbort.signal })
-      .then(r => r.text())
-      .then(r => {
-        routeConfigs.templateFileData = r;
-      });
-  }
 
   if (containsCurrent) hookupAndRender(location);
   finalCheck();
@@ -96,52 +106,6 @@ export function enableLinkIntercepts() {
     event.target.blur();
   });
 }
-
-export function cleanRoutes(routes = []) {
-  return routes.map(route => `/${route.replace(trailingSlashRegex, '').replace(leadingSlashRegex, '')}`);
-}
-
-// used to match and parse urls
-export function buildRouteRegex(route) {
-  let regex;
-  if (route.match(containsVariableOrWildcardRegex) === null) {
-    // Do not allow hashes on root or and hash links
-    if (route.trim() === '/' || route.includes('#')) regex = new RegExp(`^${route}$`);
-    else regex = new RegExp(`^${route}${ignoreHashRegexString}$`);
-  }
-  else regex = new RegExp(
-    `^${route
-      .replace(parameterRegex, (_full, _dots, name) => `(?<${name}>[^\/]+)`)
-      .replace(wildcardRegex, replaceWidCardString)
-    }${followedBySlashRegexString}$`,
-    ''
-  );
-  return regex;
-}
-
-export function matchRouteConfig(path, routeConfigs) {
-  const found = routeConfigs.find(({ routeRegex }) => matchPath(path, routeRegex));
-  if (!found) return;
-
-  if (typeof location !== 'undefined') {
-    const match = path.match(found.routeRegex);
-    const searchParameters = Object.fromEntries(new URLSearchParams(location.search.split(/\?(.*)?$/).slice(1).join('')).entries());
-
-    return {
-      ...found,
-      urlParameters: match?.groups,
-      searchParameters
-    };
-  }
-
-  return { ...found };
-}
-
-export function matchPath(path, routeRegex) {
-  const pathNoSearch = path.split('?')[0];
-  return pathNoSearch.match(routeRegex) !== null;
-}
-
 
 export class Page {
   static pageTitle;
@@ -242,24 +206,14 @@ export class Page {
 
 async function hookupAndRender(locationObject, back = false) {
   const url = locationObject.href.replace(locationObject.origin, '');
-  let routeMatch = matchRouteConfig(url, routeConfigs);
-
-  // fetch data
-  if (!routeMatch && !prefetchAppComplete && window._webformulaServerSide === true) {
-    try {
-      const config = await fetchPage(url);
-      if (config.notFound === true) routeMatch = notFoundPage;
-      else routeMatch = matchRouteConfig(url, routeConfigs);
-    } catch (e) {
-      console.warn(`No page found for url: ${url}`, e);
-    }
-  }
-
-  if (!routeMatch && notFoundPage) routeMatch = notFoundPage;
+  let routeMatch = matchRouteConfig(url, appConfig.routeConfigs);
+  if (!routeMatch && appConfig.notFoundRoute) routeMatch = appConfig.notFoundRoute;
   if (!routeMatch) return console.warn(`No page found for url: ${url}`);
 
+  if (!routeMatch.pageConfig.pageClass) routeMatch.pageConfig.pageClass = (await import(routeMatch.pageConfig.pageClassPath)).default;
+
   const currentPage = window.page;
-  const samePage = currentPage?.constructor === routeMatch.pageClass;
+  const samePage = currentPage?.constructor === routeMatch.pageConfig.pageClass;
   if (samePage) {
     if (locationObject.hash === location.hash) return;
     if (!back) window.history.pushState({}, currentPage.title, url);
@@ -268,26 +222,18 @@ async function hookupAndRender(locationObject, back = false) {
   }
 
 
-  const nextPage = routeMatch.pageClass ? new routeMatch.pageClass() : {};
+  const nextPage = routeMatch.pageConfig.pageClass ? new routeMatch.pageConfig.pageClass() : {};
   if (!back) window.history.pushState({}, nextPage.pageTitle, url);
 
-  const template = routeMatch.templateId && document.querySelector(`template#${routeMatch.templateId}`);
-  if (template) nextPage.template = () => nextPage.renderTemplateString(template.innerHTML);
-  else if (routeMatch.pageClass.templatePath) {
-    if (!routeMatch.pageClass.templateFileData && routeConfigs.initialLoadPage) await routeConfigs.templateFetchPromise;
-    else if (!routeConfigs.templateFileData) {
-      routeConfigs.templateFileAbort.abort();
-      const response = await fetch(routeMatch.pageClass.templatePath);
-      routeConfigs.templateFileData = await response.text();
+  if (!routeMatch.pageConfig.templateFileData) {
+    if (routeMatch.pageConfig.templateFetchPromise) await routeMatch.pageConfig.templateFetchPromise;
+    else if (pageTemplateFetchQueue.includes(routeMatch.pageConfig)) {
+      pageTemplateFetchQueue.splice(pageTemplateFetchQueue.indexOf(routeMatch.pageConfig), 1);
+      fetchPage(routeMatch.pageConfig, true);
     }
-
-    if (routeConfigs.templateFetchPromise) {
-      routeConfigs.templateFetchPromise = undefined;
-      routeConfigs.templateFileAbort = undefined;
-    }
-
-    nextPage.template = () => routeConfigs.templateFileData;
   }
+
+  nextPage.template = () => nextPage.renderTemplateString(routeMatch.pageConfig.templateFileData);
 
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
@@ -304,53 +250,70 @@ async function hookupAndRender(locationObject, back = false) {
   window.dispatchEvent(new Event('locationchange'));
 }
 
-async function fetchPage(url) {
-  const response = await fetch(`/fetch-page${url}`);
-  const json = await response.json();
-  // if (json.notFoundInvalid === true) {
-  //   return;
-  // }
-  if (json.notFound && json.templateId && document.body.querySelector(`template#${json.templateId}`)) {
-    return json;
-  }
-  const Page = await import(`${json.pageClassPath}`);
-  const template = document.createElement('template');
-  template.id = json.templateId;
-  template.innerHTML = json.html;
-  document.body.appendChild(template);
-  registerPage(Page.default, json.route, { templateId: json.templateId, notFound: json.notFound });
-  return json;
-}
-
-// TODO move to service worker
-// preload pages in batches
-async function prefetchApp() {
-  const batchCount = 3;
-  const response = await fetch(`/prefetch-pages`);
-  const json = await response.json();
-  const requests = json.map(v => () => fetchPage(v.route));
-  let batches = [];
-  while (requests.length) {
-    batches.push(requests.splice(0, batchCount));
-  }
-
-  for (const batch of batches) {
-    try {
-      await Promise.all(batch.map(f => f()))
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  prefetchAppComplete = true;
-}
-
 // check to see if no page was hooked up
 let finalCallTimer;
 function finalCheck() {
   clearTimeout(finalCallTimer);
   finalCallTimer = setTimeout(() => {
     finalCallTimer = undefined;
-    if (!window.page && notFoundPage) hookupAndRender(location);
+    if (!window.page && appConfig.notFoundRoute) hookupAndRender(location);
   }, 0);
+}
+
+function handlePageFiles(pageConfig) {
+  if (!pageConfig.templatePath && !pageConfig.pageClassPath) return;
+  if (pageConfig.templateFileData && pageConfig.pageClass) return;
+
+  const current = !!pageConfig.routes.find(({ regex }) => matchPath(location.pathname, regex));
+  if (!pageConfig.pageClass) queuePageClassFetch(pageConfig, current);
+  if (!pageConfig.templateFileData) {
+    const templateId = buildTemplateId(pageConfig.templatePath);
+    if (templateId) {
+      const template = document.body.querySelector(`template#${templateId}`);
+      if (template) {
+        pageConfig.templateFileData = template.innerHTML;
+        return;
+      }
+    }
+    if (!pageConfig.templateFetchPromise) queuePageTemplateFetch(pageConfig, current);
+  }
+}
+
+function queuePageClassFetch(pageConfig, current) {
+  if (current) pageConfig.templateFetchPromise = fetchPageClass(pageConfig);
+  pageClassFetchQueue.push(pageConfig);
+}
+
+function queuePageTemplateFetch(pageConfig, current) {
+  if (current) pageConfig.templateFetchPromise = fetchPageTemplate(pageConfig, true);
+  pageTemplateFetchQueue.push(pageConfig);
+}
+
+async function runPageTemplateFetchQueue() {
+  const runners = pageTemplateFetchQueue.splice(-3);
+  if (runners.length === 0) return;
+
+  await Promise.allSettled(runners.map(c => fetchPageTemplate(c)));
+  runPageTemplateFetchQueue();
+}
+
+async function fetchPageTemplate(pageConfig, current) {
+  pageConfig.templateFetchPromise = fetch(pageConfig.templatePath, { priority: current === true ? 'high' : 'low' });
+  const response = await pageConfig.templateFetchPromise;
+  pageConfig.templateFileData = await response.text();
+  pageConfig.templateFetchPromise = undefined;
+}
+
+async function runPageClassFetchQueue() {
+  const runners = pageClassFetchQueue.splice(-3);
+  if (runners.length === 0) return;
+
+  await Promise.allSettled(runners.map(c => fetchPageClass(c)));
+  runPageClassFetchQueue();
+}
+
+async function fetchPageClass(pageConfig) {
+  pageConfig.pageClassImportPromise = import(pageConfig.pageClassPath);
+  pageConfig.pageClass = (await pageConfig.pageClassImportPromise).default;
+  pageConfig.pageClassImportPromise = undefined;
 }
