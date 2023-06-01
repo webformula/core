@@ -1,14 +1,13 @@
 import path from 'node:path';
-import { access, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import esbuild from 'esbuild';
-import { getExtension, buildRouteRegex, matchRouteConfig, cleanRoutes, buildTemplateId  } from './helpers.js';
+import { getExtension, buildRouteRegex, matchRouteConfig, cleanRoutes  } from './helpers.js';
 
 
 const cssFilterRegex = /\.css$/;
 const importMatcher = /import(?<name>.+?)from(?<path>.+?)(;|\n)/g;
 const registerPageMatcher = /registerPage\((?<pageClass>.+?)\,(?<routes>.+?)(,|\))(.+\{(?<options>.+?)\}\s?\))?;?/g;
-const staticRoutesMatcher = /static routes\s=\s(?<content>.+?)(;|\n)/;
-const templatePathMatcher = /static templatePath\s=\s(?<content>.+?)(;|\n)/;
+const staticRoutesMatcher = /^(?!\/\/)(\s+)?static routes\s=\s(?<content>.+?)(;|\n)/m;
 const appConfig = {
   pageConfigs: [],
   routeConfigs: []
@@ -23,7 +22,7 @@ export function coreMiddleware(baseDir = 'app/') {
   init();
 
   return async (req, res, next) => {
-    if (getExtension(req.url) === 'js' && (await handleChunks(req, res))) return;
+    if (['js', 'map'].includes(getExtension(req.url)) && (await handleChunks(req, res))) return;
     if ((await handleRoute(req, res))) return;
     next();
   };
@@ -51,6 +50,7 @@ async function init() {
   ]);
   let appFileContent = appFile;
   const appFileData = await parseAppFileData(appFile);
+
   appFileData.forEach(({ importLine, registerLine, config }, i, arr) => {
     appConfig.pageConfigs.push(config);
     config.routes.forEach(({ route, regex }) => {
@@ -84,7 +84,9 @@ async function init() {
     outdir: 'temp',
     format: 'esm',
     plugins: [plugin],
-    minify: true
+    minify: true,
+    loader: { '.html': 'text' },
+    // sourcemap: true
   });
 
   appConfig.outputFiles = bundle.outputFiles;
@@ -117,13 +119,8 @@ async function buildPageConfig(pageClassPath, routes, { notFound }) {
   routes = cleanRoutes([...new Set([...[].concat(routes || []), ...(pageClassRoutes)])]);
   if (routes.length === 0) throw Error('No routes found for page');
 
-  const templatePathMatch = file.match(templatePathMatcher);
-  const templatePath = templatePathMatch === null ? undefined : templatePathMatch.groups.content.trim().replace(/'|"/g, '');
-  if (templatePath) await access(path.resolve(appConfig.baseDir, templatePath));
-
   const routeConfig = {
     pageClassPath,
-    templatePath,
     notFound,
     routes: routes.map(route => ({
       route,
@@ -135,7 +132,7 @@ async function buildPageConfig(pageClassPath, routes, { notFound }) {
 }
 
 async function handleChunks(req, res) {
-  const match = appConfig.outputFiles.find(v => v.path.includes(req.url));
+  const match = appConfig.outputFiles.find(v => v.path.endsWith(req.url));
   if (!match) return false;
 
   res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'public, max-age=100' });
@@ -144,15 +141,16 @@ async function handleChunks(req, res) {
 }
 
 async function handleRoute(req, res) {
-  const routeMatch = matchRouteConfig(req.url, appConfig.routeConfigs);
-  if (!routeMatch) return false;
+  let routeMatch = matchRouteConfig(req.url, appConfig.routeConfigs);
+  if (!routeMatch) {
+    if (!getExtension(req.url) && req.headers['sec-fetch-dest'] === 'document') routeMatch = { pageConfig: appConfig.notFoundRoute };
+    else return false;
+  }
 
-  const html = await readFile(path.resolve(appConfig.baseDir, routeMatch.pageConfig.templatePath), 'utf8');
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(`
     <link rel="modulepreload" href="${routeMatch.pageConfig.pageClassPath}">
     ${appConfig.indexFile}
-    <template id="${buildTemplateId(routeMatch.pageConfig.templatePath)}">${html}</template>
   `);
 
   return true;

@@ -8,13 +8,12 @@
     ".": "./src/client.js",
     "./client": "./src/client.js",
     "./server": "./src/server.js",
-    "./build/client": "./src/client-build.js"
+    "./build": "./src/client-build.js"
   },
   "scripts": {
     "start": "node build.js",
     "start-server": "nodemon server-example/server.js",
-    "start-production": "NODE_ENV=production webpack serve --open --mode production",
-    "start-no-open": "webpack serve --mode development",
+    "start-production": "NODE_ENV=production node build.js",
     "build": "NODE_ENV=production webpack --mode production"
   },
   "repository": {

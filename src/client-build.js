@@ -45,6 +45,7 @@ const plugin = {
       const contents = `
         const styles = new CSSStyleSheet();
         styles.replaceSync(\`${css.replaceAll(/[`$]/gm, '\\$&')}\`);
+        // TODO work this out
         document.adoptedStyleSheets = [...document.adoptedStyleSheets, styles];
         export default styles;`;
       return { contents };

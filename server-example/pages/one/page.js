@@ -1,10 +1,14 @@
 import { Page } from '@webformula/core';
+import html from './page.html';
 
 export default class extends Page {
-  static templatePath = 'pages/one/page.html';
   static pageTitle = 'One';
 
   constructor() {
     super();
+  }
+
+  template() {
+    return this.renderTemplateString(html);
   }
 }

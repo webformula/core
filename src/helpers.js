@@ -41,11 +41,6 @@ export function cleanRoutes(routes = []) {
   return routes.map(route => `/${route.replace(trailingSlashRegex, '').replace(leadingSlashRegex, '')}`);
 }
 
-export function buildTemplateId(templatePath) {
-  if (!templatePath) return;
-  return templatePath.replace(/\//g, '').replace(/\./g, '');
-}
-
 export function matchRouteConfig(path, routeConfigs) {
   const found = routeConfigs.find(({ regex }) => matchPath(path, regex));
 

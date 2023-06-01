@@ -1,8 +1,6 @@
-import page from '../server-example/pages/notfound/page.js';
-import { cleanRoutes, buildRouteRegex, matchPath, buildTemplateId, matchRouteConfig  } from './helpers.js';
+import { cleanRoutes, buildRouteRegex, matchPath, matchRouteConfig  } from './helpers.js';
 
 const isBrowser = typeof window !== 'undefined';
-const pageTemplateFetchQueue = [];
 const pageClassFetchQueue = [];
 const appConfig = {
   pageConfigs: [],
@@ -20,7 +18,6 @@ export function registerAppConfig(configs) {
   configs.forEach(config => {
     const pageConfig = {
       pageClassPath: config.pageClassPath,
-      templatePath: config.templatePath,
       notFound: config.notFound,
       routes: config.routes.map(({ route }) => ({
         route,
@@ -37,13 +34,12 @@ export function registerAppConfig(configs) {
         pageConfig
       });
     });
-
+ 
     handlePageFiles(pageConfig);
   });
 
   hookupAndRender(location);
   runPageClassFetchQueue();
-  runPageTemplateFetchQueue();
 }
 if (isBrowser) window.registerAppConfig = registerAppConfig;
 
@@ -57,7 +53,6 @@ export function registerPage(pageClass, routes, {
   let containsCurrent = false;
   const pageConfig = {
     pageClass,
-    templatePath: pageClass.templatePath,
     notFound,
     routes: routes.map(route => {
       const regex = buildRouteRegex(route);
@@ -70,13 +65,15 @@ export function registerPage(pageClass, routes, {
   };
   if (notFound) appConfig.notFoundRoute = pageConfig;
   appConfig.pageConfigs.push(pageConfig);
-  config.routes.forEach(({ route, regex }) => {
+  pageConfig.routes.forEach(({ route, regex }) => {
     appConfig.routeConfigs.push({
       route,
       regex,
       pageConfig
     });
   });
+
+  handlePageFiles(pageConfig);
 
   if (containsCurrent) hookupAndRender(location);
   finalCheck();
@@ -111,7 +108,6 @@ export class Page {
   static pageTitle;
   /** ['/a', '/a/:id']; */
   static routes = [];
-  static templatePath = '';
 
   #urlParameters;
   #searchParameters;
@@ -207,7 +203,7 @@ export class Page {
 async function hookupAndRender(locationObject, back = false) {
   const url = locationObject.href.replace(locationObject.origin, '');
   let routeMatch = matchRouteConfig(url, appConfig.routeConfigs);
-  if (!routeMatch && appConfig.notFoundRoute) routeMatch = appConfig.notFoundRoute;
+  if (!routeMatch && appConfig.notFoundRoute) routeMatch = { pageConfig: appConfig.notFoundRoute };
   if (!routeMatch) return console.warn(`No page found for url: ${url}`);
 
   if (!routeMatch.pageConfig.pageClass) routeMatch.pageConfig.pageClass = (await import(routeMatch.pageConfig.pageClassPath)).default;
@@ -224,17 +220,7 @@ async function hookupAndRender(locationObject, back = false) {
 
   const nextPage = routeMatch.pageConfig.pageClass ? new routeMatch.pageConfig.pageClass() : {};
   if (!back) window.history.pushState({}, nextPage.pageTitle, url);
-
-  if (!routeMatch.pageConfig.templateFileData) {
-    if (routeMatch.pageConfig.templateFetchPromise) await routeMatch.pageConfig.templateFetchPromise;
-    else if (pageTemplateFetchQueue.includes(routeMatch.pageConfig)) {
-      pageTemplateFetchQueue.splice(pageTemplateFetchQueue.indexOf(routeMatch.pageConfig), 1);
-      fetchPage(routeMatch.pageConfig, true);
-    }
-  }
-
-  nextPage.template = () => nextPage.renderTemplateString(routeMatch.pageConfig.templateFileData);
-
+  
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
   nextPage._setUrlData({
@@ -261,47 +247,15 @@ function finalCheck() {
 }
 
 function handlePageFiles(pageConfig) {
-  if (!pageConfig.templatePath && !pageConfig.pageClassPath) return;
-  if (pageConfig.templateFileData && pageConfig.pageClass) return;
+  if (pageConfig.pageClass || !pageConfig.pageClassPath) return;
 
   const current = !!pageConfig.routes.find(({ regex }) => matchPath(location.pathname, regex));
   if (!pageConfig.pageClass) queuePageClassFetch(pageConfig, current);
-  if (!pageConfig.templateFileData) {
-    const templateId = buildTemplateId(pageConfig.templatePath);
-    if (templateId) {
-      const template = document.body.querySelector(`template#${templateId}`);
-      if (template) {
-        pageConfig.templateFileData = template.innerHTML;
-        return;
-      }
-    }
-    if (!pageConfig.templateFetchPromise) queuePageTemplateFetch(pageConfig, current);
-  }
 }
 
 function queuePageClassFetch(pageConfig, current) {
   if (current) pageConfig.templateFetchPromise = fetchPageClass(pageConfig);
   pageClassFetchQueue.push(pageConfig);
-}
-
-function queuePageTemplateFetch(pageConfig, current) {
-  if (current) pageConfig.templateFetchPromise = fetchPageTemplate(pageConfig, true);
-  pageTemplateFetchQueue.push(pageConfig);
-}
-
-async function runPageTemplateFetchQueue() {
-  const runners = pageTemplateFetchQueue.splice(-3);
-  if (runners.length === 0) return;
-
-  await Promise.allSettled(runners.map(c => fetchPageTemplate(c)));
-  runPageTemplateFetchQueue();
-}
-
-async function fetchPageTemplate(pageConfig, current) {
-  pageConfig.templateFetchPromise = fetch(pageConfig.templatePath, { priority: current === true ? 'high' : 'low' });
-  const response = await pageConfig.templateFetchPromise;
-  pageConfig.templateFileData = await response.text();
-  pageConfig.templateFetchPromise = undefined;
 }
 
 async function runPageClassFetchQueue() {
