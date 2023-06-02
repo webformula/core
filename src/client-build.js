@@ -77,6 +77,8 @@ const pluginFiles = {
 
 
 async function init() {
+  if ((await access(path.join(config.basedir, '/app.js')).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${path.join(config.basedir, '/app.js')}`);
+
   const context = await esbuild.context({
     entryPoints: [path.join(config.basedir, '/app.js')],
     bundle: true,

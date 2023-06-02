@@ -24,6 +24,8 @@ const appConfig = {
   routeConfigs: []
 };
 let client;
+
+
 if (isLiveReload) {
   process.once('SIGUSR2', function () {
     if (client) {
@@ -37,14 +39,13 @@ if (isLiveReload) {
 }
 
 
-
 export function coreMiddleware(baseDir = 'app/') {
   appConfig.baseDir = baseDir;
 
   init();
 
   return async (req, res, next) => {
-    if (req.url === '/livereload') {
+    if (isLiveReload && req.url === '/livereload') {
       client = res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -76,10 +77,14 @@ const plugin = {
 
 async function init() {
   const [ indexFile, appFile, hasAppCSS ] = await Promise.all([
-    readFile(path.resolve(appConfig.baseDir, 'index.html'), 'utf8'),
-    readFile(path.resolve(appConfig.baseDir, 'app.js'), 'utf8'),
+    readFile(path.resolve(appConfig.baseDir, 'index.html'), 'utf8').then(d => d).catch(e => undefined),
+    readFile(path.resolve(appConfig.baseDir, 'app.js'), 'utf8').then(d => d).catch(e => undefined),
     access(path.join(appConfig.baseDir, '/app.css')).then(e => true).catch(e => false)
   ]);
+
+  if (!indexFile) throw Error(`index.html required. Expected path: ${path.resolve(appConfig.baseDir, 'index.html')}`);
+  if (!appFile) throw Error(`app.js required. Expected path: ${path.resolve(appConfig.baseDir, 'app.js')}`);
+
   let appFileContent = appFile;
   const appFileData = await parseAppFileData(appFile);
 
@@ -193,7 +198,7 @@ async function handleRoute(req, res) {
 
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(`
-    ${isLiveReload ? `<script>new EventSource("/livereload").onmessage = () => setTimeout(() => { location.reload(); }, 480);</script>` : ''}
+    ${isLiveReload ? `<script>const livereload = new EventSource("/livereload"); livereload.onmessage = () => setTimeout(() => location.reload(), 480); addEventListener("beforeunload", (event) => livereload.close());</script>` : ''}
     ${appConfig.indexFile}
     <link rel="modulepreload" href="${routeMatch.pageConfig.pageClassPath}">
   `);

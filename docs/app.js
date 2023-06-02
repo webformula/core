@@ -10,7 +10,6 @@ registerPage(home, '/');
 registerPage(gettingStarted, '/getting-started');
 registerPage(notFound, '/notfound', {notFound: true});
 
-
 document.querySelector('#hljsscript').addEventListener('load', () => {
   hljs.highlightAll();
 });

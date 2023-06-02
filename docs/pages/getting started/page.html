@@ -1,15 +1,14 @@
-<h3 style="margin-top: 12px; margin-bottom: 0; font-weight: 300;">Getting started</h3>
-<h6 style="margin-top: 0; font-weight: 300;">Build a basic web application</h6>
+<h3 class="page-title">Getting started</h3>
+<div class="page-subheader mdw-font-title-medium">Build a basic web application</div>
 
-
-<h5 style="margin-top: 0; margin-bottom: 0; font-weight: 300;">Links</h5>
+<h6 class="page-secondary-header">Links</h6>
 <ul class="links">
   <li><a href="#install">Install</a></li>
   <li><a href="#indexhtml">index.html</a></li>
   <li><a href="#appjs">app.js</a></li>
   <li><a href="#appcss">app.css</a></li>
   <li><a href="#page">Page</a></li>
-  <li><a href="#serverside">Server side</a></li>
+  <li><a href="#server">Server side</a></li>
   <li><a href="#spa">spa</a></li>
 </ul>
 
@@ -39,33 +38,89 @@
   </mdw-card>
 
 
+  <mdw-card id="indexhtml">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">index.html</div>
+    </div>
+  
+    <pre>
+      <code class="language-html">
+  ${page.escape(`<!doctype html>
+    <html lang="en">
+    
+    <head>
+      <meta charset="UTF-8">
+      <meta http-equiv="Cache-Control" content="no-store" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+      <title></title>
+      <!--
+        load js and css
+        app.js is required and app.css is optional
+      -->
+      <link href="/app.css" rel="stylesheet">
+      <script src="/app.js" type="module"></script>
+    </head>
+    
+    <body>
+      <!-- page template render into this element -->
+      <page-content></page-content>
+    </body>
+  </html>`)}
+      </code>
+    </pre>
+  </mdw-card>
+
+
   <mdw-card id="appjs">
     <div class="mdw-card-content">
       <div class="mdw-headline">Main application file</div>
       <div class="mdw-subheader">app.js</div>
+      <div class="mdw-supporting-text">Required: Automatically uses app.js as entry file for bundling</div>
     </div>
 
     <pre>
       <code class="language-javascript">
-  ${`import { registerPage, enableLinkIntercepts } from '@webformula/core';
+  ${`import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
+
+  /**
+   * enableLinkIntercepts
+   *
+   * Using this will stream the full app after the first page load
+   * and treat it as a single page app. This is the best of both worlds.
+   * Small initial load and background loading of the rest.
+   *
+   * If not used then each page will load individually.
+   * This is also required for normal url routing and single page apps
+   */
   enableLinkIntercepts();
   
+  import home from './pages/home/page.js';
   import one from './pages/one/page.js';
-  import two from './pages/two/page.js';
-  import notFound from './pages/not-found/page.js';
+  import notFound from './pages/notfound/page.js';
   
-  // routes can be configured in page
+  registerPage(home, '/');
   registerPage(one, '/one');
-  registerPage(one, '/two');
-  registerPage(notFound, '/not-found', { notFound: true });
+  // page used for 404 urls
+  registerPage(notFound, '/notfound', {notFound: true});`}
+      </code>
+    </pre>
+  </mdw-card>
+
+  <mdw-card id="appcss">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Main application Styles</div>
+      <div class="mdw-subheader">app.css</div>
+      <div class="mdw-supporting-text">Optional: Will bundle and minify into a single file</div>
+    </div>
   
-  window.addEventListener('locationchange', () => {
-  // custom event dispatched by router
-  });
-  
-  window.addEventListener('hashchange', () => {
-  // native event
-  });`}
+    <pre>
+      <code class="language-javascript">
+  ${`@import url('./other.css');
+
+  body {
+    background-color: white;
+  }`}
       </code>
     </pre>
   </mdw-card>
@@ -79,17 +134,12 @@
   
     <pre>
       <code class="language-javascript">
-  ${`import { Page } from '@webformula/core';
+  ${`import { Page } from '@webformula/core/client';
+  import html from './page.html'; // automatically bundles
   
   export default class extends Page {
     static pageTitle = 'Page'; // html page title
-
-    /** HTML file path (optional)
-     *   This will load from the browser. Must be path from root folder.
-     *   You can also directly set the template string in the template method
-     *   If you use webpack you can load the html file directly
-     */
-    static templatePath = 'page.html'; // html file path. This will load from browser
+    static html = html; // hook up imported html. Supports template literals (${this.someVar})
 
     // can be configures with \`registerPage(PageClass, '/one')\`
     static routes = ['/one', 'one/:id'];
@@ -107,8 +157,8 @@
       // called on element hookup to dome. May not be rendered yet
     
       this.userInput = 'some user input';
-      console.log(this.urlParameters()); // { id: 'value' }
-      console.log(this.searchParameters()); // { id: 'value' }
+      console.log(this.urlParameters); // { id: 'value' }
+      console.log(this.searchParameters); // { id: 'value' }
     }
     
     disconnectedCallback() {
@@ -125,16 +175,21 @@
       this.querySelector('#event-listener-button').addEventListener('click', this.clickIt_bound);
     }
     
+    // look below to how it is invoked on a button
     clickIt() {
       console.log('clicked it!');
     }
     
+    // look below to how it is invoked on a button
     changeValueAndRender() {
       this.someVar = 'Re-rendered';
       this.render(); // initial render is automatic
     }
     
-    // You can also load an html file using - static templatePath = ''
+    /**
+     * If not importing html you can use this template method.
+     * Imported html also supports template literals (${this.someVar})
+     */
     template() {
       return /*html*/\`${page.escape(`
         <div>Page Content</div>
@@ -155,83 +210,62 @@
   </mdw-card>
 
 
-
-    <mdw-card id="webpack">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Webpack page html loading</div>
-        <div class="mdw-supporting-text">Use webpack to load html pages. You will need to use the
-          "page.renderTemplateString" method if you want to use javascript template literals.</div>
-      </div>
-    
-      <pre>
-      <code class="language-html">
-  ${page.escape(`<div>Page Content</div>
-  <div>${this.someVar}</div>
-  <button onclick="page.clickIt()">Click Method</button>
-`)}
-      </code>
-    </pre>
+  <mdw-card id="server">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Serve app from express</div>
+      <div class="mdw-subheader">server.js</div>
+      <div class="mdw-supporting-text">coreMiddleware automatically bundles and splits the code for optimal loading</div>
+    </div>
+  
     <pre>
       <code class="language-javascript">
-  ${`import { Page } from '@webformula/core';
-  import html from './page.html';
+  ${`import express from 'express';
+  import compression from 'compression';
+  import { coreMiddleware } from '@webformula/core/server';
   
-  export default class extends Page {
-    static pageTitle = 'Page'; // html page title
-    someVar = 'Some var';
-    
-    constructor() {
-      super();
-    }
-    
-    clickIt() {
-      console.log('clicked it!');
-    }
-    
-    template() {
-      return this.renderTemplateString(html);
-    }
-  }`}
+  const app = express();
+  const port = 3000;
+  
+  app.use(compression());
+  app.use(coreMiddleware('./docs'));
+  app.use(express.static('./docs'));
+  
+  app.listen(port, () => {
+    console.log(\`Example app listening on port \${port}\`);
+  });`}
       </code>
     </pre>
   </mdw-card>
 
-
-
-  <mdw-card id="indexhtml">
+  <mdw-card id="spa">
     <div class="mdw-card-content">
-      <div class="mdw-headline">index.html</div>
+      <div class="mdw-headline">Build single page app</div>
+      <div class="mdw-subheader">build.js</div>
+      <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.</div>
     </div>
-  
+    
     <pre>
-      <code class="language-html">
-        ${page.escape(`<!doctype html>
-    <html lang="en">
-    
-    <head>
-      <meta charset="UTF-8">
-      <meta http-equiv="Cache-Control" content="no-store" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-      <title></title>
-      \<script \src="app.js" defer></script>
-    </head>
-    
-    <body>
-      <mdw-navigation>
-        <div class="mdw-headline">Webformula core</div>
-        <mdw-anchor href="/">Welcome</mdw-anchor>
-        <mdw-anchor href="/getting-started">Getting started</mdw-anchor>
-      </mdw-navigation>
-    
-      <page-content></page-content>
-    
-      <mdw-bottom-app-bar class="mdw-auto-hide mdw-mobile-only">
-        <mdw-navigation-button></mdw-navigation-button>
-      </mdw-bottom-app-bar>
-    </body>
-    </html>
-  `)}
+      <code class="language-javascript">
+  ${`import build from '@webformula/core/build';
+  
+  build({
+    basedir: 'docs/',
+    outdir: 'dist/',
+    devServer: { enabled: true }
+  });`}
+      </code>
+    </pre>
+
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">NPM script</div>
+    </div>
+    <pre>
+      <code class="language-json">
+  ${`{
+    "scripts": {
+      "build": "node build.js"
+    }
+  }`}
       </code>
     </pre>
   </mdw-card>

@@ -6,6 +6,7 @@ const appConfig = {
   pageConfigs: [],
   routeConfigs: []
 };
+let interceptLinksEnabled = false;
 
 
 if (isBrowser) {
@@ -39,7 +40,7 @@ export function registerAppConfig(configs) {
   });
 
   hookupAndRender(location);
-  runPageClassFetchQueue();
+  if (interceptLinksEnabled) runPageClassFetchQueue();
 }
 if (isBrowser) window.registerAppConfig = registerAppConfig;
 
@@ -83,6 +84,7 @@ export function registerPage(pageClass, routes, {
  *  The backend will need to support URL routing for first page load
  */
 export function enableLinkIntercepts() {
+  interceptLinksEnabled = true;
   window.webformulaCoreLinkIntercepts = true;
   document.addEventListener('click', event => {
     if (!event.target.matches('[href]')) return;
