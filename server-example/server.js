@@ -10,7 +10,7 @@ app.use(compression());
 app.use('/@webformula/material/theme', (req, res) => {
   res.sendFile(path.resolve(`node_modules/@webformula/material/dist/theme.css`));
 });
-app.get('*', coreMiddleware('./server-example'));
+app.use(coreMiddleware('./server-example'));
 app.use(express.static('./server-example'));
 
 app.listen(port, () => {

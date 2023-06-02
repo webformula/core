@@ -8,10 +8,12 @@ import { getExtension } from './helpers.js';
 const {
   WEBFORMULA_DEV,
   WEBFORMULA_SOURCEMAPS,
-  WEBFORMULA_MINIFY
+  WEBFORMULA_MINIFY,
+  NODE_ENV
 } = process.env;
+const isNodeEnvProduction = NODE_ENV === 'production';
 const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
-const isDev = webformulaDev !== undefined ? webformulaDev : process.env.NODE_ENV !== 'production';
+const isDev = webformulaDev !== undefined ? webformulaDev : !isNodeEnvProduction;
 const isSourceMaps = WEBFORMULA_SOURCEMAPS === 'false' ? false : isDev;
 const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
 const cssFilterRegex = /\.css$/;
@@ -81,7 +83,7 @@ async function init() {
     plugins: [pluginCss, pluginFiles],
     minify: config.minify,
     sourcemap: config.sourcemap,
-    banner: !config.devServer.liveReload ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
+    banner: (!isDev || !config.devServer.liveReload) ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
   });
 
   const hasAppCSS = await access(path.join(config.basedir, '/app.css')).then(e => true).catch(e => false);
@@ -94,10 +96,15 @@ async function init() {
       plugins: [pluginFiles],
       loader: { '.css': 'css' }
     });
-    contextCss.watch();
+    if (isDev) contextCss.watch();
+    else await contextCss.rebuild();
   }
 
-  if (!config.devServer.enabled) return;
+  if (!isDev || !config.devServer.enabled) {
+    await context.rebuild();
+    process.exit();
+    return;
+  }
 
   context.watch().then(() => {
     createServer(async (req, res) => {

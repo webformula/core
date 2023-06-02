@@ -14,7 +14,8 @@
     "start": "node docs/build.js",
     "start-server": "nodemon -e js,css,html server-example/server.js",
     "start-production": "NODE_ENV=production node build.js",
-    "build": "NODE_ENV=production webpack --mode production"
+    "build": "esbuild src/client.js --bundle --minify --outfile=dist/core.js",
+    "build-docs": "NODE_ENV=production node docs/build.js"
   },
   "repository": {
     "type": "git",

@@ -1,1 +1,31 @@
 @import url('@webformula/material/theme.css');
+:root {
+  color-scheme: light;
+}
+
+.page-title {
+  margin-bottom: 0;
+}
+
+.page-subheader {
+  margin-top: 8px;
+}
+
+.page-secondary-header {
+  margin-bottom: 18px;
+}
+
+.page-list {
+  list-style-type: none;
+  margin-left: -24px;
+  margin-top: -4px;
+  font-size: 18px;
+  line-height: 32px;
+  color: rgb(10, 100, 112);
+}
+
+.page-list strong {
+  font-weight: bold;
+  font-size: 20px;
+  margin-right: 2px;
+}
