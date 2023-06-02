@@ -1,7 +1,8 @@
 import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
 enableLinkIntercepts();
 
-import '@webformula/material';
+import '@webformula/material/components/navigation';
+import '@webformula/material/components/card';
 import home from './pages/home/page.js';
 import gettingStarted from './pages/getting started/page.js';
 import notFound from './pages/notfound/page.js';
