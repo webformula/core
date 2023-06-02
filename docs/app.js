@@ -1,21 +1,21 @@
-import '@webformula/material';
-
 import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
 enableLinkIntercepts();
 
-
+import '@webformula/material';
 import home from './pages/home/page.js';
 import gettingStarted from './pages/getting started/page.js';
-import webpack from './pages/webpack/page.js';
-
+import notFound from './pages/notfound/page.js';
 
 registerPage(home, '/');
 registerPage(gettingStarted, '/getting-started');
-registerPage(webpack, '/webpack');
+registerPage(notFound, '/notfound', {notFound: true});
 
 
-window.addEventListener('load', () => {
+document.querySelector('#hljsscript').addEventListener('load', () => {
   hljs.highlightAll();
+});
+
+window.addEventListener('DOMContentLoaded', () => {
   if (location.hash) {
     setTimeout(() => {
       handleHashAnchor(location.hash, false);
@@ -25,7 +25,7 @@ window.addEventListener('load', () => {
 
 window.addEventListener('locationchange', () => {
   setTimeout(() => {
-    hljs.highlightAll();
+    if (typeof hljs !== 'undefined') hljs.highlightAll();
   });
 });
 

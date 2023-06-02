@@ -6,12 +6,14 @@ import { getExtension, buildRouteRegex, matchRouteConfig, cleanRoutes  } from '.
 const {
   WEBFORMULA_DEV,
   WEBFORMULA_SOURCEMAPS,
-  WEBFORMULA_MINIFY
+  WEBFORMULA_MINIFY,
+  WEBFORMULA_LIVERELOAD
 } = process.env;
 const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
 const isDev = webformulaDev !== undefined ? webformulaDev : process.env.NODE_ENV !== 'production';
 const isSourceMaps = WEBFORMULA_SOURCEMAPS === 'false' ? false : isDev;
 const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
+const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
 
 const cssFilterRegex = /\.css$/;
 const importMatcher = /import(?<name>.+?)from(?<path>.+?)(;|\n)/g;
@@ -21,6 +23,19 @@ const appConfig = {
   pageConfigs: [],
   routeConfigs: []
 };
+let client;
+if (isLiveReload) {
+  process.once('SIGUSR2', function () {
+    if (client) {
+      client.write('data: update\n\n');
+      client.flush();
+      setTimeout(() => {
+        process.kill(process.pid, 'SIGUSR2');
+      }, 20);
+    } else process.kill(process.pid, 'SIGUSR2');
+  });
+}
+
 
 
 export function coreMiddleware(baseDir = 'app/') {
@@ -29,6 +44,14 @@ export function coreMiddleware(baseDir = 'app/') {
   init();
 
   return async (req, res, next) => {
+    if (req.url === '/livereload') {
+      client = res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive'
+      });
+      return;
+    }
     if (['js', 'map', 'css'].includes(getExtension(req.url)) && (await handleChunks(req, res))) return;
     if ((await handleRoute(req, res))) return;
     next();
@@ -170,6 +193,7 @@ async function handleRoute(req, res) {
 
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(`
+    ${isLiveReload ? `<script>new EventSource("/livereload").onmessage = () => setTimeout(() => { location.reload(); }, 480);</script>` : ''}
     ${appConfig.indexFile}
     <link rel="modulepreload" href="${routeMatch.pageConfig.pageClassPath}">
   `);

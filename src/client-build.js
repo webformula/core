@@ -9,13 +9,15 @@ const {
   WEBFORMULA_DEV,
   WEBFORMULA_SOURCEMAPS,
   WEBFORMULA_MINIFY,
-  NODE_ENV
+  NODE_ENV,
+  WEBFORMULA_LIVERELOAD
 } = process.env;
 const isNodeEnvProduction = NODE_ENV === 'production';
 const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
 const isDev = webformulaDev !== undefined ? webformulaDev : !isNodeEnvProduction;
 const isSourceMaps = WEBFORMULA_SOURCEMAPS === 'false' ? false : isDev;
 const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
+const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
 const cssFilterRegex = /\.css$/;
 const clients = [];
 const config = {};
@@ -38,7 +40,7 @@ export default async function build(params = {
   config.devServer = params.devServer || { enabled: false };
   config.devServer.enabled = params?.devServer?.enabled === false ? false : true;
   config.devServer.port = params?.devServer?.port || 3000;
-  config.devServer.liveReload = params?.devServer?.liveReload === false ? false : true;
+  config.devServer.liveReload = params?.devServer?.liveReload === false ? false : params?.devServer?.liveReload === true ? true : isLiveReload;
   await init();
 }
 

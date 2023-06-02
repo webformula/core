@@ -11,11 +11,11 @@
     "./build": "./src/client-build.js"
   },
   "scripts": {
-    "start": "node docs/build.js",
-    "start-server": "nodemon -e js,css,html server-example/server.js",
-    "start-production": "NODE_ENV=production node build.js",
-    "build": "esbuild src/client.js --bundle --minify --outfile=dist/core.js",
-    "build-docs": "NODE_ENV=production node docs/build.js"
+    "start": "nodemon -e js,css,html docs/server.js",
+    "start-server": "nodemon -e js,css,html docs/server.js",
+    "start-spa": "node docs/build-spa.js",
+    "build-spa": "NODE_ENV=production node docs/build-spa.js",
+    "build": "esbuild src/client.js --bundle --minify --outfile=dist/core.js"
   },
   "repository": {
     "type": "git",
