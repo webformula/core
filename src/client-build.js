@@ -1,18 +1,26 @@
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import esbuild from 'esbuild';
 import { getExtension } from './helpers.js';
 
 
+const {
+  WEBFORMULA_DEV,
+  WEBFORMULA_SOURCEMAPS,
+  WEBFORMULA_MINIFY
+} = process.env;
+const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
+const isDev = webformulaDev !== undefined ? webformulaDev : process.env.NODE_ENV !== 'production';
+const isSourceMaps = WEBFORMULA_SOURCEMAPS === 'false' ? false : isDev;
+const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
+const cssFilterRegex = /\.css$/;
 const clients = [];
 const config = {};
-const contentMap = new Map();
 
 export default async function build(params = {
-  baseDir: 'app/',
-  entryPoints: ['src/app.js'],
-  output: 'dist/bundle.js',
+  basedir: 'app/',
+  outdir: 'dist/',
   minify: true,
   sourcemaps: false,
   devServer: {
@@ -21,12 +29,10 @@ export default async function build(params = {
     liveReload: true
   }
 }) {
-  config.baseDir = params.baseDir || 'app/';
-  config.entryPoints = [].concat(params.entryPoints.map(v => path.join(params.baseDir, v)));
-  config.output = params.output || 'dist/bundle.js';
-  config.write = !!params.output;
-  config.minify = params.minify === false ? false : true;
-  config.sourcemaps = !!params.sourcemaps;
+  config.basedir = params.basedir || 'app/';
+  config.outdir = params.outdir || 'dist/';
+  config.minify = params.minify === false ? false : params.minify === true ? true : isMinify;
+  config.sourcemaps = params.sourcemaps === false ? false : params.sourcemaps === true ? true : isSourceMaps;
   config.devServer = params.devServer || { enabled: false };
   config.devServer.enabled = params?.devServer?.enabled === false ? false : true;
   config.devServer.port = params?.devServer?.port || 3000;
@@ -35,30 +41,28 @@ export default async function build(params = {
 }
 
 
-const plugin = {
-  name: 'plugins',
+const pluginCss = {
+  name: 'plugin css',
   setup(build) {
-    config.bundleBrowserPath = build.initialOptions.outfile.replace(config.baseDir, '');
+    config.bundleBrowserPath = build.initialOptions.outfile.replace(config.outdir, '');
 
-    build.onLoad({ filter: /\.css$/ }, async (args) => {
+    build.onLoad({ filter: cssFilterRegex }, async args => {
       const css = await readFile(args.path, 'utf8');
+      const transformed = await esbuild.transform(css, { minify: true, loader: 'css' });
       const contents = `
         const styles = new CSSStyleSheet();
-        styles.replaceSync(\`${css.replaceAll(/[`$]/gm, '\\$&')}\`);
-        // TODO work this out
-        document.adoptedStyleSheets = [...document.adoptedStyleSheets, styles];
+        styles.replaceSync(\`${transformed.code}\`);
         export default styles;`;
       return { contents };
     });
+  }
+};
 
+const pluginFiles = {
+  name: 'plugin files',
+  setup(build) {
     // send reload request
-    build.onEnd(({ outputFiles }) => {
-      if (outputFiles) {
-        contentMap.clear();
-        outputFiles.forEach(({ path, text }) => {
-          contentMap.set(path, text);
-        });
-      }
+    build.onEnd(() => {
       clients.forEach((res) => res.write('data: update\n\n'))
       clients.length = 0
     });
@@ -66,19 +70,32 @@ const plugin = {
 };
 
 
+
+
 async function init() {
   const context = await esbuild.context({
-    entryPoints: config.entryPoints,
+    entryPoints: [path.join(config.basedir, '/app.js')],
     bundle: true,
-    outfile: config.output,
-    write: config.write,
+    outfile: path.join(config.outdir, '/app.js'),
     loader: { '.html': 'text' },
-    plugins: [plugin],
+    plugins: [pluginCss, pluginFiles],
     minify: config.minify,
     sourcemap: config.sourcemap,
     banner: !config.devServer.liveReload ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
   });
 
+  const hasAppCSS = await access(path.join(config.basedir, '/app.css')).then(e => true).catch(e => false);
+  if (hasAppCSS) {
+    const contextCss = await esbuild.context({
+      entryPoints: [path.join(config.basedir, '/app.css')],
+      bundle: true,
+      outfile: path.join(config.outdir, '/app.css'),
+      minify: isMinify,
+      plugins: [pluginFiles],
+      loader: { '.css': 'css' }
+    });
+    contextCss.watch();
+  }
 
   if (!config.devServer.enabled) return;
 
@@ -95,7 +112,7 @@ async function init() {
 
       // search index.html
       if (!getExtension(req.url)) {
-        const file = await readFile(path.join(config.baseDir, 'index.html'), 'utf-8');
+        const file = await readFile(path.join(config.basedir, 'index.html'), 'utf-8');
         // inject bundle
         res.write(file.replace('</head>', `  <script src="${config.bundleBrowserPath}" type="module"></script>\n</head>`));
         res.end();
@@ -104,21 +121,10 @@ async function init() {
 
 
       const contentType = getMimeType(req.url);
-      const filePath = path.resolve(path.join(config.baseDir, req.url));
-      const filePathRoot = path.resolve(path.join('.', req.url));
-      
-      // TODO check this.  check both baseDir and root. The bundle might be built to root
-      if (config.write !== true && contentMap.has(filePath) || contentMap.has(filePathRoot)) {
-        const data = contentMap.get(filePath) || contentMap.get(filePathRoot);
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.write(data);
-        res.end();
-        return;
-      }
+      const filePath = path.resolve(path.join(config.outdir, req.url));
 
       try {
         const file = await readFile(filePath, 'utf-8')
-          .catch(() => readFile(filePathRoot, 'utf-8')); // try root for bundle
         res.writeHead(200, { 'Content-Type': contentType });
         res.write(file);
         res.end();

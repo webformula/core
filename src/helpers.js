@@ -14,13 +14,6 @@ export function getExtension(url) {
   return url.split(/[#?]/)[0].split('.').pop().trim().toLowerCase();
 }
 
-// export function getRoute(url, routeConfigs) {
-//   const routeMatch = matchRouteConfig(url, routeConfigs);
-//   // if (!routeMatch && config.importMapPaths.includes(url)) return { importMap: true };
-//   // if (!routeMatch && config.notFoundRoute && !getExtension(url)) return config.notFoundRoute;
-//   return routeMatch;
-// }
-
 export function buildRouteRegex(route) {
   if (route.match(containsVariableOrWildcardRegex) === null) {
     // Do not allow hashes on root or and hash links

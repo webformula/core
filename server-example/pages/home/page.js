@@ -2,18 +2,11 @@ import { Page } from '@webformula/core';
 import '@webformula/material/components/button';
 import html from './page.html';
 
-export default class extends Page {
+export default class extends Page /* @__PURE__ */  {
   static pageTitle = 'Home';
+  static html = html;
   
   constructor() {
     super();
-  }
-
-  connectedCallback() {
-    throw Error('theeee');
-  }
-
-  template() {
-    return this.renderTemplateString(html);
   }
 }

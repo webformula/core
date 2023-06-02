@@ -1,8 +1,17 @@
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import esbuild from 'esbuild';
 import { getExtension, buildRouteRegex, matchRouteConfig, cleanRoutes  } from './helpers.js';
 
+const {
+  WEBFORMULA_DEV,
+  WEBFORMULA_SOURCEMAPS,
+  WEBFORMULA_MINIFY
+} = process.env;
+const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
+const isDev = webformulaDev !== undefined ? webformulaDev : process.env.NODE_ENV !== 'production';
+const isSourceMaps = WEBFORMULA_SOURCEMAPS === 'false' ? false : isDev;
+const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
 
 const cssFilterRegex = /\.css$/;
 const importMatcher = /import(?<name>.+?)from(?<path>.+?)(;|\n)/g;
@@ -16,13 +25,11 @@ const appConfig = {
 
 export function coreMiddleware(baseDir = 'app/') {
   appConfig.baseDir = baseDir;
-  // appConfig.minify = params.minify === false ? false : true;
-  // appConfig.sourcemaps = !!params.sourcemaps;
 
   init();
 
   return async (req, res, next) => {
-    if (['js', 'map'].includes(getExtension(req.url)) && (await handleChunks(req, res))) return;
+    if (['js', 'map', 'css'].includes(getExtension(req.url)) && (await handleChunks(req, res))) return;
     if ((await handleRoute(req, res))) return;
     next();
   };
@@ -34,9 +41,10 @@ const plugin = {
     build.onLoad({ filter: appConfig.appFileRegex }, async () => ({ contents: appConfig.appFile }));
     build.onLoad({ filter: cssFilterRegex }, async args => {
       const css = await readFile(args.path, 'utf8');
+      const transformed = await esbuild.transform(css, { minify: true, loader: 'css' });
       const contents = `
         const styles = new CSSStyleSheet();
-        styles.replaceSync(\`${css.replaceAll(/[`$]/gm, '\\$&')}\`);
+        styles.replaceSync(\`${transformed.code}\`);
         export default styles;`;
       return { contents };
     });
@@ -44,9 +52,10 @@ const plugin = {
 };
 
 async function init() {
-  const [ indexFile, appFile ] = await Promise.all([
+  const [ indexFile, appFile, hasAppCSS ] = await Promise.all([
     readFile(path.resolve(appConfig.baseDir, 'index.html'), 'utf8'),
-    readFile(path.resolve(appConfig.baseDir, 'app.js'), 'utf8')
+    readFile(path.resolve(appConfig.baseDir, 'app.js'), 'utf8'),
+    access(path.join(appConfig.baseDir, '/app.css')).then(e => true).catch(e => false)
   ]);
   let appFileContent = appFile;
   const appFileData = await parseAppFileData(appFile);
@@ -83,13 +92,26 @@ async function init() {
     splitting: true,
     outdir: 'temp',
     format: 'esm',
+    target: 'esnext',
     plugins: [plugin],
-    minify: true,
-    loader: { '.html': 'text' },
-    // sourcemap: true
+    minify: isMinify,
+    sourcemap: isSourceMaps,
+    loader: { '.html': 'text' }
   });
-
+  
   appConfig.outputFiles = bundle.outputFiles;
+
+  if (hasAppCSS) {
+    const bundleCSS = await esbuild.build({
+      entryPoints: [path.join(appConfig.baseDir, '/app.css')],
+      bundle: true,
+      write: false,
+      outdir: 'temp',
+      minify: isMinify,
+      loader: { '.css': 'css' }
+    });
+    appConfig.outputFiles.push(bundleCSS.outputFiles[0]);
+  }
 }
 
 async function parseAppFileData(appFile) {
@@ -134,8 +156,8 @@ async function buildPageConfig(pageClassPath, routes, { notFound }) {
 async function handleChunks(req, res) {
   const match = appConfig.outputFiles.find(v => v.path.endsWith(req.url));
   if (!match) return false;
-
-  res.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'public, max-age=100' });
+  const contentType = getExtension(req.url) === 'css' ? 'text/css' : 'text/javascript';
+  res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=100' });
   res.end(match.text);
   return true;
 }
@@ -143,14 +165,14 @@ async function handleChunks(req, res) {
 async function handleRoute(req, res) {
   let routeMatch = matchRouteConfig(req.url, appConfig.routeConfigs);
   if (!routeMatch) {
-    if (!getExtension(req.url) && req.headers['sec-fetch-dest'] === 'document') routeMatch = { pageConfig: appConfig.notFoundRoute };
+    if (getExtension(req.url) && req.headers['sec-fetch-dest'] === 'document') routeMatch = { pageConfig: appConfig.notFoundRoute };
     else return false;
   }
 
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(`
-    <link rel="modulepreload" href="${routeMatch.pageConfig.pageClassPath}">
     ${appConfig.indexFile}
+    <link rel="modulepreload" href="${routeMatch.pageConfig.pageClassPath}">
   `);
 
   return true;

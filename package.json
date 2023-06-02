@@ -11,8 +11,8 @@
     "./build": "./src/client-build.js"
   },
   "scripts": {
-    "start": "node build.js",
-    "start-server": "nodemon server-example/server.js",
+    "start": "node docs/build.js",
+    "start-server": "nodemon -e js,css,html server-example/server.js",
     "start-production": "NODE_ENV=production node build.js",
     "build": "NODE_ENV=production webpack --mode production"
   },

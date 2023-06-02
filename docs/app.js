@@ -1,8 +1,3 @@
-import theme from './theme.css' assert { type: 'css' };
-import font from './font.css' assert { type: 'css' };
-import dracula from './dracula.css' assert { type: 'css' };
-import app from './app.css' assert { type: 'css' };
-
 import '@webformula/material';
 
 import { registerPage, enableLinkIntercepts } from '@webformula/core/client';

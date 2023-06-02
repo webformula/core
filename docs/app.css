@@ -1,3 +1,7 @@
+@import url('@webformula/material/theme.css');
+@import url('./font.css');
+@import url('./dracula.css');
+
 html {
   color-scheme: light;
   overflow-x: hidden;

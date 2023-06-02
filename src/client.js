@@ -108,12 +108,16 @@ export class Page {
   static pageTitle;
   /** ['/a', '/a/:id']; */
   static routes = [];
+  /** used for imported html */
+  static html = '';
 
   #urlParameters;
   #searchParameters;
   #route;
 
-  constructor() { }
+  constructor() {
+    if (this.constructor.html) this.template = () => new Function('page', `return \`${this.constructor.html}\`;`).call(this, this);
+  }
 
   get searchParameters() {
     return this.#searchParameters;
@@ -145,22 +149,6 @@ export class Page {
    */
   template() {
     return /*html*/``;
-  }
-
-  /** For html file is loaded as raw text and uses template liters
-   *  ./page.html
-   *  <div>${page.var}</div>
-   * 
-   *  ./page.js
-   *  import html from 'page.html`;
-   *  new class one extends Page {
-   *    template() {
-   *       return this.renderTemplateString(html);
-   *    }
-   *  }
-   */
-  renderTemplateString(template = '') {
-    return new Function('page', `return \`${template}\`;`).call(this, this);
   }
 
   /** Escape html to make safe for injection */
@@ -250,12 +238,7 @@ function handlePageFiles(pageConfig) {
   if (pageConfig.pageClass || !pageConfig.pageClassPath) return;
 
   const current = !!pageConfig.routes.find(({ regex }) => matchPath(location.pathname, regex));
-  if (!pageConfig.pageClass) queuePageClassFetch(pageConfig, current);
-}
-
-function queuePageClassFetch(pageConfig, current) {
-  if (current) pageConfig.templateFetchPromise = fetchPageClass(pageConfig);
-  pageClassFetchQueue.push(pageConfig);
+  if (!current && !pageConfig.pageClass) pageClassFetchQueue.push(pageConfig);
 }
 
 async function runPageClassFetchQueue() {
