@@ -84,7 +84,6 @@ async function init() {
   appConfig.appFile = appFileContent;
   appConfig.indexFile = indexFile;
   appConfig.appFileRegex = new RegExp(appFilePath);
-
   const bundle = await esbuild.build({
     entryPoints: [appFilePath, ...appFileData.map(r => path.join(appConfig.baseDir, r.config.pageClassPath))],
     bundle: true,
@@ -154,7 +153,7 @@ async function buildPageConfig(pageClassPath, routes, { notFound }) {
 }
 
 async function handleChunks(req, res) {
-  const match = appConfig.outputFiles.find(v => v.path.endsWith(req.url));
+  const match = appConfig.outputFiles.find(v => v.path.endsWith(req.url.replace(/%20/g, ' ')));
   if (!match) return false;
   const contentType = getExtension(req.url) === 'css' ? 'text/css' : 'text/javascript';
   res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=100' });

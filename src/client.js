@@ -191,6 +191,7 @@ export class Page {
 async function hookupAndRender(locationObject, back = false) {
   const url = locationObject.href.replace(locationObject.origin, '');
   let routeMatch = matchRouteConfig(url, appConfig.routeConfigs);
+
   if (!routeMatch && appConfig.notFoundRoute) routeMatch = { pageConfig: appConfig.notFoundRoute };
   if (!routeMatch) return console.warn(`No page found for url: ${url}`);
 
@@ -250,7 +251,10 @@ async function runPageClassFetchQueue() {
 }
 
 async function fetchPageClass(pageConfig) {
-  pageConfig.pageClassImportPromise = import(pageConfig.pageClassPath);
-  pageConfig.pageClass = (await pageConfig.pageClassImportPromise).default;
-  pageConfig.pageClassImportPromise = undefined;
+  try {
+    pageConfig.pageClass = (await import(pageConfig.pageClassPath)).default;
+  } catch (e) {
+    console.error(`Cannot load page class: ${pageConfig.pageClassPath}`)
+    console.error(e);
+  }
 }

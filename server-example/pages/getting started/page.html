@@ -1,0 +1,237 @@
+<h3 style="margin-top: 12px; margin-bottom: 0; font-weight: 300;">Getting started</h3>
+<h6 style="margin-top: 0; font-weight: 300;">Build a basic web application</h6>
+
+
+<h5 style="margin-top: 0; margin-bottom: 0; font-weight: 300;">Links</h5>
+<ul class="links">
+  <li><a href="#install">Install</a></li>
+  <li><a href="#appjs">app.js</a></li>
+  <li><a href="#page">Page</a></li>
+  <li><a href="#webpack">Webpack page html loading</a></li>
+  <li><a href="#indexhtml">index.html</a></li>
+</ul>
+
+
+<section style="margin-top: 48px;">
+  <mdw-card id="install">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Install</div>
+    </div>
+
+    <div class="mdw-card-content">
+      <div class="mdw-subheader">NPM</div>
+    </div>
+    <pre>
+      <code class="language-bash">
+  ${`npm install @webformula/core`}
+      </code>
+    </pre>
+    
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">CDN</div>
+    </div>
+    <pre>
+      <code class="language-html">
+  ${page.escape(`<script src="https://cdn.jsdelivr.net/gh/webformula/core@latest/dist/core.js"></script>`)}
+      </code>
+    </pre>
+  </mdw-card>
+
+
+  <mdw-card id="appjs">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Main application file</div>
+      <div class="mdw-subheader">app.js</div>
+    </div>
+
+    <pre>
+      <code class="language-javascript">
+  ${`import { registerPage, enableLinkIntercepts } from '@webformula/core';
+  enableLinkIntercepts();
+  
+  import one from './pages/one/page.js';
+  import two from './pages/two/page.js';
+  import notFound from './pages/not-found/page.js';
+  
+  // routes can be configured in page
+  registerPage(one, '/one');
+  registerPage(one, '/two');
+  registerPage(notFound, '/not-found', { notFound: true });
+  
+  window.addEventListener('locationchange', () => {
+  // custom event dispatched by router
+  });
+  
+  window.addEventListener('hashchange', () => {
+  // native event
+  });`}
+      </code>
+    </pre>
+  </mdw-card>
+
+
+  <mdw-card id="page">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Page</div>
+      <div class="mdw-subheader">page.js and page.html</div>
+    </div>
+  
+    <pre>
+      <code class="language-javascript">
+  ${`import { Page } from '@webformula/core';
+  
+  export default class extends Page {
+    static pageTitle = 'Page'; // html page title
+
+    /** HTML file path (optional)
+     *   This will load from the browser. Must be path from root folder.
+     *   You can also directly set the template string in the template method
+     *   If you use webpack you can load the html file directly
+     */
+    static templatePath = 'page.html'; // html file path. This will load from browser
+
+    // can be configures with \`registerPage(PageClass, '/one')\`
+    static routes = ['/one', 'one/:id'];
+
+    someVar = 'Some var';
+    clickIt_bound = this.clickIt.bind(this);
+    userInput;
+    
+    
+    constructor() {
+      super();
+    }
+    
+    connectedCallback() {
+      // called on element hookup to dome. May not be rendered yet
+    
+      this.userInput = 'some user input';
+      console.log(this.urlParameters()); // { id: 'value' }
+      console.log(this.searchParameters()); // { id: 'value' }
+    }
+    
+    disconnectedCallback() {
+      // called on element removal
+    }
+    
+    // not called on initial render
+    beforeRender() {
+      // Do work before render
+    }
+    
+    afterEnder() {
+      // Do work after render
+      this.querySelector('#event-listener-button').addEventListener('click', this.clickIt_bound);
+    }
+    
+    clickIt() {
+      console.log('clicked it!');
+    }
+    
+    changeValueAndRender() {
+      this.someVar = 'Re-rendered';
+      this.render(); // initial render is automatic
+    }
+    
+    // You can also load an html file using - static templatePath = ''
+    template() {
+      return /*html*/\`${page.escape(`
+        <div>Page Content</div>
+        <div>\${this.someVar}</div>
+        
+        <!-- escape html input -->
+        <div>\${this.escape(this.userInput)}</div>
+        
+        <!-- "page" will reference the current page class -->
+        <button onclick="page.clickIt()">Click Method</button>
+        <button id="event-listener-button">Event listener</button>
+        <button onclick="page.changeValueAndRender()">Change value and render</button>
+      `)}\`;
+    }
+  }`}
+      </code>
+    </pre>
+  </mdw-card>
+
+
+
+    <mdw-card id="webpack">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Webpack page html loading</div>
+        <div class="mdw-supporting-text">Use webpack to load html pages. You will need to use the
+          "page.renderTemplateString" method if you want to use javascript template literals.</div>
+      </div>
+    
+      <pre>
+      <code class="language-html">
+  ${page.escape(`<div>Page Content</div>
+  <div>${this.someVar}</div>
+  <button onclick="page.clickIt()">Click Method</button>
+`)}
+      </code>
+    </pre>
+    <pre>
+      <code class="language-javascript">
+  ${`import { Page } from '@webformula/core';
+  import html from './page.html';
+  
+  export default class extends Page {
+    static pageTitle = 'Page'; // html page title
+    someVar = 'Some var';
+    
+    constructor() {
+      super();
+    }
+    
+    clickIt() {
+      console.log('clicked it!');
+    }
+    
+    template() {
+      return this.renderTemplateString(html);
+    }
+  }`}
+      </code>
+    </pre>
+  </mdw-card>
+
+
+
+  <mdw-card id="indexhtml">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">index.html</div>
+    </div>
+  
+    <pre>
+      <code class="language-html">
+        ${page.escape(`<!doctype html>
+    <html lang="en">
+    
+    <head>
+      <meta charset="UTF-8">
+      <meta http-equiv="Cache-Control" content="no-store" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+      <title></title>
+      \<script \src="app.js" defer></script>
+    </head>
+    
+    <body>
+      <mdw-navigation>
+        <div class="mdw-headline">Webformula core</div>
+        <mdw-anchor href="/">Welcome</mdw-anchor>
+        <mdw-anchor href="/getting-started">Getting started</mdw-anchor>
+      </mdw-navigation>
+    
+      <page-content></page-content>
+    
+      <mdw-bottom-app-bar class="mdw-auto-hide mdw-mobile-only">
+        <mdw-navigation-button></mdw-navigation-button>
+      </mdw-bottom-app-bar>
+    </body>
+    </html>
+  `)}
+      </code>
+    </pre>
+  </mdw-card>
+</section>
