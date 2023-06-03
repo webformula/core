@@ -24,6 +24,8 @@ const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
 const cssFilterRegex = /\.css$/;
 const clients = [];
 const config = {};
+let appCSSFileName;
+let appFileName;
 
 export default async function build(params = {
   basedir: 'app/',
@@ -90,12 +92,18 @@ const pluginCss = {
 const pluginCopyFiles = {
   name: 'plugin copy files',
   setup(build) {
-    build.onEnd(async () => {
-      await Promise.all(config.copyFiles.map(async ({ from, to }) => {
+    build.onEnd(async ({ metafile }) => {
+      await Promise.all(config.copyFiles.map(async ({ from, to, transform }) => {
         if (!isGlob(from)) {
           const hasExtension = !!getExtension(to);
           if (!hasExtension) to = path.join(to, from.split('/').pop());
-          return cp(from, to);
+          if (typeof transform !== 'function') return cp(from, to);
+          const content = await readFile(from, 'utf-8');
+          const transformed = await transform({
+            content,
+            outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
+          });
+          await writeFile(to, transformed);
         }
 
         const globBase = getGlobBase(from);
@@ -103,7 +111,16 @@ const pluginCopyFiles = {
         try {
           const files = await listFiles(globBase);
           const filtered = files.filter(file => file.match(regex) !== null);
-          await Promise.all(filtered.map(filePath => cp(filePath, path.join(to, filePath.split(globBase).pop()))))
+          if (typeof transform !== 'function')  await Promise.all(filtered.map(filePath => cp(filePath, path.join(to, filePath.split(globBase).pop()))));
+   
+          await Promise.all(filtered.map(async filePath => {
+            const content = await readFile(filePath, 'utf-8');
+            const transformed = await transform({
+              content,
+              outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
+            });
+            await writeFile(path.join(to, filePath.split(globBase).pop()), transformed);
+          }));
         } catch (e) {
           console.error(e);
         }
@@ -136,7 +153,7 @@ const appGzipPlugin = {
     build.onEnd(async ({ metafile }) => {
       if (metafile) {
         // rewrite style and script paths in index.html so they have hashes
-        const appFileName = Object.keys(metafile.outputs)[0];
+        appFileName = Object.keys(metafile.outputs)[0];
         if (config.gzip) await gzipFile(appFileName);
         const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
         await writeFile(config.indexHTMLOutPath, indexFile
@@ -149,7 +166,6 @@ const appGzipPlugin = {
   }
 };
 
-let appCSSFileName;
 const appCSSGzipPlugin = {
   name: 'plugin gzip app css',
   setup(build) {
