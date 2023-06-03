@@ -14,9 +14,22 @@ Simple no thrills micro framework. Super performant and light-weight!
 Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (2KB). You can create your web application and decide weather to build it as a single page app or server it.
 
 
+## Table of Contents  
+- [Getting started](#gettingstarted)  
+  - [index.html](#index.html)
+  - [app.js](#app.js)
+  - [app.css](#app.css)
+  - [page.js](#page.js)
+  - [page.html](#page.html)
+  - [Serve app](#iserveapp)
+  - [Build single page app](#buildspa)
+
+
 # Getting started
+<a name="gettingstarted"/>
 
 ### **index.html**
+<a name="index.html"/>
 ```html
 <!doctype html>
   <html lang="en">
@@ -45,6 +58,8 @@ Browsers, javascript, css, and html provide a robust set of features these days.
 <br/>
 
 ### **Main app `app.js`**
+<a name="app.js"/>
+
 ```javascript
 import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
 
@@ -73,6 +88,8 @@ import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
 <br/>
 
 ### **Main app css `app.css`**
+<a name="app.css"/>
+
 ```css
 @import url('./other.css');
 
@@ -84,6 +101,8 @@ body {
 <br/>
 
 ### **Basic page `pages/home/page.js`**
+<a name="page.js"/>
+
 ```javascript
   import { Page } from '@webformula/core/client';
   import html from './page.html'; // automatically bundles
@@ -161,6 +180,8 @@ body {
 <br/>
 
 ### **HTML page template `pages/home/page.html`** Can use javascript template literal syntax
+<a name="page.html"/>
+
 ```html
 <div>Page Content</div>
 <div>${this.someVar}</div>
@@ -177,6 +198,8 @@ body {
 <br/>
 
 ### **Serve app with Expressjs `server.js`**
+<a name="serveapp"/>
+
 ```javascript
 import express from 'express';
 import compression from 'compression';
@@ -208,6 +231,8 @@ NODE_ENV=production node build.js
 <br/>
 
 ### **Build single page app `build.js`**
+<a name="buildspa"/>
+
 ```javascript
 import build from '@webformula/core/build';
 
