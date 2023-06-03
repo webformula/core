@@ -1,6 +1,4 @@
 /dist/*
-!/dist/core.js
-!/dist/core.js.gz
 
 
 # Logs

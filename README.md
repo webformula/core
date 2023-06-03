@@ -15,21 +15,36 @@ Browsers, javascript, css, and html provide a robust set of features these days.
 
 
 ## Table of Contents  
-- [Getting started](#gettingstarted)  
-  - [index.html](#index.html)
-  - [app.js](#app.js)
-  - [app.css](#app.css)
-  - [page.js](#page.js)
-  - [page.html](#page.html)
-  - [Serve app](#iserveapp)
-  - [Build single page app](#buildspa)
+- [Getting started](#gettingstarted)
+  - [Installation](#installation)
+  - [Example code](#examplecode)
+    - [index.html](#index.html)
+    - [app.js](#app.js)
+    - [app.css](#app.css)
+    - [page.js](#page.js)
+    - [page.html](#page.html)
+    - [Serve app](#iserveapp)
+    - [Build single page app](#buildspa)
 
 
 # Getting started
 <a name="gettingstarted"/>
 
+
+## **Installation**
+<a name="installation"/>
+
+```bash
+npm install @webformula/core
+```
+
+
+## **Example code**
+<a name="examplecode"/>
+
 ### **index.html**
 <a name="index.html"/>
+
 ```html
 <!doctype html>
   <html lang="en">
