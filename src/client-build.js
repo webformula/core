@@ -27,6 +27,8 @@ export default async function build(params = {
   outdir: 'dist/',
   minify: true,
   sourcemaps: false,
+  format: 'esm',
+  target: 'esnext',
   devServer: {
     enabled: true,
     port: 3000,
@@ -112,9 +114,6 @@ const pluginFiles = {
   }
 };
 
-
-
-
 async function init() {
   if ((await access(path.join(config.basedir, '/app.js')).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${path.join(config.basedir, '/app.js')}`);
 
@@ -122,6 +121,8 @@ async function init() {
     entryPoints: [path.join(config.basedir, '/app.js')],
     bundle: true,
     outfile: path.join(config.outdir, '/app.js'),
+    format: 'esm',
+    target: 'esnext',
     loader: { '.html': 'text' },
     plugins: [pluginCss, pluginFiles, pluginCopyFiles],
     minify: config.minify,
