@@ -1,5 +1,6 @@
 ## @webfurmula/core
 Simple no thrills micro framework. Super performant and light-weight!
+[Webformula core docs](http://webformula.io/)
 
 ### Highlights
 - ⚡ Lightweight - 2KB compressed
