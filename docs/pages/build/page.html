@@ -1,0 +1,160 @@
+<h3 class="page-title">Build / Serve</h3>
+<div class="page-subheader mdw-font-title-medium">Serve application from Expressjs or build a single page app</div>
+
+<h6 class="page-secondary-header">Links</h6>
+<ul class="links">
+  <li><a href="#server">Server</a></li>
+  <li><a href="#spa">Single page app</a></li>
+</ul>
+
+<section style="margin-top: 48px;">
+  <mdw-card id="server">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Serve app from express</div>
+      <div class="mdw-supporting-text">coreMiddleware automatically bundles and splits the code for optimal loading</div>
+    </div>
+  
+    <pre>
+      <code class="language-javascript">
+  ${`// build.js
+  import express from 'express';
+  import compression from 'compression';
+  import { coreMiddleware } from '@webformula/core/server';
+  
+  const app = express();
+  const port = 3000;
+  
+  app.use(compression());
+  // specify base directory where app.js is
+  app.use(coreMiddleware('./docs'));
+
+  // serve other static files
+  app.use(express.static('./docs'));
+  
+  app.listen(port, () => {
+    console.log(\`Example app listening on port \${port}\`);
+  });`}
+      </code>
+    </pre>
+
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">Run commands</div>
+    </div>
+    <pre>
+      <code class="language-bash">
+  ${`# Development run. Includes sourcemaps
+  node build.js
+  # using nodemon will enable livereload
+  nodemon -e js,css,html build.js
+
+  # Production run. minifies, turns off livereload and sourcemaps
+  NODE_ENV=production node build.js
+  `}
+      </code>
+    </pre>
+  </mdw-card>
+
+  <mdw-card id="spa">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Build single page app</div>
+      <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.</div>
+    </div>
+    
+    <pre>
+      <code class="language-javascript">
+  ${`import build from '@webformula/core/build';
+
+  /**
+   * Basic
+   * If using 'app/' as root folder then no config needed
+   */
+  build();
+  
+
+  /**
+   * Full config options
+   */
+  build({
+    // folder that contains 'app.js' : Default 'app.js'
+    basedir: 'app/',
+
+    // folder that contains 'app.js' : Default 'dist/'
+    outdir: 'dist/',
+
+    /**
+     * true when 'NODE_ENV=production' otherwise defaults to false
+     * use 'WEBFORMULA_MINIFY' env var to override
+     */
+    minify: true,
+
+    /**
+    * false when 'NODE_ENV=production' otherwise defaults to true
+    * use 'WEBFORMULA_SOURCEMAPS' env var to override
+    */
+    sourcemaps: false,
+
+    /**
+    * true when 'NODE_ENV=production' otherwise defaults to false
+    * use 'WEBFORMULA_GZIP' env var to override
+    */
+    gzip: true,
+
+    devServer: {
+      /**
+      * false when 'NODE_ENV=production' otherwise defaults to true
+      */
+      enabled: true,
+
+      /**
+      * false when 'NODE_ENV=production' otherwise defaults to true
+      * use 'WEBFORMULA_LIVERELOAD' env var to override
+      */
+      liveReload: true
+
+      port: 3000,
+    },
+
+    // supports regex's with wildcards (*, **)
+    copyFiles: [
+      {
+        from: 'app/image.jpg',
+        to: 'dist/'
+      },
+      {
+        from: 'app/pages/**/(?!page)*.html',
+        to: 'dist/pages'
+      }
+    ],
+
+    // callback before bundle
+    onStart: () => {},
+
+    // callback after bundle
+    onEnd: () => {}
+  });
+  
+  
+  // You can access gzipFile directly
+  import build, { gzipFile } from '@webformula/core/build';
+  
+  // this will write 'dist/something.js.gz'
+  await gzipFile('dist/something.js');
+  `}
+      </code>
+    </pre>
+
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">Run commands</div>
+    </div>
+    <pre>
+      <code class="language-bash">
+  ${`# Development run. Includes sourcemaps and livereload
+  node build.js
+
+  # Production run. minifies, gzips, and writes files
+  NODE_ENV=production node build.js
+  `}
+      </code>
+    </pre>
+  </mdw-card>
+</section>

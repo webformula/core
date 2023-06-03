@@ -215,6 +215,7 @@
       <div class="mdw-headline">Serve app from express</div>
       <div class="mdw-subheader">server.js</div>
       <div class="mdw-supporting-text">coreMiddleware automatically bundles and splits the code for optimal loading</div>
+      <a href="/build">Serve details</a>
     </div>
   
     <pre>
@@ -227,12 +228,28 @@
   const port = 3000;
   
   app.use(compression());
-  app.use(coreMiddleware('./docs'));
-  app.use(express.static('./docs'));
+  app.use(coreMiddleware('./app'));
+  app.use(express.static('./app'));
   
   app.listen(port, () => {
     console.log(\`Example app listening on port \${port}\`);
   });`}
+      </code>
+    </pre>
+
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">Run commands</div>
+    </div>
+    <pre>
+      <code class="language-bash">
+  ${`# Development run. Includes sourcemaps
+  node build.js
+  # using nodemon will enable livereload
+  nodemon -e js,css,html build.js
+
+  # Production run. minifies, turns off livereload and sourcemaps
+  NODE_ENV=production node build.js
+  `}
       </code>
     </pre>
   </mdw-card>
@@ -242,30 +259,32 @@
       <div class="mdw-headline">Build single page app</div>
       <div class="mdw-subheader">build.js</div>
       <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.</div>
+      <a href="/build#spa">Build config</a>
     </div>
     
     <pre>
       <code class="language-javascript">
   ${`import build from '@webformula/core/build';
   
-  build({
-    basedir: 'docs/',
-    outdir: 'dist/',
-    devServer: { enabled: true }
-  });`}
+  /**
+   * runs dev server by default on port 3000 with livereload
+   * basedir defaults to 'app/'
+   */
+  build({ basedir: 'app/' });`}
       </code>
     </pre>
 
     <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">NPM script</div>
+      <div class="mdw-subheader">Run commands</div>
     </div>
     <pre>
-      <code class="language-json">
-  ${`{
-    "scripts": {
-      "build": "node build.js"
-    }
-  }`}
+      <code class="language-bash">
+  ${`# Development run. Includes sourcemaps and livereload
+  node build.js
+
+  # Production run. minifies, gzips, and writes files
+  NODE_ENV=production node build.js
+  `}
       </code>
     </pre>
   </mdw-card>

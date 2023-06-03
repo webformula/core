@@ -30,8 +30,6 @@ export default async function build(params = {
   outdir: 'dist/',
   minify: true,
   sourcemaps: false,
-  format: 'esm',
-  target: 'esnext',
   gzip: true,
   devServer: {
     enabled: true,
@@ -222,7 +220,7 @@ async function init() {
         res.writeHead(404);
         res.end();
       }
-    }).listen(3000);
+    }).listen(config.devServer.port);
   });
 }
 

@@ -142,3 +142,9 @@ page-content > section > mdw-card {
 .mdw-supporting-text + .example {
   margin-top: 32px;
 }
+
+.github-link {
+  display: flex;
+  line-height: 40px;
+  align-items: center;
+}
