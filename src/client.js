@@ -110,7 +110,10 @@ export class Page {
   static pageTitle;
   /** ['/a', '/a/:id']; */
   static routes = [];
-  /** used for imported html */
+  /**
+   * Used for imported html
+   *   Can use template literals: <div>${this.var}</div>
+   */
   static html = '';
 
   #urlParameters;
