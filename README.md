@@ -2,13 +2,13 @@
 Simple no thrills micro framework. Super performant and light-weight!
 
 ### Highlights
-⚡ Lightweight - 2KB compressed
-⚡ Fast - leverages native browser features
-⚡ Simple - No complex concepts
-⚡ 0 dependencies in build
-⚡ Server side optimized build & Single page app. With the same app code
-⚡ Supports both url and hash routing
-⚡ Includes bundling. No need for Webpack
+- ⚡ Lightweight - 2KB compressed
+- ⚡ Fast - leverages native browser features
+- ⚡ Simple - No complex concepts
+- ⚡ 0 dependencies in build
+- ⚡ Server side optimized build & Single page app. With the same app code
+- ⚡ Supports both url and hash routing
+- ⚡ Includes bundling. No need for Webpack
 
 ### About
 Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (2KB). You can create your web application and decide weather to build it as a single page app or server it.
