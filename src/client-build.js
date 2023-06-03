@@ -155,8 +155,10 @@ const appCSSGzipPlugin = {
   setup(build) {
     if (config.gzip && config.hasAppCSS) {
       build.onEnd(async ({ metafile }) => {
-        appCSSFileName = Object.keys(metafile.outputs)[0];
-        if (metafile) await gzipFile(appCSSFileName);
+        if (metafile) {
+          appCSSFileName = Object.keys(metafile.outputs)[0];
+          await gzipFile(appCSSFileName);
+        }
       });
     }
   }
