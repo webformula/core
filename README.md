@@ -2,154 +2,337 @@
 Simple no thrills micro framework. Super performant and light-weight!
 
 ### Highlights
-- Lightweight - **2KB** compressed
-- Fast - Most of the heavy lifting is native browser code
-- Simple - No complex concepts
-- 0 dependencies
-- compatible with all build pipelines
-- Single page app compatible. With url or hash routing
-- HTMLElementExtended adds templates and rendering to webcomponents
+- ⚡ Lightweight - 2KB compressed
+- ⚡ Fast - leverages native browser features
+- ⚡ Simple - No complex concepts
+- ⚡ 0 dependencies in build
+- ⚡ Server side optimized build & Single page app. With the same app code
+- ⚡ Supports both url and hash routing
+- ⚡ Includes bundling. No need for Webpack
+
+### About
+Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (2KB). You can create your web application and decide weather to build it as a single page app or server it.
 
 
-The goal of this project is to fill the gaps of the modern web browser for creating web applications. The modern DOM is full a great features and has many more coming. This reduces the need to have full fledged frameworks. With less custom code websites are faster, smaller and easier to debug.
+## Table of Contents  
+- [Getting started](#gettingstarted)
+  - [Installation](#installation)
+  - [Example code](#examplecode)
+    - [index.html](#index.html)
+    - [app.js](#app.js)
+    - [app.css](#app.css)
+    - [page.js](#page.js)
+    - [page.html](#page.html)
+    - [Serve app](#iserveapp)
+    - [Build single page app](#buildspa)
 
 
-# Links
-- [MDZ Web Components](https://developer.mozilla.org/en-US/docs/Web/Web_Components)
+# Getting started
+<a name="gettingstarted"/>
 
 
+## **Installation**
+<a name="installation"/>
 
-# Examples
+```bash
+npm install @webformula/core
+```
 
-### **Main app file**
-```javascript
-import { registerPage, enableLinkIntercepts } from '@webformula/core';
-enableLinkIntercepts();
 
-import one from './pages/one/page.js';
-import two from './pages/two/page.js';
-import notFound from './pages/not-found/page.js';
+## **Example code**
+<a name="examplecode"/>
 
-// routes can be configured in page
-registerPage(one, '/one');
-registerPage(one, '/two');
-registerPage(notFound, '/not-found', { notFound: true });
+### **index.html**
+<a name="index.html"/>
 
-window.addEventListener('locationchange', () => {
-  // custom event dispatched by router
-});
-
-window.addEventListener('hashchange', () => {
-  // native event
-});
+```html
+<!doctype html>
+  <html lang="en">
+  
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+    <title></title>
+    <!--
+      load js and css
+      app.js is required and app.css is optional
+    -->
+    <link href="/app.css" rel="stylesheet">
+    <script src="/app.js" type="module"></script>
+  </head>
+  
+  <body>
+    <!-- page template render into this element -->
+    <page-content></page-content>
+  </body>
+</html>
 ```
 
 <br/>
 
-### **Basic page**
+### **Main app `app.js`**
+<a name="app.js"/>
+
 ```javascript
-import { Page } from '@webformula/core';
+import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
 
-export default class extends Page {
-  static pageTitle = 'Page';
-  static templatePath = 'pages/one.html'; // use this or the template method
-
-  someVar = 'Some var';
-  clickIt_bound = this.clickIt.bind(this);
-  userInput;
+  /**
+   * enableLinkIntercepts
+   *
+   * Using this will stream the full app after the first page load
+   * and treat it as a single page app. This is the best of both worlds.
+   * Small initial load and background loading of the rest.
+   *
+   * If not used then each page will load individually.
+   * This is also required for normal url routing and single page apps
+   */
+  enableLinkIntercepts();
   
-  // can be configures with `registerPage(PageClass, '/one')`
-  routes = ['/one', 'one/:id'];
+  import home from './pages/home/page.js';
+  import one from './pages/one/page.js';
+  import notFound from './pages/notfound/page.js';
+  
+  registerPage(home, '/');
+  registerPage(one, '/one');
+  // page used for 404 urls
+  registerPage(notFound, '/notfound', {notFound: true});
+```
 
-  constructor() {
-    super();
-  }
+<br/>
 
-  connectedCallback() {
-    // called on element hookup to dome. May not be rendered yet
+### **Main app css `app.css`**
+<a name="app.css"/>
 
-    this.userInput = 'some user input';
-    console.log(this.urlParameters); // { id: 'value' }
-    console.log(this.searchParameters); // { id: 'value' }
-  }
+```css
+@import url('./other.css');
 
-  disconnectedCallback() {
-    // called on element removal
-  }
-
-  // not called on initial render
-  beforeRender() {
-    // Do work before render
-  }
-
-  afterEnder() {
-    // Do work after render
-    this.querySelector('#event-listener-button').addEventListener('click', this.clickIt_bound);
-  }
-
-  clickIt() {
-    console.log('clicked it!');
-  }
-
-  changeValueAndRender() {
-    this.someVar = 'Re-rendered';
-    this.render(); // initial render is automatic
-  }
-
-  template() {
-    return /*html*/`
-      <div>Page Content</div>
-      <div>${this.someVar}</div>
-
-      <!-- escape html input -->
-      <div>${this.escape(this.userInput)}</div>
-
-      <!-- "page" will reference the current page class -->
-      <button onclick="page.clickIt()">Click Method</button>
-      <button id="event-listener-button">Event listener</button>
-      <button onclick="page.changeValueAndRender()">Change value and render</button>
-    `;
-  }
+body {
+  background-color: white;
 }
 ```
 
 <br/>
 
-### **Basic page With Webpack html-loader**
+### **Basic page `pages/home/page.js`**
+<a name="page.js"/>
 
-*page.html*
+```javascript
+  import { Page } from '@webformula/core/client';
+  import html from './page.html'; // automatically bundles
+  
+  export default class extends Page {
+    static pageTitle = 'Home'; // html page title
+    static html = html; // hook up imported html. Supports template literals (undefined)
+
+    // can be configures with `registerPage(PageClass, '/one')`
+    static routes = ['/one', 'one/:id'];
+
+    someVar = 'Some var';
+    clickIt_bound = this.clickIt.bind(this);
+    userInput;
+    
+    
+    constructor() {
+      super();
+    }
+    
+    connectedCallback() {
+      // called on element hookup to dome. May not be rendered yet
+    
+      this.userInput = 'some user input';
+      console.log(this.urlParameters); // { id: 'value' }
+      console.log(this.searchParameters); // { id: 'value' }
+    }
+    
+    disconnectedCallback() {
+      // called on element removal
+    }
+    
+    // not called on initial render
+    beforeRender() {
+      // Do work before render
+    }
+    
+    afterEnder() {
+      // Do work after render
+      this.querySelector('#event-listener-button').addEventListener('click', this.clickIt_bound);
+    }
+    
+    // look below to how it is invoked on a button
+    clickIt() {
+      console.log('clicked it!');
+    }
+    
+    // look below to how it is invoked on a button
+    changeValueAndRender() {
+      this.someVar = 'Re-rendered';
+      this.render(); // initial render is automatic
+    }
+    
+    /**
+     * If not importing html you can use this template method.
+     * Imported html also supports template literals (undefined)
+     */
+    template() {
+      return /*html*/`
+        <div>Page Content</div>
+        <div>${this.someVar}</div>
+        
+        <!-- escape html input -->
+        <div>${this.escape(this.userInput)}</div>
+        
+        <!-- "page" will reference the current page class -->
+        <button onclick="page.clickIt()">Click Method</button>
+        <button id="event-listener-button">Event listener</button>
+        <button onclick="page.changeValueAndRender()">Change value and render</button>
+      `;
+    }
+  }
+```
+
+<br/>
+
+### **HTML page template `pages/home/page.html`** Can use javascript template literal syntax
+<a name="page.html"/>
+
 ```html
 <div>Page Content</div>
 <div>${this.someVar}</div>
+
+<!-- escape html input -->
+<div>${this.escape(this.userInput)}</div>
+
+<!-- "page" will reference the current page class -->
 <button onclick="page.clickIt()">Click Method</button>
-```
-*page.js*
-```javascript
-import { Page } from '@webformula/core';
-import html from './page.html';
-
-export default class extends Page {
-  static pageTitle = 'Page'; // html page title
-  someVar = 'Some var';
-
-  constructor() {
-    super();
-  }
-
-  clickIt() {
-    console.log('clicked it!');
-  }
-
-  template() {
-    return this.renderTemplateString(html);
-  }
-}
+<button id="event-listener-button">Event listener</button>
+<button onclick="page.changeValueAndRender()">Change value and render</button>
 ```
 
 <br/>
 
-### **HTMLElementExtended** Adds template and render functionality to HTMLElement
+### **Serve app with Expressjs `server.js`**
+<a name="serveapp"/>
 
-```html
-<my-check-button>Check</my-check-button>
+```javascript
+import express from 'express';
+import compression from 'compression';
+import { coreMiddleware } from '@webformula/core/server';
+
+const app = express();
+const port = 3000;
+
+app.use(compression());
+app.use(coreMiddleware('./app'));
+app.use(express.static('./app'));
+
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`);
+});
+```
+
+### **Serve commands**
+```bash
+# Development run. Includes sourcemaps
+node build.js
+# using nodemon will enable livereload
+nodemon -e js,css,html build.js
+
+# Production run. minifies, turns off livereload and sourcemaps
+NODE_ENV=production node build.js
+```
+
+<br/>
+
+### **Build single page app `build.js`**
+<a name="buildspa"/>
+
+```javascript
+import build from '@webformula/core/build';
+
+/**
+ * Basic
+ * If using 'app/' as root folder then no config needed
+ */
+build();
+
+
+/**
+ * Full config options
+ */
+build({
+  // folder that contains 'app.js' : Default 'app.js'
+  basedir: 'app/',
+
+  // folder that contains 'app.js' : Default 'dist/'
+  outdir: 'dist/',
+
+  /**
+   * true when 'NODE_ENV=production' otherwise defaults to false
+   * use 'WEBFORMULA_MINIFY' env var to override
+   */
+  minify: true,
+
+  /**
+  * false when 'NODE_ENV=production' otherwise defaults to true
+  * use 'WEBFORMULA_SOURCEMAPS' env var to override
+  */
+  sourcemaps: false,
+
+  /**
+  * true when 'NODE_ENV=production' otherwise defaults to false
+  * use 'WEBFORMULA_GZIP' env var to override
+  */
+  gzip: true,
+
+  devServer: {
+    /**
+    * false when 'NODE_ENV=production' otherwise defaults to true
+    */
+    enabled: true,
+
+    /**
+    * false when 'NODE_ENV=production' otherwise defaults to true
+    * use 'WEBFORMULA_LIVERELOAD' env var to override
+    */
+    liveReload: true
+
+    port: 3000,
+  },
+
+  // supports regex's with wildcards (*, **)
+  copyFiles: [
+    {
+      from: 'app/image.jpg',
+      to: 'dist/'
+    },
+    {
+      from: 'app/pages/**/(?!page)*.html',
+      to: 'dist/pages'
+    }
+  ],
+
+  // callback before bundle
+  onStart: () => {},
+
+  // callback after bundle
+  onEnd: () => {}
+});
+
+
+// You can access gzipFile directly
+import build, { gzipFile } from '@webformula/core/build';
+
+// this will write 'dist/something.js.gz'
+await gzipFile('dist/something.js');
+```
+
+### **Build single page app commands**
+```bash
+# Development run. Includes sourcemaps and livereload
+node build.js
+
+# Production run. minifies, gzips, and writes files
+NODE_ENV=production node build.js
 ```

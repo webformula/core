@@ -1,25 +1,23 @@
-import './theme.css';
-import './font.css';
-import './dracula.css';
-import './app.css';
-import '@webformula/material';
-
-import { registerPage, enableLinkIntercepts } from '@webformula/core';
+import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
 enableLinkIntercepts();
 
-
+import '@webformula/material/components/navigation';
+import '@webformula/material/components/card';
 import home from './pages/home/page.js';
 import gettingStarted from './pages/getting started/page.js';
-import webpack from './pages/webpack/page.js';
-
+import build from './pages/build/page.js';
+import notFound from './pages/notfound/page.js';
 
 registerPage(home, '/');
 registerPage(gettingStarted, '/getting-started');
-registerPage(webpack, '/webpack');
+registerPage(build, '/build');
+registerPage(notFound, '/notfound', {notFound: true});
 
-
-window.addEventListener('load', () => {
+document.querySelector('#hljsscript').addEventListener('load', () => {
   hljs.highlightAll();
+});
+
+window.addEventListener('DOMContentLoaded', () => {
   if (location.hash) {
     setTimeout(() => {
       handleHashAnchor(location.hash, false);
@@ -29,7 +27,9 @@ window.addEventListener('load', () => {
 
 window.addEventListener('locationchange', () => {
   setTimeout(() => {
-    hljs.highlightAll();
+    if (typeof hljs !== 'undefined') hljs.highlightAll();
+    if (!location.hash) return;
+    handleHashAnchor(location.hash, false);
   });
 });
 
