@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { access, readFile } from 'node:fs/promises';
+import { access, cp, readdir, readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import esbuild from 'esbuild';
 import { getExtension } from './helpers.js';
@@ -31,7 +31,12 @@ export default async function build(params = {
     enabled: true,
     port: 3000,
     liveReload: true
-  }
+  },
+  copyFiles: [{
+    from: '',
+    to: ''
+  }],
+  onStart: () => {}
 }) {
   config.basedir = params.basedir || 'app/';
   config.outdir = params.outdir || 'dist/';
@@ -41,6 +46,8 @@ export default async function build(params = {
   config.devServer.enabled = params?.devServer?.enabled === false ? false : true;
   config.devServer.port = params?.devServer?.port || 3000;
   config.devServer.liveReload = params?.devServer?.liveReload === false ? false : params?.devServer?.liveReload === true ? true : isLiveReload;
+  config.copyFiles = (params.copyFiles || []).filter(({ from }) => !!from);
+  config.onStart = params.onStart;
   await init();
 }
 
@@ -62,6 +69,32 @@ const pluginCss = {
   }
 };
 
+const pluginCopyFiles = {
+  name: 'plugin copy files',
+  setup(build) {
+    build.onEnd(async () => {
+      await Promise.all(config.copyFiles.map(async ({ from, to }) => {
+        if (!isGlob(from)) {
+          const hasExtension = !!getExtension(to);
+          if (!hasExtension) to = path.join(to, from.split('/').pop());
+          return cp(from, to);
+        }
+
+        const globBase = getGlobBase(from);
+        const regex = globToRegex(from);
+        try {
+          const files = await listFiles(globBase);
+          const filtered = files.filter(file => file.match(regex) !== null);
+          await Promise.all(filtered.map(filePath => cp(filePath, path.join(to, filePath.split(globBase).pop()))))
+        } catch (e) {
+          console.error(e);
+        }
+        
+      }))
+    });
+  }
+};
+
 const pluginFiles = {
   name: 'plugin files',
   setup(build) {
@@ -70,6 +103,12 @@ const pluginFiles = {
       clients.forEach((res) => res.write('data: update\n\n'))
       clients.length = 0
     });
+
+    if (config.onStart) {
+      build.onStart(() => {
+        config.onStart();
+      });
+    }
   }
 };
 
@@ -84,7 +123,7 @@ async function init() {
     bundle: true,
     outfile: path.join(config.outdir, '/app.js'),
     loader: { '.html': 'text' },
-    plugins: [pluginCss, pluginFiles],
+    plugins: [pluginCss, pluginFiles, pluginCopyFiles],
     minify: config.minify,
     sourcemap: config.sourcemap,
     banner: (!isDev || !config.devServer.liveReload) ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
@@ -132,10 +171,10 @@ async function init() {
 
 
       const contentType = getMimeType(req.url);
-      const filePath = path.resolve(path.join(config.outdir, req.url));
+      const filePath = path.resolve(path.join(config.outdir, req.url.replace(/%20/g, ' ')));
 
       try {
-        const file = await readFile(filePath, 'utf-8')
+        const file = await readFile(filePath)
         res.writeHead(200, { 'Content-Type': contentType });
         res.write(file);
         res.end();
@@ -158,5 +197,75 @@ function getMimeType(url) {
       return 'text/css';
     case 'json':
       return 'text/json';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'svg':
+      return 'image/svg+xml';
   }
+}
+
+function isGlob(str) {
+  return str.includes('*');
+}
+
+function globToRegex(globStr = '') {
+  const length = globStr.length;
+  let regexString = '';
+  let char;
+  for (let i = 0; i < length; i += 1) {
+    char = globStr[i];
+
+    switch(char) {
+      case '/':
+      case '.':
+        regexString += '\\' + char;
+        break;
+
+      case '*':
+        const prevChar = globStr[i - 1];
+        let starCount = 1;
+        while (globStr[i + 1] === '*') {
+          starCount += 1;
+          i += 1;
+        }
+        const nextChar = globStr[i + 1];
+        const isGlobstar = starCount > 1                    // multiple '*''s
+          && (prevChar === '/' || prevChar === undefined)   // from the start of the segment
+          && (nextChar === '/' || nextChar === undefined)   // to the end of the segment
+
+        if (isGlobstar) {
+          regexString += '((?:[^/]*(?:\/|$))*)';
+          i += 1;
+        } else {
+          regexString += '([^/]*)';
+        }
+        break;
+
+      default:
+        regexString += char;
+    }
+  }
+  return new RegExp(regexString);
+}
+
+function getGlobBase(globStr) {
+  if (globStr.startsWith('*')) return path.resolve('.');
+  return path.resolve('.', globStr.split('*')[0]);
+}
+
+async function listFiles(dir, arr = []) {
+  const files = await readdir(dir);
+
+  await Promise.all(files.map(async file => {
+    const filePath = path.join(dir, file);
+    if ((await stat(filePath)).isDirectory()) return listFiles(filePath, arr);
+    arr.push(filePath);
+  }));
+
+  return arr
 }
