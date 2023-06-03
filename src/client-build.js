@@ -42,7 +42,8 @@ export default async function build(params = {
     from: '',
     to: ''
   }],
-  onStart: () => {}
+  onStart: () => {},
+  onEnd: () => {}
 }) {
   config.basedir = params.basedir || 'app/';
   config.outdir = params.outdir || 'dist/';
@@ -55,6 +56,7 @@ export default async function build(params = {
   config.devServer.liveReload = params?.devServer?.liveReload === false ? false : params?.devServer?.liveReload === true ? true : isLiveReload;
   config.copyFiles = (params.copyFiles || []).filter(({ from }) => !!from);
   config.onStart = params.onStart;
+  config.onEnd = params.onEnd;
   config.appFilePath = path.join(config.basedir, '/app.js');
   config.appOutFilePath = path.join(config.outdir, '/app.js');
   config.appCSSFilePath = path.join(config.basedir, '/app.css');
@@ -117,12 +119,12 @@ const pluginFiles = {
     // send reload request
     build.onEnd(() => {
       clients.forEach((res) => res.write('data: update\n\n'))
-      clients.length = 0
+      clients.length = 0;
     });
 
     if (config.onStart) {
-      build.onStart(() => {
-        config.onStart();
+      build.onStart(async () => {
+        await config.onStart();
       });
     }
   }
@@ -134,6 +136,7 @@ const appGzipPlugin = {
     if (config.gzip) {
       build.onEnd(async (d) => {
         await gzipFile(config.appOutFilePath);
+        if (config.onEnd) await config.onEnd();
       });
     }
   }
