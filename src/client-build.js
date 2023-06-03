@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { access, cp, readdir, readFile, stat } from 'node:fs/promises';
+import { access, cp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import esbuild from 'esbuild';
 import { getExtension } from './helpers.js';
@@ -55,6 +55,8 @@ export default async function build(params = {
   config.copyFiles = (params.copyFiles || []).filter(({ from }) => !!from);
   config.onStart = params.onStart;
   config.onEnd = params.onEnd;
+  config.indexHTMLPath = path.join(config.basedir, '/index.html');
+  config.indexHTMLOutPath = path.join(config.outdir, '/index.html');
   config.appFilePath = path.join(config.basedir, '/app.js');
   config.appOutFilePath = path.join(config.outdir, '/app.js');
   config.appCSSFilePath = path.join(config.basedir, '/app.css');
@@ -131,21 +133,30 @@ const pluginFiles = {
 const appGzipPlugin = {
   name: 'plugin gzip app',
   setup(build) {
-    if (config.gzip) {
-      build.onEnd(async (d) => {
-        await gzipFile(config.appOutFilePath);
-        if (config.onEnd) await config.onEnd();
-      });
-    }
+    build.onEnd(async ({ metafile }) => {
+      if (metafile) {
+        // rewrite style and script paths in index.html so they have hashes
+        const appFileName = Object.keys(metafile.outputs)[0];
+        if (config.gzip) await gzipFile(appFileName);
+        const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+        await writeFile(config.indexHTMLOutPath, indexFile
+          .replace('app.js', appFileName.split('/').pop())
+          .replace('app.css', appCSSFileName.split('/').pop()));
+
+      }
+      if (config.onEnd) await config.onEnd();
+    });
   }
 };
 
+let appCSSFileName;
 const appCSSGzipPlugin = {
   name: 'plugin gzip app css',
   setup(build) {
     if (config.gzip && config.hasAppCSS) {
-      build.onEnd(async (d) => {
-        await gzipFile(config.appCSSOutFilePath);
+      build.onEnd(async ({ metafile }) => {
+        appCSSFileName = Object.keys(metafile.outputs)[0];
+        if (metafile) await gzipFile(appCSSFileName);
       });
     }
   }
@@ -154,10 +165,14 @@ const appCSSGzipPlugin = {
 async function init() {
   if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
 
+  await emptyOutdir();
+
   const context = await esbuild.context({
     entryPoints: [config.appFilePath],
     bundle: true,
     outfile: config.appOutFilePath,
+    metafile: !isDev,
+    entryNames: isDev ? '[name]' : '[name]-[hash]',
     format: 'esm',
     target: 'esnext',
     loader: { '.html': 'text' },
@@ -172,6 +187,8 @@ async function init() {
       entryPoints: [config.appCSSFilePath],
       bundle: true,
       outfile: config.appCSSOutFilePath,
+      metafile: !isDev,
+      entryNames: isDev ? '[name]' : '[name]-[hash]',
       minify: isMinify,
       plugins: [pluginFiles, appCSSGzipPlugin],
       loader: { '.css': 'css' }
@@ -305,4 +322,14 @@ async function listFiles(dir, arr = []) {
   }));
 
   return arr
+}
+
+async function emptyOutdir(dir = config.outdir) {
+  const files = await readdir(dir);
+
+  await Promise.all(files.map(async file => {
+    const filePath = path.join(dir, file);
+    if ((await stat(filePath)).isDirectory()) return emptyOutdir(filePath);
+    await rm(filePath);
+  }));
 }

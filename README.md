@@ -215,6 +215,12 @@ body {
 
 ### **Serve app with Expressjs `server.js`**
 <a name="serveapp"/>
+The serve process will handle:
+- Minification
+- Sourcemaps
+- live relaoding (requires nodemon)
+- Adding hashes to filenames
+- Rewriting imports for app.js and app.js to have hashes
 
 ```javascript
 import express from 'express';
@@ -248,6 +254,15 @@ NODE_ENV=production node build.js
 
 ### **Build single page app `build.js`**
 <a name="buildspa"/>
+The build process will handle:
+- Minification
+- Sourcemaps
+- Dev server
+- live relaoding
+- Adding hashes to filenames
+- Rewriting imports for app.js and app.js to have hashes
+- Gziping content
+- File copying
 
 ```javascript
 import build from '@webformula/core/build';
