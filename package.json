@@ -13,9 +13,8 @@
   "scripts": {
     "start": "nodemon -e js,css,html docs/server.js",
     "start-server": "nodemon -e js,css,html docs/server.js",
-    "start-spa": "node docs/build-spa.js",
-    "build-spa": "NODE_ENV=production node docs/build-spa.js",
-    "build": "esbuild src/client.js --bundle --minify --outfile=dist/core.js"
+    "start-spa": "node build.js",
+    "build": "NODE_ENV=production node build.js"
   },
   "repository": {
     "type": "git",

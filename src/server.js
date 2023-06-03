@@ -192,7 +192,8 @@ async function handleChunks(req, res) {
 async function handleRoute(req, res) {
   let routeMatch = matchRouteConfig(req.url, appConfig.routeConfigs);
   if (!routeMatch) {
-    if (getExtension(req.url) && req.headers['sec-fetch-dest'] === 'document') routeMatch = { pageConfig: appConfig.notFoundRoute };
+    // assume 404 and load not found
+    if (!getExtension(req.url) && req.headers['sec-fetch-dest'] === 'document') routeMatch = { pageConfig: appConfig.notFoundRoute };
     else return false;
   }
 

@@ -3,6 +3,7 @@ import { access, cp, readdir, readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import esbuild from 'esbuild';
 import { getExtension } from './helpers.js';
+import gzipFile from './gzip.js';
 
 
 const {
@@ -10,13 +11,15 @@ const {
   WEBFORMULA_SOURCEMAPS,
   WEBFORMULA_MINIFY,
   NODE_ENV,
-  WEBFORMULA_LIVERELOAD
+  WEBFORMULA_LIVERELOAD,
+  WEBFORMULA_GZIP
 } = process.env;
 const isNodeEnvProduction = NODE_ENV === 'production';
 const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
 const isDev = webformulaDev !== undefined ? webformulaDev : !isNodeEnvProduction;
 const isSourceMaps = WEBFORMULA_SOURCEMAPS === 'false' ? false : isDev;
 const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
+const isGzip = WEBFORMULA_GZIP === 'false' ? false : true;
 const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
 const cssFilterRegex = /\.css$/;
 const clients = [];
@@ -29,6 +32,7 @@ export default async function build(params = {
   sourcemaps: false,
   format: 'esm',
   target: 'esnext',
+  gzip: true,
   devServer: {
     enabled: true,
     port: 3000,
@@ -43,6 +47,7 @@ export default async function build(params = {
   config.basedir = params.basedir || 'app/';
   config.outdir = params.outdir || 'dist/';
   config.minify = params.minify === false ? false : params.minify === true ? true : isMinify;
+  config.gzip = params.gzip === false ? false : params.gzip === true ? true : isGzip;
   config.sourcemaps = params.sourcemaps === false ? false : params.sourcemaps === true ? true : isSourceMaps;
   config.devServer = params.devServer || { enabled: false };
   config.devServer.enabled = params?.devServer?.enabled === false ? false : true;
@@ -50,7 +55,16 @@ export default async function build(params = {
   config.devServer.liveReload = params?.devServer?.liveReload === false ? false : params?.devServer?.liveReload === true ? true : isLiveReload;
   config.copyFiles = (params.copyFiles || []).filter(({ from }) => !!from);
   config.onStart = params.onStart;
+  config.appFilePath = path.join(config.basedir, '/app.js');
+  config.appOutFilePath = path.join(config.outdir, '/app.js');
+  config.appCSSFilePath = path.join(config.basedir, '/app.css');
+  config.appCSSOutFilePath = path.join(config.outdir, '/app.css');
+  config.hasAppCSS = await access(config.appCSSFilePath).then(e => true).catch(e => false);
   await init();
+}
+
+export {
+  gzipFile
 }
 
 
@@ -114,30 +128,51 @@ const pluginFiles = {
   }
 };
 
+const appGzipPlugin = {
+  name: 'plugin gzip app',
+  setup(build) {
+    if (config.gzip) {
+      build.onEnd(async (d) => {
+        await gzipFile(config.appOutFilePath);
+      });
+    }
+  }
+};
+
+const appCSSGzipPlugin = {
+  name: 'plugin gzip app css',
+  setup(build) {
+    if (config.gzip && config.hasAppCSS) {
+      build.onEnd(async (d) => {
+        await gzipFile(config.appCSSOutFilePath);
+      });
+    }
+  }
+};
+
 async function init() {
-  if ((await access(path.join(config.basedir, '/app.js')).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${path.join(config.basedir, '/app.js')}`);
+  if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
 
   const context = await esbuild.context({
-    entryPoints: [path.join(config.basedir, '/app.js')],
+    entryPoints: [config.appFilePath],
     bundle: true,
-    outfile: path.join(config.outdir, '/app.js'),
+    outfile: config.appOutFilePath,
     format: 'esm',
     target: 'esnext',
     loader: { '.html': 'text' },
-    plugins: [pluginCss, pluginFiles, pluginCopyFiles],
+    plugins: [pluginCss, pluginFiles, pluginCopyFiles, appGzipPlugin],
     minify: config.minify,
     sourcemap: config.sourcemap,
     banner: (!isDev || !config.devServer.liveReload) ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
   });
 
-  const hasAppCSS = await access(path.join(config.basedir, '/app.css')).then(e => true).catch(e => false);
-  if (hasAppCSS) {
+  if (config.hasAppCSS) {
     const contextCss = await esbuild.context({
-      entryPoints: [path.join(config.basedir, '/app.css')],
+      entryPoints: [config.appCSSFilePath],
       bundle: true,
-      outfile: path.join(config.outdir, '/app.css'),
+      outfile: config.appCSSOutFilePath,
       minify: isMinify,
-      plugins: [pluginFiles],
+      plugins: [pluginFiles, appCSSGzipPlugin],
       loader: { '.css': 'css' }
     });
     if (isDev) contextCss.watch();

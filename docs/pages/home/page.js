@@ -9,3 +9,5 @@ export default class extends Page {
     super();
   }
 }
+
+console.log('ddddddd')
