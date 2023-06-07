@@ -1,6 +1,5 @@
 @import url('@webformula/material/theme.css');
 @import url('./dracula.css');
-@import url('./font.css');
 :root {
   color-scheme: light;
 }

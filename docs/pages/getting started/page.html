@@ -49,8 +49,8 @@
         load js and css
         app.js is required and app.css is optional
       -->
-      <link href="/app.css" rel="stylesheet">
-      <script src="/app.js" type="module"></script>
+      <link href="app.css" rel="stylesheet">
+      <script src="app.js" type="module"></script>
     </head>
     
     <body>
@@ -72,28 +72,17 @@
 
     <pre>
       <code class="language-javascript">
-  ${`import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
-
-  /**
-   * enableLinkIntercepts
-   *
-   * Using this will stream the full app after the first page load
-   * and treat it as a single page app. This is the best of both worlds.
-   * Small initial load and background loading of the rest.
-   *
-   * If not used then each page will load individually.
-   * This is also required for normal url routing and single page apps
-   */
-  enableLinkIntercepts();
+  ${`import { routes } from '@webformula/core/client';
   
   import home from './pages/home/page.js';
   import one from './pages/one/page.js';
   import notFound from './pages/notfound/page.js';
   
-  registerPage(home, '/');
-  registerPage(one, '/one');
-  // page used for 404 urls
-  registerPage(notFound, '/notfound', {notFound: true});`}
+  routes([
+    { path: '/', page: home },
+    { path: '/one', page: one },
+    { path: '/notfound', page: notFound, notFound: true }
+  ]);`}
       </code>
     </pre>
   </mdw-card>
@@ -129,11 +118,8 @@
   import html from './page.html'; // automatically bundles
   
   export default class extends Page {
-    static pageTitle = 'Page'; // html page title
+    static title = 'Page'; // html page title
     static html = html; // hook up imported html. Supports template literals (${this.someVar})
-
-    // can be configures with \`registerPage(PageClass, '/one')\`
-    static routes = ['/one', 'one/:id'];
 
     someVar = 'Some var';
     clickIt_bound = this.clickIt.bind(this);

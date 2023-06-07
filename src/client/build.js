@@ -1,31 +1,26 @@
 import path from 'node:path';
 import { access, cp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { gzip } from 'node:zlib';
+import { promisify } from 'node:util';
 import { createServer } from 'node:http';
 import esbuild from 'esbuild';
-import { getExtension } from './helpers.js';
-import gzipFile from './gzip.js';
+import { getExtension } from '../shared.js';
+import {
+  isDev,
+  isSourceMaps,
+  isMinify,
+  isGzip,
+  isLiveReload,
+  cssFilterRegex
+} from '../vars.js';
 
 
-const {
-  WEBFORMULA_DEV,
-  WEBFORMULA_SOURCEMAPS,
-  WEBFORMULA_MINIFY,
-  NODE_ENV,
-  WEBFORMULA_LIVERELOAD,
-  WEBFORMULA_GZIP
-} = process.env;
-const isNodeEnvProduction = NODE_ENV === 'production';
-const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
-const isDev = webformulaDev !== undefined ? webformulaDev : !isNodeEnvProduction;
-const isSourceMaps = WEBFORMULA_SOURCEMAPS === 'false' ? false : isDev;
-const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
-const isGzip = WEBFORMULA_GZIP === 'false' ? false : true;
-const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
-const cssFilterRegex = /\.css$/;
+const asyncGzip = promisify(gzip);
 const clients = [];
 const config = {};
 let appCSSFileName;
 let appFileName;
+
 
 export default async function build(params = {
   basedir: 'app/',
@@ -40,10 +35,15 @@ export default async function build(params = {
   },
   copyFiles: [{
     from: '',
-    to: ''
+    to: '',
+    transform: ({
+      content,
+      outputFileNames
+    }) => {},
+    gzip: false
   }],
-  onStart: () => {},
-  onEnd: () => {}
+  onStart: () => { },
+  onEnd: () => { }
 }) {
   config.basedir = params.basedir || 'app/';
   config.outdir = params.outdir || 'dist/';
@@ -67,8 +67,10 @@ export default async function build(params = {
   await init();
 }
 
-export {
-  gzipFile
+
+async function gzipFile(file) {
+  const result = await asyncGzip(await readFile(file));
+  await writeFile(`${file}.gz`, result);
 }
 
 
@@ -93,17 +95,24 @@ const pluginCopyFiles = {
   name: 'plugin copy files',
   setup(build) {
     build.onEnd(async ({ metafile }) => {
-      await Promise.all(config.copyFiles.map(async ({ from, to, transform }) => {
+      await Promise.all(config.copyFiles.map(async ({ from, to, transform, gzip }) => {
         if (!isGlob(from)) {
           const hasExtension = !!getExtension(to);
           if (!hasExtension) to = path.join(to, from.split('/').pop());
-          if (typeof transform !== 'function') return cp(from, to);
+          if (typeof transform !== 'function') {
+            await cp(from, to);
+            if (gzip) await gzipFile(to);
+            return
+          }
+
           const content = await readFile(from, 'utf-8');
           const transformed = await transform({
             content,
             outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
           });
           await writeFile(to, transformed);
+          if (gzip) await gzipFile(to);
+          return
         }
 
         const globBase = getGlobBase(from);
@@ -111,8 +120,8 @@ const pluginCopyFiles = {
         try {
           const files = await listFiles(globBase);
           const filtered = files.filter(file => file.match(regex) !== null);
-          if (typeof transform !== 'function')  await Promise.all(filtered.map(filePath => cp(filePath, path.join(to, filePath.split(globBase).pop()))));
-   
+          if (typeof transform !== 'function') await Promise.all(filtered.map(filePath => cp(filePath, path.join(to, filePath.split(globBase).pop()))));
+
           await Promise.all(filtered.map(async filePath => {
             const content = await readFile(filePath, 'utf-8');
             const transformed = await transform({
@@ -120,11 +129,11 @@ const pluginCopyFiles = {
               outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
             });
             await writeFile(path.join(to, filePath.split(globBase).pop()), transformed);
+            if (gzip) await gzipFile(to);
           }));
         } catch (e) {
           console.error(e);
         }
-        
       }))
     });
   }
@@ -292,7 +301,7 @@ function globToRegex(globStr = '') {
   for (let i = 0; i < length; i += 1) {
     char = globStr[i];
 
-    switch(char) {
+    switch (char) {
       case '/':
       case '.':
         regexString += '\\' + char;

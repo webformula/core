@@ -3,12 +3,11 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 ### Highlights
-- ⚡ Lightweight - 2KB compressed
+- ⚡ Lightweight - 1.5KB compressed (GZIP)
 - ⚡ Fast - leverages native browser features
 - ⚡ Simple - No complex concepts
 - ⚡ 0 dependencies in build
-- ⚡ Server side optimized build & Single page app. With the same app code
-- ⚡ Supports both url and hash routing
+- ⚡ Server side & Single page app
 - ⚡ Includes bundling. No need for Webpack
 
 ### About
@@ -60,8 +59,8 @@ npm install @webformula/core
       load js and css
       app.js is required and app.css is optional
     -->
-    <link href="/app.css" rel="stylesheet">
-    <script src="/app.js" type="module"></script>
+    <link href="app.css" rel="stylesheet">
+    <script src="app.js" type="module"></script>
   </head>
   
   <body>
@@ -77,28 +76,17 @@ npm install @webformula/core
 <a name="app.js"/>
 
 ```javascript
-import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
-
-  /**
-   * enableLinkIntercepts
-   *
-   * Using this will stream the full app after the first page load
-   * and treat it as a single page app. This is the best of both worlds.
-   * Small initial load and background loading of the rest.
-   *
-   * If not used then each page will load individually.
-   * This is also required for normal url routing and single page apps
-   */
-  enableLinkIntercepts();
+  import { routes } from '@webformula/core/client';
   
   import home from './pages/home/page.js';
   import one from './pages/one/page.js';
   import notFound from './pages/notfound/page.js';
   
-  registerPage(home, '/');
-  registerPage(one, '/one');
-  // page used for 404 urls
-  registerPage(notFound, '/notfound', {notFound: true});
+  routes([
+    { path: '/', page: home },
+    { path: '/one', page: one },
+    { path: '/notfound', page: notFound, notFound: true }
+  ]);
 ```
 
 <br/>
@@ -124,11 +112,8 @@ body {
   import html from './page.html'; // automatically bundles
   
   export default class extends Page {
-    static pageTitle = 'Home'; // html page title
+    static title = 'Home'; // html page title
     static html = html; // hook up imported html. Supports template literals (undefined)
-
-    // can be configures with `registerPage(PageClass, '/one')`
-    static routes = ['/one', 'one/:id'];
 
     someVar = 'Some var';
     clickIt_bound = this.clickIt.bind(this);

@@ -1,6 +1,4 @@
-import { registerPage, enableLinkIntercepts } from '@webformula/core/client';
-enableLinkIntercepts();
-
+import { routes } from '@webformula/core/client';
 import '@webformula/material/components/navigation';
 import '@webformula/material/components/card';
 import home from './pages/home/page.js';
@@ -8,10 +6,13 @@ import gettingStarted from './pages/getting started/page.js';
 import build from './pages/build/page.js';
 import notFound from './pages/notfound/page.js';
 
-registerPage(home, '/');
-registerPage(gettingStarted, '/getting-started');
-registerPage(build, '/build');
-registerPage(notFound, '/notfound', {notFound: true});
+
+routes([
+  { path: '/', page: home },
+  { path: '/getting-started', page: gettingStarted },
+  { path: '/build', page: build },
+  { path: '/notfound', page: notFound, notFound: true }
+]);
 
 document.querySelector('#hljsscript').addEventListener('load', () => {
   hljs.highlightAll();
