@@ -7,7 +7,8 @@ import {
 const app = {
   pages: new Map(),
   paths: [],
-  pageCounter: 0
+  pageCounter: 0,
+  preventNavigation: false
 };
 
 
@@ -70,6 +71,11 @@ export function routes(config = [{
   route(location);
 }
 
+export function preventNavigation(value = true) {
+  console.log(value);
+  app.preventNavigation = !!value;
+}
+
 // load other page modules when server side initiated
 function loadComponentModules() {
   for (const v of app.pages.values()) {
@@ -85,6 +91,9 @@ function loadComponentModules() {
 }
 
 async function route(locationObject, back = false) {
+  console.log(app.preventNavigation);
+  if (app.preventNavigation) return;
+
   const match = matchPath(locationObject.pathname, app.paths);
   if (!match) return console.warn(`No page found for path: ${locationObject.pathname}`);
 

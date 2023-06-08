@@ -78,7 +78,6 @@ npm install @webformula/core
 
 ```javascript
   import { routes } from '@webformula/core';
-  
   import home from './pages/home/page.js';
   import one from './pages/one/page.js';
   import notFound from './pages/notfound/page.js';
@@ -88,6 +87,25 @@ npm install @webformula/core
     { path: '/one', component: one },
     { path: '/notfound', component: notFound, notFound: true }
   ]);
+```
+
+Prevent navigation allows you to lock down the app for uses like authentication
+```javascript
+  import { routes, preventNavigation } from '@webformula/core';
+  import home from './pages/home/page.js';
+  import login from './pages/login/page.js';
+  
+  routes([
+    { path: '/', component: home },
+    { path: '/login', component: login }
+  ]);
+
+  // if not authenticated redirect to login and prevent navigation
+  if (!document.cookie.includes('authenticated=true')) {
+    if (location.pathname !== '/login') location.href = '/login';
+    preventNavigation(true);
+    // preventNavigation(false);
+  }
 ```
 
 <br/>

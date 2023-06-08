@@ -1,4 +1,4 @@
-import { routes } from '@webformula/core';
+import { routes, preventNavigation } from '@webformula/core';
 import '@webformula/material/components/navigation';
 import '@webformula/material/components/card';
 import home from './pages/home/page.js';
