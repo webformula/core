@@ -76,7 +76,7 @@ npm install @webformula/core
 <a name="app.js"/>
 
 ```javascript
-  import { routes } from '@webformula/core/client';
+  import { routes } from '@webformula/core';
   
   import home from './pages/home/page.js';
   import one from './pages/one/page.js';
@@ -108,7 +108,7 @@ body {
 <a name="page.js"/>
 
 ```javascript
-  import { Page } from '@webformula/core/client';
+  import { Page } from '@webformula/core';
   import html from './page.html'; // automatically bundles
   
   export default class extends Page {

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { access, cp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { gzip } from 'node:zlib';
 import { promisify } from 'node:util';
 import { createServer } from 'node:http';
@@ -67,15 +67,19 @@ export default async function build(params = {
   await init();
 }
 
-
-async function gzipFile(file) {
-  const result = await asyncGzip(await readFile(file));
-  await writeFile(`${file}.gz`, result);
-}
-
+const pluginStart = {
+  name: 'plugin shared',
+  setup(build) {
+    if (config.onStart) {
+      build.onStart(async () => {
+        await config.onStart();
+      });
+    }
+  }
+};
 
 const pluginCss = {
-  name: 'plugin css',
+  name: 'css',
   setup(build) {
     config.bundleBrowserPath = build.initialOptions.outfile.replace(config.outdir, '');
 
@@ -91,103 +95,45 @@ const pluginCss = {
   }
 };
 
-const pluginCopyFiles = {
-  name: 'plugin copy files',
-  setup(build) {
-    build.onEnd(async ({ metafile }) => {
-      await Promise.all(config.copyFiles.map(async ({ from, to, transform, gzip }) => {
-        if (!isGlob(from)) {
-          const hasExtension = !!getExtension(to);
-          if (!hasExtension) to = path.join(to, from.split('/').pop());
-          if (typeof transform !== 'function') {
-            await cp(from, to);
-            if (gzip) await gzipFile(to);
-            return
-          }
-
-          const content = await readFile(from, 'utf-8');
-          const transformed = await transform({
-            content,
-            outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
-          });
-          await writeFile(to, transformed);
-          if (gzip) await gzipFile(to);
-          return
-        }
-
-        const globBase = getGlobBase(from);
-        const regex = globToRegex(from);
-        try {
-          const files = await listFiles(globBase);
-          const filtered = files.filter(file => file.match(regex) !== null);
-          if (typeof transform !== 'function') await Promise.all(filtered.map(filePath => cp(filePath, path.join(to, filePath.split(globBase).pop()))));
-
-          await Promise.all(filtered.map(async filePath => {
-            const content = await readFile(filePath, 'utf-8');
-            const transformed = await transform({
-              content,
-              outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
-            });
-            await writeFile(path.join(to, filePath.split(globBase).pop()), transformed);
-            if (gzip) await gzipFile(to);
-          }));
-        } catch (e) {
-          console.error(e);
-        }
-      }))
-    });
-  }
-};
-
-const pluginFiles = {
-  name: 'plugin files',
+const pluginRebuild = {
+  name: 'rebuild',
   setup(build) {
     // send reload request
     build.onEnd(() => {
       clients.forEach((res) => res.write('data: update\n\n'))
       clients.length = 0;
     });
-
-    if (config.onStart) {
-      build.onStart(async () => {
-        await config.onStart();
-      });
-    }
   }
 };
 
-const appGzipPlugin = {
-  name: 'plugin gzip app',
+
+const pluginJSEnd = {
+  name: 'js end',
   setup(build) {
     build.onEnd(async ({ metafile }) => {
       if (metafile) {
-        // rewrite style and script paths in index.html so they have hashes
         appFileName = Object.keys(metafile.outputs)[0];
-        if (config.gzip) await gzipFile(appFileName);
-        const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
-        await writeFile(config.indexHTMLOutPath, indexFile
-          .replace('app.js', appFileName.split('/').pop())
-          .replace('app.css', appCSSFileName.split('/').pop()));
-
+        await Promise.all([
+          await copyFiles(metafile),
+          await gzipAppFiles(),
+          await copyIndexHTML()
+        ]);
       }
       if (config.onEnd) await config.onEnd();
     });
   }
 };
 
-const appCSSGzipPlugin = {
-  name: 'plugin gzip app css',
+const pluginCSSEnd = {
+  name: 'css end',
   setup(build) {
-    if (config.gzip && config.hasAppCSS) {
+    if (config.hasAppCSS) {
       build.onEnd(async ({ metafile }) => {
-        if (metafile) {
-          appCSSFileName = Object.keys(metafile.outputs)[0];
-          await gzipFile(appCSSFileName);
-        }
+        if (metafile) appCSSFileName = Object.keys(metafile.outputs)[0];
       });
     }
   }
-};
+};  
 
 async function init() {
   if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
@@ -198,12 +144,12 @@ async function init() {
     entryPoints: [config.appFilePath],
     bundle: true,
     outfile: config.appOutFilePath,
-    metafile: !isDev,
+    metafile: true,
     entryNames: isDev ? '[name]' : '[name]-[hash]',
     format: 'esm',
     target: 'esnext',
     loader: { '.html': 'text' },
-    plugins: [pluginCss, pluginFiles, pluginCopyFiles, appGzipPlugin],
+    plugins: [pluginStart, pluginRebuild, pluginCss, pluginJSEnd],
     minify: config.minify,
     sourcemap: config.sourcemap,
     banner: (!isDev || !config.devServer.liveReload) ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
@@ -214,10 +160,10 @@ async function init() {
       entryPoints: [config.appCSSFilePath],
       bundle: true,
       outfile: config.appCSSOutFilePath,
-      metafile: !isDev,
+      metafile: true,
       entryNames: isDev ? '[name]' : '[name]-[hash]',
       minify: isMinify,
-      plugins: [pluginFiles, appCSSGzipPlugin],
+      plugins: [pluginRebuild, pluginCSSEnd],
       loader: { '.css': 'css' }
     });
     if (isDev) contextCss.watch();
@@ -359,4 +305,85 @@ async function emptyOutdir(dir = config.outdir) {
     if ((await stat(filePath)).isDirectory()) return emptyOutdir(filePath);
     await rm(filePath);
   }));
+}
+
+async function copyFiles(metafile) {
+  await Promise.all(config.copyFiles.map(async ({ from, to, transform, gzip }) => {
+    if (!isGlob(from)) {
+      const hasExtension = !!getExtension(to);
+      if (!hasExtension) to = path.join(to, from.split('/').pop());
+
+      // just copy
+      if (typeof transform !== 'function') {
+        await mkdir(to.split('/').slice(0, -1).join('/'), { recursive: true });
+        await cp(from, to);
+        if (gzip) await gzipFile(to);
+        return
+      }
+
+      // transform and copy
+      const content = await readFile(from, 'utf-8');
+      const transformed = await transform({
+        content,
+        outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
+      });
+      await mkdir(to.split('/').slice(0, -1).join('/'), { recursive: true });
+      await writeFile(to, transformed);
+      if (gzip) await gzipFile(to);
+      return
+    }
+
+    // Glob copy
+    const globBase = getGlobBase(from);
+    const regex = globToRegex(from);
+    try {
+      const files = await listFiles(globBase);
+      const filtered = files.filter(file => file.match(regex) !== null);
+
+      // just copy
+      if (typeof transform !== 'function') {
+        await Promise.all(filtered.map(async filePath => {
+          const witePath = path.join(to, filePath.split(globBase).pop());
+          await mkdir(witePath.split('/').slice(0, -1).join('/'), { recursive: true });
+          await cp(filePath, writePath);
+          if (gzip) await gzipFile(writePath);
+        }));
+      }
+
+      // transform and copy
+      await Promise.all(filtered.map(async filePath => {
+        const content = await readFile(filePath, 'utf-8');
+        const transformed = await transform({
+          content,
+          outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
+        });
+        const writePath = path.join(path.resolve('.'), to, filePath.split(globBase).pop());
+        await mkdir(writePath.split('/').slice(0, -1).join('/'), { recursive: true });
+        await writeFile(writePath, transformed);
+        if (gzip) await gzipFile(to);
+      }));
+    } catch (e) {
+      console.error(e);
+    }
+  }));
+}
+
+async function copyIndexHTML() {
+  const outAppJSName = `${appFileName.split('/').pop()}${config.gzip ? '.gz' : ''}`;
+  const outAppCSSName = !appCSSFileName ? '' : `${appCSSFileName.split('/').pop()}${config.gzip ? '.gz' : ''}`;
+  const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+  await writeFile(config.indexHTMLOutPath, indexFile
+    .replace('app.js', outAppJSName)
+    .replace('app.css', outAppCSSName));
+}
+
+async function gzipAppFiles() {
+  if (!config.gzip) return;
+  await gzipFile(appFileName);
+  if (config.hasAppCSS) await gzipFile(appCSSFileName);
+}
+
+async function gzipFile(file) {
+  const result = await asyncGzip(await readFile(file));
+  await writeFile(`${file}.gz`, result);
 }
