@@ -1,0 +1,105 @@
+<h3 class="page-title">Web component</h3>
+<div class="page-subheader mdw-font-title-medium">Webformula core provides a convenient way to build native web components</div>
+
+<h6 class="page-secondary-header">Links</h6>
+<ul class="links">
+  <li><a href="#pagejs">page.js</a></li>
+  <li><a href="#componentjs">component.js</a></li>
+</ul>
+
+<section style="margin-top: 48px;">
+  <mdw-card id="pagejs">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Page file</div>
+      <div class="mdw-subheader">page.js</div>
+      <div class="mdw-supporting-text">Web component is imported in this file</div>
+    </div>
+
+    <pre>
+      <code class="language-javascript">
+  ${page.escape(`import { Component } from '@webformula/core';
+  import html from './page.html'; // automatically bundles
+
+  // imported component
+  import './component.js';
+  
+  export default class extends Component {
+    static title = 'Page'; // html page title
+    
+    constructor() {
+      super();
+    }
+
+    template() {
+      return /*html*/\`${`
+        <div>Page Content</div>
+
+        <!-- custom component -->
+        <custom-button>Click</custom-button>
+      `}\`;
+    }
+  }`)}
+      </code>
+    </pre>
+  </mdw-card>
+
+  <mdw-card id="componentjs">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Component file</div>
+      <div class="mdw-subheader">component.js</div>
+    </div>
+    
+    <pre>
+      <code class="language-html">
+  ${page.escape(`<!-- component.html -->
+  <button><slot></slot></button>`)}
+      </code>
+    </pre>
+    
+    <pre>
+      <code class="language-javascript">
+  ${`import { Component } from '@webformula/core';
+  import html from './component.html'; // automatically bundles
+  
+  // define web component
+  customElement.define('custom-button', CustomButton);
+  class CustomButton extends Component {
+    static html = html; // hook up imported html. Supports template literals (undefined)
+
+    /**
+      * Defaults to false.
+      * If this is false then the component will render directly in root element
+      */
+    static useShadowRoot = true;
+
+    /**
+    * Defaults to true.
+    * Use global template element
+    * This should be set to false if the template is dynamic (<div>\${this.var}</div>)
+    */
+    static useTemplate = true;
+
+    // need to bind events to access \`this\`
+    #onClick_bound = this.#onClick.bind(this);
+
+    
+    constructor() {
+      super();
+    }
+
+    connectedCallback() {
+      this.#root.querySelector('button').addEventListener('click', this.#onClick_bound);
+    }
+    
+    disconnectedCallback() {
+      this.#root.querySelector('button').removeEventListener('click', this.#onClick_bound);
+    }
+
+    #onClick() {
+      console.log('Custom button component clicked!');
+    }
+  }`}
+      </code>
+    </pre>
+  </mdw-card>
+</section>

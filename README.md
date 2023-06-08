@@ -3,7 +3,7 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 ### Highlights
-- ⚡ Lightweight - 1.5KB compressed (GZIP)
+- ⚡ Lightweight - 1.8KB compressed (GZIP)
 - ⚡ Fast - leverages native browser features
 - ⚡ Simple - No complex concepts
 - ⚡ 0 dependencies in build
@@ -23,6 +23,7 @@ Browsers, javascript, css, and html provide a robust set of features these days.
     - [app.css](#app.css)
     - [page.js](#page.js)
     - [page.html](#page.html)
+    - [component.js](#component.js)
     - [Serve app](#iserveapp)
     - [Build single page app](#buildspa)
 
@@ -110,6 +111,9 @@ body {
 ```javascript
   import { Component } from '@webformula/core';
   import html from './page.html'; // automatically bundles
+
+  // imported component
+  import './component.js';
   
   export default class extends Component {
     static title = 'Home'; // html page title
@@ -173,6 +177,9 @@ body {
         <button onclick="page.clickIt()">Click Method</button>
         <button id="event-listener-button">Event listener</button>
         <button onclick="page.changeValueAndRender()">Change value and render</button>
+
+        <!-- web component -->
+        <custom-button>Click</custom-button>
       `;
     }
   }
@@ -194,6 +201,60 @@ body {
 <button onclick="page.clickIt()">Click Method</button>
 <button id="event-listener-button">Event listener</button>
 <button onclick="page.changeValueAndRender()">Change value and render</button>
+```
+
+<br/>
+
+### **Web component `component.js`**
+<a name="component.js"/>
+
+```javascript
+  import { Component } from '@webformula/core';
+  
+  export default class extends Component {
+    /**
+      * Defaults to false.
+      * If this is false then the component will render directly in root element
+      */
+    static useShadowRoot = true;
+
+    /**
+    * Defaults to true.
+    * Use global template element
+    * This should be set to false if the template is dynamic (<div>\${this.var}</div>)
+    */
+    static useTemplate = true;
+
+    // need to bind events to access \`this\`
+    #onClick_bound = this.#onClick.bind(this);
+
+    
+    constructor() {
+      super();
+    }
+
+    connectedCallback() {
+      this.#root.querySelector('button').addEventListener('click', this.#onClick_bound);
+    }
+    
+    disconnectedCallback() {
+      this.#root.querySelector('button').removeEventListener('click', this.#onClick_bound);
+    }
+
+    #onClick() {
+      console.log('Custom button component clicked!');
+    }
+    
+    /**
+     * If not importing html you can use this template method.
+     * Imported html also supports template literals (undefined)
+     */
+    template() {
+      return /*html*/`
+        <button><slot></slot></button>
+      `;
+    }
+  }
 ```
 
 <br/>
@@ -223,6 +284,8 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 ```
+
+<br/>
 
 ### **Serve commands**
 ```bash
