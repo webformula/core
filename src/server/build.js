@@ -11,7 +11,7 @@ const importRegex = /import(?<name>.+?)from(?<path>.+?)(;|\n)/g;
 const routesRegex = /routes\s?\(\s?\[([\s\S]*.*)\]\s?\)/;
 const routeConfigObjectRegex = /\{.*\}/g;
 const routePathRegex = /path:\s?(.+?)\s?(,|\})/;
-const routePageRegex = /page:\s?(.+?)\s?(,|\})/;
+const routePageRegex = /component:\s?(.+?)\s?(,|\})/;
 const routeNotFoundRegex = /notFound:\s?true\s?(,|\})/;
 const singleQuoteReges = /'/g;
 const quotedContentRegex = /"(.+)"/;
@@ -69,7 +69,7 @@ async function parseAppFile(appFile) {
         const importMatch = importMatches.find(({ groups }) => groups.name.trim() === name);
         pagePath = removeQuotes(importMatch.groups.path);
         pageModuleName = name;
-        return `page: '${pagePath}'${end}`
+        return `component: '${pagePath}'${end}`
       });
       pageModuleConfig.push({
         path: removeQuotes(objMatch.match(routePathRegex)[1]),

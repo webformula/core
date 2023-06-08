@@ -1,7 +1,7 @@
-import { Page } from '@webformula/core';
+import { Component } from '@webformula/core';
 import html from './page.html';
 
-export default class extends Page {
+export default class extends Component {
   static title = 'Getting started';
   static html = html;
 

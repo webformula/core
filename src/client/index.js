@@ -1,7 +1,7 @@
 import { routes } from './core.js';
-import Page from './page.js';
+import Component from './Component.js';
 
 export {
   routes,
-  Page
+  Component
 }

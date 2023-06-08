@@ -6,7 +6,8 @@ import {
 
 const app = {
   pages: new Map(),
-  paths: []
+  paths: [],
+  pageCounter: 0
 };
 
 
@@ -38,20 +39,20 @@ init();
 
 
 export function routes(config = [{
-  page,
+  component,
   path,
   notFound
 }]) {
-  const invalid = config.find(r => !r.page || !r.path);
-  if (invalid) throw Error('Routes missing properties: { page, path }');
+  const invalid = config.find(r => !r.component || !r.path);
+  if (invalid) throw Error('Routes missing properties: { path, component }');
 
   for (const c of config) {
     c.path = cleanPath(c.path);
     const regex = buildPathRegex(c.path);
-    const pageModule = typeof c.page === 'string' ? undefined : c.page;
-    if (!app.pages.has(c.page)) app.pages.set(c.page, {
-      page: c.page,
-      pageModule,
+    const componentModule = typeof c.component === 'string' ? undefined : c.component;
+    if (!app.pages.has(c.component)) app.pages.set(c.component, {
+      component: c.component,
+      componentModule,
       notFoundPage: c.notFoundPage
     });
     app.paths.push({
@@ -60,43 +61,51 @@ export function routes(config = [{
     });
     if (c.notFoundPage) app.notFoundPage = {
       ...c,
-      pageModule,
+      componentModule,
       regex
     }
   }
 
-  loadPageModules();
+  loadComponentModules();
   route(location);
 }
 
 // load other page modules when server side initiated
-function loadPageModules() {
+function loadComponentModules() {
   for (const v of app.pages.values()) {
-    if (!v.pageModule) {
-      v.pageModulePromise = import(v.page)
+    if (!v.componentModule) {
+      v.componentModulePromise = import(v.component)
         .then(m => {
-          v.pageModule = m.default;
-          if (app.notFoundPage && app.notFoundPage.page === v.page) app.notFoundPage.pageModule = m.default;
+          v.componentModule = m.default;
+          if (app.notFoundPage && app.notFoundPage.component === v.component) app.notFoundPage.componentModule = m.default;
         })
-        .catch(e => console.error(`Cannot load page module: ${v.page}`, e));
+        .catch(e => console.error(`Cannot load page module: ${v.component}`, e));
     }
   }
 }
-
 
 async function route(locationObject, back = false) {
   const match = matchPath(locationObject.pathname, app.paths);
   if (!match) return console.warn(`No page found for path: ${locationObject.pathname}`);
 
-  const page = app.pages.get(match.page);
-  if (!page.pageModule) {
+  const page = app.pages.get(match.component);
+  if (!page.componentModule) {
     // wait for server loading
-    if (page.pageModulePromise) await page.pageModulePromise;
+    if (page.componentModulePromise) await page.componentModulePromise;
     else throw Error('Could not find page module for', match.path);
+  }
+
+  // using web components for pages so we need to define it
+  if (!page.defined) {
+    page.componentModule.useTemplate = false;
+    page.componentModule._isPage = true;
+    page.componentModule._pathRegex = match.regex;
+    customElements.define(`page-${app.pageCounter++}`, page.componentModule);
+    page.defined = true;
   }
   
   const currentPage = window.page;
-  const samePage = currentPage?.constructor === page.pageModule;
+  const samePage = currentPage?.constructor === page.componentModule;
   if (samePage) {
     if (locationObject.hash === location.hash) return;
     if (!back) window.history.pushState({}, currentPage.title, locationObject.pathname);
@@ -104,15 +113,15 @@ async function route(locationObject, back = false) {
     return;
   }
 
-  const nextPage = new page.pageModule();
+  const nextPage = new page.componentModule();
   if (!back) window.history.pushState({}, nextPage.title, locationObject.pathname);
 
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
-  nextPage._setUrlData({
-    urlParameters: locationObject.pathname.match(match.regex)?.groups,
-    searchParameters: Object.fromEntries([...new URLSearchParams(locationObject.search).entries()])
-  });
+  // nextPage._setUrlData({
+  //   urlParameters: locationObject.pathname.match(match.regex)?.groups,
+  //   searchParameters: Object.fromEntries([...new URLSearchParams(locationObject.search).entries()])
+  // });
   nextPage.render();
   document.body.scrollTop = 0;
   document.documentElement.scrollTop = 0;

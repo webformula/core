@@ -83,9 +83,9 @@ npm install @webformula/core
   import notFound from './pages/notfound/page.js';
   
   routes([
-    { path: '/', page: home },
-    { path: '/one', page: one },
-    { path: '/notfound', page: notFound, notFound: true }
+    { path: '/', component: home },
+    { path: '/one', component: one },
+    { path: '/notfound', component: notFound, notFound: true }
   ]);
 ```
 
@@ -108,10 +108,10 @@ body {
 <a name="page.js"/>
 
 ```javascript
-  import { Page } from '@webformula/core';
+  import { Component } from '@webformula/core';
   import html from './page.html'; // automatically bundles
   
-  export default class extends Page {
+  export default class extends Component {
     static title = 'Home'; // html page title
     static html = html; // hook up imported html. Supports template literals (undefined)
 
@@ -306,7 +306,8 @@ build({
   copyFiles: [
     {
       from: 'app/image.jpg',
-      to: 'dist/'
+      to: 'dist/',
+      gzip: true
     },
     {
       from: 'app/pages/**/(?!page)*.html',

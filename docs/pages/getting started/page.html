@@ -79,9 +79,9 @@
   import notFound from './pages/notfound/page.js';
   
   routes([
-    { path: '/', page: home },
-    { path: '/one', page: one },
-    { path: '/notfound', page: notFound, notFound: true }
+    { path: '/', component: home },
+    { path: '/one', component: one },
+    { path: '/notfound', component: notFound, notFound: true }
   ]);`}
       </code>
     </pre>
@@ -114,10 +114,10 @@
   
     <pre>
       <code class="language-javascript">
-  ${`import { Page } from '@webformula/core';
+  ${`import { Component } from '@webformula/core';
   import html from './page.html'; // automatically bundles
   
-  export default class extends Page {
+  export default class extends Component {
     static title = 'Page'; // html page title
     static html = html; // hook up imported html. Supports template literals (${this.someVar})
 

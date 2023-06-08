@@ -8,10 +8,10 @@ import notFound from './pages/notfound/page.js';
 
 
 routes([
-  { path: '/', page: home },
-  { path: '/getting-started', page: gettingStarted },
-  { path: '/build', page: build },
-  { path: '/notfound', page: notFound, notFound: true }
+  { path: '/', component: home },
+  { path: '/getting-started', component: gettingStarted },
+  { path: '/build', component: build },
+  { path: '/notfound', component: notFound, notFound: true }
 ]);
 
 document.querySelector('#hljsscript').addEventListener('load', () => {
