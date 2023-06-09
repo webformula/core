@@ -84,14 +84,19 @@ const pluginCss = {
     config.bundleBrowserPath = build.initialOptions.outfile.replace(config.outdir, '');
 
     build.onLoad({ filter: cssFilterRegex }, async args => {
-      const css = await readFile(args.path, 'utf8');
-      const transformed = await esbuild.transform(css, { minify: true, loader: 'css' });
+      const contextCss = await esbuild.build({
+        entryPoints: [args.path],
+        bundle: true,
+        write: false,
+        minify: true,
+        loader: { '.css': 'css' }
+      });
       const contents = `
         const styles = new CSSStyleSheet();
-        styles.replaceSync(\`${transformed.code}\`);
+        styles.replaceSync(\`${contextCss.outputFiles[0].text}\`);
         export default styles;`;
       return { contents };
-    });
+    })
   }
 };
 
