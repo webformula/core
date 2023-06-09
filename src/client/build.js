@@ -18,8 +18,6 @@ import {
 const asyncGzip = promisify(gzip);
 const clients = [];
 const config = {};
-let appCSSFileName;
-let appFileName;
 
 
 export default async function build(params = {
@@ -63,7 +61,9 @@ export default async function build(params = {
   config.appOutFilePath = path.join(config.outdir, '/app.js');
   config.appCSSFilePath = path.join(config.basedir, '/app.css');
   config.appCSSOutFilePath = path.join(config.outdir, '/app.css');
+  config.appJSOutputFilePath = path.join(config.basedir, 'app.js');
   config.hasAppCSS = await access(config.appCSSFilePath).then(e => true).catch(e => false);
+  if (config.hasAppCSS) config.appCSSOutputFilePath = path.join(config.basedir, 'app.css');
   await init();
 }
 
@@ -112,7 +112,7 @@ const pluginJSEnd = {
   setup(build) {
     build.onEnd(async ({ metafile }) => {
       if (metafile) {
-        appFileName = Object.keys(metafile.outputs)[0];
+        config.appJSOutputFilePath = Object.keys(metafile.outputs)[0];
         await Promise.all([
           await copyFiles(metafile),
           await gzipAppFiles(),
@@ -129,7 +129,7 @@ const pluginCSSEnd = {
   setup(build) {
     if (config.hasAppCSS) {
       build.onEnd(async ({ metafile }) => {
-        if (metafile) appCSSFileName = Object.keys(metafile.outputs)[0];
+        if (metafile) config.appCSSOutputFilePath = Object.keys(metafile.outputs)[0];
       });
     }
   }
@@ -325,7 +325,7 @@ async function copyFiles(metafile) {
       const content = await readFile(from, 'utf-8');
       const transformed = await transform({
         content,
-        outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
+        outputFileNames: getFilesNamesForTransform()
       });
       await mkdir(to.split('/').slice(0, -1).join('/'), { recursive: true });
       await writeFile(to, transformed);
@@ -355,7 +355,7 @@ async function copyFiles(metafile) {
         const content = await readFile(filePath, 'utf-8');
         const transformed = await transform({
           content,
-          outputFileNames: metafile ? [Object.keys(metafile.outputs)[0].split('/').pop(), appCSSFileName] : ['app.js', 'app.css']
+          outputFileNames: getFilesNamesForTransform()
         });
         const writePath = path.join(path.resolve('.'), to, filePath.split(globBase).pop());
         await mkdir(writePath.split('/').slice(0, -1).join('/'), { recursive: true });
@@ -368,19 +368,38 @@ async function copyFiles(metafile) {
   }));
 }
 
+function getOutputAppJSFileName() {
+  let name = config.appJSOutputFilePath.split('/').pop();
+  if (config.gzip) name += '.gz';
+  return name;
+}
+
+function getOutputAppCSSFileName() {
+  if (!config.hasAppCSS) return;
+  let name = config.appCSSOutputFilePath.split('/').pop();
+  if (config.gzip) name += '.gz';
+  return name;
+}
+
+function getFilesNamesForTransform() {
+  const js = getOutputAppJSFileName();
+  const css = getOutputAppCSSFileName();
+  const arr = [js];
+  if (css) arr.push(css);
+  return arr;
+}
+
 async function copyIndexHTML() {
-  const outAppJSName = `${appFileName.split('/').pop()}${config.gzip ? '.gz' : ''}`;
-  const outAppCSSName = !appCSSFileName ? '' : `${appCSSFileName.split('/').pop()}${config.gzip ? '.gz' : ''}`;
   const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
   await writeFile(config.indexHTMLOutPath, indexFile
-    .replace('app.js', outAppJSName)
-    .replace('app.css', outAppCSSName));
+    .replace('app.js', getOutputAppJSFileName())
+    .replace('app.css', getOutputAppCSSFileName()));
 }
 
 async function gzipAppFiles() {
   if (!config.gzip) return;
-  await gzipFile(appFileName);
-  if (config.hasAppCSS) await gzipFile(appCSSFileName);
+  await gzipFile(config.appJSOutputFilePath);
+  if (config.hasAppCSS) await gzipFile(config.appCSSOutputFilePath);
 }
 
 async function gzipFile(file) {
