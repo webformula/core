@@ -202,6 +202,7 @@ async function init() {
 
       try {
         const file = await readFile(filePath)
+        console.log(req.url, contentType)
         res.writeHead(200, { 'Content-Type': contentType });
         res.write(file);
         res.end();
@@ -233,6 +234,8 @@ function getMimeType(url) {
       return 'image/gif';
     case 'svg':
       return 'image/svg+xml';
+    case 'ico':
+      return 'image/x-icon';
   }
 }
 
