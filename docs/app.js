@@ -5,6 +5,7 @@ import home from './pages/home/page.js';
 import gettingStarted from './pages/getting started/page.js';
 import build from './pages/build/page.js';
 import webComponent from './pages/web component/page.js';
+import fetcher from './pages/fetcher/page.js';
 import notFound from './pages/notfound/page.js';
 
 routes([
@@ -12,6 +13,7 @@ routes([
   { path: '/getting-started', component: gettingStarted },
   { path: '/build', component: build },
   { path: '/web-component', component: webComponent },
+  { path: '/fetcher', component: fetcher },
   { path: '/notfound', component: notFound, notFound: true }
 ]);
 

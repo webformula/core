@@ -1,0 +1,71 @@
+<h3 class="page-title">Fetcher</h3>
+<div class="page-subheader mdw-font-title-medium">Extension on fetch that includes interceptors</div>
+
+<h6 class="page-secondary-header">Links</h6>
+<ul class="links">
+  <li><a href="#pagejs">page.js</a></li>
+</ul>
+
+<section style="margin-top: 48px;">
+  <mdw-card id="pagejs">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Fetcher</div>
+    </div>
+  
+    <pre>
+      <code class="language-javascript">
+  ${page.escape(`import { fetcher, createFetcher } from '@webformula/core';
+
+  /** Main fetcher */
+  
+  // called on 401
+  fetcher('/get', { interceptors: {
+    auth(config) {
+      config.headers.Authorization = 'Bearer token';
+      return config;
+    },
+    before(config) {
+      config.headers.Authorization = 'Bearer token';
+      return config;
+    }
+  });
+
+
+
+  /** Fetcher instance */
+  
+  // global config for all instance requests
+  const fetcherInstance = createFetcher({
+    baseUrl: '',
+    headers: {
+      Authorization: 'Bearer token'
+    },
+    interceptors: {
+      auth(config) {
+        config.headers.Authorization = 'Bearer token';
+        return config;
+      },
+      before(config) {
+        config.headers.Authorization = 'Bearer token';
+        return config;
+      }
+    }
+  });
+  
+  fetcherInstance('/get');
+  
+  // request specific interceptors
+  fetcherInstance('/get', {}, interceptors: {
+    auth(config) {
+      config.headers.Authorization = 'Bearer token';
+      return config;
+    },
+    before(config) {
+      config.headers.Authorization = 'Bearer token';
+      return config;
+    }
+  });`)}
+      </code>
+    </pre>
+  </mdw-card>
+</section>
