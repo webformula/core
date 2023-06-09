@@ -61,8 +61,6 @@
   ${`import { Component } from '@webformula/core';
   import html from './component.html'; // automatically bundles
   
-  // define web component
-  customElement.define('custom-button', CustomButton);
   class CustomButton extends Component {
     static html = html; // hook up imported html. Supports template literals (undefined)
 
@@ -87,7 +85,7 @@
       super();
     }
 
-    connectedCallback() {
+    afterRender() {
       this.#root.querySelector('button').addEventListener('click', this.#onClick_bound);
     }
     
@@ -98,7 +96,10 @@
     #onClick() {
       console.log('Custom button component clicked!');
     }
-  }`}
+  }
+  
+  // define web component
+  customElements.define('custom-button', CustomButton);`}
       </code>
     </pre>
   </mdw-card>

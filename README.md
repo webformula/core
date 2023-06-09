@@ -251,7 +251,7 @@ body {
       super();
     }
 
-    connectedCallback() {
+    afterRender() {
       this.#root.querySelector('button').addEventListener('click', this.#onClick_bound);
     }
     
@@ -273,6 +273,9 @@ body {
       `;
     }
   }
+
+  // define web component
+  customElements.define('custom-button', CustomButton);
 ```
 
 <br/>

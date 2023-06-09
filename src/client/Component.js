@@ -24,9 +24,17 @@ export default class Component extends HTMLElement {
     super();
     if (this.constructor.html) this.template = () => new Function('page', `return \`${this.constructor.html}\`;`).call(this, this);
 
-    if (this.constructor.useTemplate === true) {
-      const isDynamic = this.constructor.html || this.template.toString().contains('${');
+    const hasTemplate = this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
+    if (hasTemplate && this.constructor.useTemplate === true) {
+      const isDynamic = this.constructor.html || this.template.toString().includes('${');
       if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
+    }
+
+    /** Render as soon as possible while making sure all class variables exist */
+    if (!this.constructor._isPage && hasTemplate) {
+      requestAnimationFrame(() => {
+        this.render();
+      });
     }
   }
 
@@ -46,6 +54,10 @@ export default class Component extends HTMLElement {
     return this.#id;
   }
 
+  get root() {
+    return this.#root;
+  }
+
   // override
   connectedCallback() { }
   disconnectedCallback() { }
@@ -62,9 +74,7 @@ export default class Component extends HTMLElement {
    *    }
    *  }
    */
-  template() {
-    return /*html*/``;
-  }
+  template(){return ""}
 
   /** Escape html to make safe for injection */
   escape(str) {
@@ -75,15 +85,17 @@ export default class Component extends HTMLElement {
 
   async render() {
     if (!this.#rendered) this.#prepareRender();
+    this.#rendered = true;
 
     await this.beforeRender();
     if (!this.constructor.useTemplate) this.#root.innerHTML = this.template();
     else this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
-    this.#rendered = true;
     await this.afterRender();
   }
 
   #prepareRender() {
+    if (this.#rendered) return;
+
     if (this.constructor._isPage) {
       const pageContent = document.querySelector('page-content');
       if (!pageContent) throw Error('Could not find <page-content>');
