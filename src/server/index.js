@@ -85,6 +85,8 @@ async function handleChunks(req, res) {
 }
 
 async function handleRoute(req, res) {
+  if (req.method !== 'GET') return false;
+
   let match = matchPath(req.url, app.paths);
   if (!match) {
     // assume 404 and load not found

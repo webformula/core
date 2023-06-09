@@ -91,7 +91,6 @@ function loadComponentModules() {
 }
 
 async function route(locationObject, back = false) {
-  console.log(app.preventNavigation);
   if (app.preventNavigation) return;
 
   const match = matchPath(locationObject.pathname, app.paths);

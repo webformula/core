@@ -1,4 +1,4 @@
-import { routes, preventNavigation } from '@webformula/core';
+import { routes } from '@webformula/core';
 import '@webformula/material/components/navigation';
 import '@webformula/material/components/card';
 import home from './pages/home/page.js';
@@ -6,7 +6,6 @@ import gettingStarted from './pages/getting started/page.js';
 import build from './pages/build/page.js';
 import webComponent from './pages/web component/page.js';
 import notFound from './pages/notfound/page.js';
-
 
 routes([
   { path: '/', component: home },
