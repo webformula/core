@@ -370,14 +370,14 @@ async function copyFiles(metafile) {
 
 function getOutputAppJSFileName() {
   let name = config.appJSOutputFilePath.split('/').pop();
-  if (config.gzip) name += '.gz';
+  if (!isDev && config.gzip) name += '.gz';
   return name;
 }
 
 function getOutputAppCSSFileName() {
   if (!config.hasAppCSS) return;
   let name = config.appCSSOutputFilePath.split('/').pop();
-  if (config.gzip) name += '.gz';
+  if (!isDev && config.gzip) name += '.gz';
   return name;
 }
 
