@@ -65,29 +65,25 @@ export function routes(config = [{
       componentModule,
       regex
     }
+    loadComponentModule(app.pages.get(c.component));
   }
 
-  loadComponentModules();
   route(location);
 }
 
 export function preventNavigation(value = true) {
-  console.log(value);
   app.preventNavigation = !!value;
 }
 
-// load other page modules when server side initiated
-function loadComponentModules() {
-  for (const v of app.pages.values()) {
-    if (!v.componentModule) {
-      v.componentModulePromise = import(v.component)
-        .then(m => {
-          v.componentModule = m.default;
-          if (app.notFoundPage && app.notFoundPage.component === v.component) app.notFoundPage.componentModule = m.default;
-        })
-        .catch(e => console.error(`Cannot load page module: ${v.component}`, e));
-    }
-  }
+function loadComponentModule(config) {
+  if (config.componentModule) return;
+
+  return config.componentModulePromise = import(config.component)
+    .then(m => {
+      config.componentModule = m.default;
+      if (app.notFoundPage && app.notFoundPage.component === config.component) app.notFoundPage.componentModule = m.default;
+    })
+    .catch(e => console.error(`Cannot load page module: ${config.component}`, e));
 }
 
 async function route(locationObject, back = false) {

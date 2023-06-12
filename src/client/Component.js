@@ -24,12 +24,12 @@ export default class Component extends HTMLElement {
     super();
     if (this.constructor.html) this.template = () => new Function('page', `return \`${this.constructor.html}\`;`).call(this, this);
 
-    const hasTemplate = this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
+    const hasTemplate = !!this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
     if (hasTemplate && this.constructor.useTemplate === true) {
       const isDynamic = this.constructor.html || this.template.toString().includes('${');
       if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
     }
-
+    
     /** Render as soon as possible while making sure all class variables exist */
     if (!this.constructor._isPage && hasTemplate) {
       requestAnimationFrame(() => {
