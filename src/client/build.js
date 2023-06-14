@@ -1,10 +1,10 @@
 import path from 'node:path';
-import { access, cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { access, readFile, readdir, stat, rm, writeFile, mkdir, cp } from 'node:fs/promises';
+import esbuild from 'esbuild';
 import { gzip } from 'node:zlib';
 import { promisify } from 'node:util';
 import { createServer } from 'node:http';
-import esbuild from 'esbuild';
-import { getExtension } from '../shared.js';
+import './dom.js';
 import {
   isDev,
   isSourceMaps,
@@ -14,11 +14,16 @@ import {
   cssFilterRegex
 } from '../vars.js';
 
-
 const asyncGzip = promisify(gzip);
-const clients = [];
+const importRegex = /import(\{?\s?(?<name>.+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g
+const routesRegex = /routes\s?\(\s?\[([\s\S]*.*)\]\s?\);?/;
+const routePageRegex = /component:\s?(.+?)\s?(,|})/;
+const routePathRegex = /path:\s?'?"?\s?(.+?)('|")/;
+const routeConfigObjectRegex = /\{.*\}/g;
+const scriptTagRegex = /<\s*script[^>]*src="\.?\/?app.js"[^>]*>[^>]*<\s*\/\s*script>/g;
+const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
+const cssTagRegex = /<\s*link[^>]*href="\.?\/?app.css"[^>]*>/;
 const config = {};
-
 
 export default async function build(params = {
   basedir: 'app/',
@@ -37,7 +42,7 @@ export default async function build(params = {
     transform: ({
       content,
       outputFileNames
-    }) => {},
+    }) => { },
     gzip: false
   }],
   onStart: () => { },
@@ -61,27 +66,65 @@ export default async function build(params = {
   config.appOutFilePath = path.join(config.outdir, '/app.js');
   config.appCSSFilePath = path.join(config.basedir, '/app.css');
   config.appCSSOutFilePath = path.join(config.outdir, '/app.css');
-  config.appJSOutputFilePath = path.join(config.basedir, 'app.js');
+  // config.appJSOutputFilePath = path.join(config.basedir, 'app.js');
   config.hasAppCSS = await access(config.appCSSFilePath).then(e => true).catch(e => false);
-  if (config.hasAppCSS) config.appCSSOutputFilePath = path.join(config.basedir, 'app.css');
-  await init();
+  if (config.hasAppCSS) config.appCSSOutputFilePath = path.join(config.outdir, 'app.css');
+  if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
+  await run();
 }
 
+
+
+
 const pluginStart = {
-  name: 'plugin shared',
+  name: 'Start',
   setup(build) {
-    if (config.onStart) {
-      build.onStart(async () => {
-        await config.onStart();
-      });
-    }
+    if (config.onStart) build.onStart(async () => config.onStart());
+  }
+};
+
+const pluginRebuild = {
+  name: 'rebuild',
+  setup(build) {
+    // send reload request
+    build.onEnd(() => {
+      // clients.forEach((res) => res.write('data: update\n\n'))
+      // clients.length = 0;
+    });
+  }
+};
+
+const pluginEnd = {
+  name: 'End',
+  setup(build) {
+    build.onEnd(async ({ metafile }) => {
+      // config.appJSOutputFilePath = Object.keys(metafile.outputs)[0];
+      const outputFiles = Object.keys(metafile.outputs);
+      const outputFilesMapped = outputFiles.map(output => ({
+        output,
+        input: metafile.outputs[output].entryPoint
+      }));
+      const indexFiles = outputFilesMapped
+        .filter(a => (
+          a.input !== '_wf/_wf_main_global.js'
+          && !config.pageEntryFiles.find(b => a.input === path.join(config.basedir, b.originalPagePath || ''))
+        ));
+      const pageFiles = outputFilesMapped.filter(a => config.pageEntryFiles.find(b => a.input === path.join(config.basedir, b.originalPagePath || '')));
+      await Promise.all([
+      //   await copyFiles(metafile),
+        ...outputFiles.map(v => gzipFile(v)),
+        // gzipAppFiles(Object.keys(metafile.outputs)),
+        buildIndexHTML(indexFiles, pageFiles)
+      ]);
+      if (config.onEnd) await config.onEnd();
+    });
   }
 };
 
 const pluginCss = {
   name: 'css',
   setup(build) {
-    config.bundleBrowserPath = build.initialOptions.outfile.replace(config.outdir, '');
+    // config.bundleBrowserPath = build.initialOptions.outfile.replace(config.outdir, '');
 
     build.onLoad({ filter: cssFilterRegex }, async args => {
       const contextCss = await esbuild.build({
@@ -100,75 +143,63 @@ const pluginCss = {
   }
 };
 
-const pluginRebuild = {
-  name: 'rebuild',
-  setup(build) {
-    // send reload request
-    build.onEnd(() => {
-      clients.forEach((res) => res.write('data: update\n\n'))
-      clients.length = 0;
-    });
-  }
-};
-
-
-const pluginJSEnd = {
-  name: 'js end',
-  setup(build) {
-    build.onEnd(async ({ metafile }) => {
-      if (metafile) {
-        config.appJSOutputFilePath = Object.keys(metafile.outputs)[0];
-        await Promise.all([
-          await copyFiles(metafile),
-          await gzipAppFiles(),
-          await copyIndexHTML()
-        ]);
-      }
-      if (config.onEnd) await config.onEnd();
-    });
-  }
-};
-
-const pluginCSSEnd = {
-  name: 'css end',
+const pluginEndCSS = {
+  name: 'CSS end',
   setup(build) {
     if (config.hasAppCSS) {
       build.onEnd(async ({ metafile }) => {
-        if (metafile) config.appCSSOutputFilePath = Object.keys(metafile.outputs)[0];
+        config.appCSSOutputFilePath = Object.keys(metafile.outputs)[0];
+        if (config.gzip) await gzipFile(Object.keys(metafile.outputs)[0]);
+        await buildIndexHTMLCSS();
       });
     }
   }
-};  
+};
 
-async function init() {
-  if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
+
+
+
+async function run() {
+  config.pageEntryFiles =  await parseAppFile();
+  await mkdir('_wf', { recursive: true });
+  await cp(config.basedir, '_wf', { recursive: true });
+  await Promise.all(config.pageEntryFiles.map(v => writeFile(path.join('_wf', v.fileName), v.content)));
 
   await emptyOutdir();
 
   const context = await esbuild.context({
-    entryPoints: [config.appFilePath],
+    entryPoints: [
+      '_wf/app.js',
+      ...config.pageEntryFiles.map(v => `_wf/${v.fileName}`),
+      ...config.pageEntryFiles
+        .filter(v => v.originalPagePath && v.fileName !== 'app.js')
+        .map(v => ({
+          in: path.resolve(config.basedir, v.originalPagePath),
+          out: v.originalPagePath.replace(/\/|\.|\s/g, '')
+        }))
+      ],
     bundle: true,
-    outfile: config.appOutFilePath,
+    outdir: config.outdir,
     metafile: true,
     entryNames: isDev ? '[name]' : '[name]-[hash]',
     format: 'esm',
     target: 'esnext',
     loader: { '.html': 'text' },
-    plugins: [pluginStart, pluginRebuild, pluginCss, pluginJSEnd],
+    plugins: [pluginStart, pluginRebuild, pluginCss, pluginEnd],
     minify: config.minify,
     sourcemap: config.sourcemap,
-    banner: (!isDev || !config.devServer.liveReload) ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
+    // banner: (!isDev || !config.devServer.liveReload) ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
   });
 
   if (config.hasAppCSS) {
     const contextCss = await esbuild.context({
-      entryPoints: [config.appCSSFilePath],
+      entryPoints: ['_wf/app.css'],
       bundle: true,
       outfile: config.appCSSOutFilePath,
       metafile: true,
       entryNames: isDev ? '[name]' : '[name]-[hash]',
       minify: isMinify,
-      plugins: [pluginRebuild, pluginCSSEnd],
+      plugins: [pluginRebuild, pluginEndCSS],
       loader: { '.css': 'css' }
     });
     if (isDev) contextCss.watch();
@@ -181,23 +212,32 @@ async function init() {
     return;
   }
 
+
   context.watch().then(() => {
     createServer(async (req, res) => {
       // setup reload request
-      if (req.url === '/esbuild') return clients.push(
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive'
-        })
-      );
+      // if (req.url === '/esbuild') return clients.push(
+      //   res.writeHead(200, {
+      //     'Content-Type': 'text/event-stream',
+      //     'Cache-Control': 'no-cache',
+      //     Connection: 'keep-alive'
+      //   })
+      // );
 
       // search index.html
       if (!getExtension(req.url)) {
-        const file = await readFile(path.join(config.basedir, 'index.html'), 'utf-8');
+        const filePath = req.url.split('/').pop();
+        const fileName = filePath === '' ? 'index.html.gz' : await access(path.join(config.outdir, `page_${filePath}.html.gz`)).then(() => true).catch(() => false) ? `page_${filePath}.html.gz` : 'page_notfound.html.gz'; 
+        const file = await readFile(path.join(config.outdir, fileName));
         // inject bundle
-        res.write(file.replace('</head>', `  <script src="${config.bundleBrowserPath}" type="module"></script>\n</head>`));
+        // res.write(file.replace('</head>', `  <script src="${config.bundleBrowserPath}" type="module"></script>\n</head>`));
+        res.writeHead(200, { 'Content-Type': 'text/html', 'Content-Encoding': 'gzip' });
+        res.write(file);
         res.end();
+
+        // const raw = fs.createReadStream('index.html');
+        // response.writeHead(200, { 'content-encoding': 'gzip' });
+        // raw.pipe(zlib.createGzip()).pipe(response);
         return;
       }
 
@@ -217,6 +257,77 @@ async function init() {
       }
     }).listen(config.devServer.port);
   });
+}
+
+async function parseAppFile() {
+  const appFileContent = await readFile(config.appFilePath, 'utf-8');
+
+  const importMatches = [...appFileContent.matchAll(importRegex)];
+  const routesMatch = appFileContent.match(routesRegex);
+  const routes = [...routesMatch[1].matchAll(routeConfigObjectRegex)].map(v => v[0]);
+  const pages = routes.map(routeObj => {
+    const nameMatch = routeObj.match(routePageRegex);
+    const pathMatch = routeObj.match(routePathRegex);
+    const importMatch = importMatches.find(({ groups }) => groups.name === nameMatch[1]);
+    return {
+      routeObj,
+      path: pathMatch[1],
+      importMatch
+    };
+  });
+
+  let content = appFileContent
+    .replace(importRegex, '')
+    .replace(routesRegex, '')
+    .replace(/\n\n/g, '')
+    .trim();
+
+  const nonPageImports = importMatches
+    .filter(a => !pages.find(b => b.importMatch === a))
+    .map(v => v[0])
+    .join('\n');
+
+  const builtPages = [
+    {
+      fileName: 'app.js',
+      path: '/',
+      pageFileName: '_wf_page_index.js',
+      content: appFileContent,
+      originalPagePath: pages.find(v => v.path === '/').importMatch.groups.path
+    },
+    {
+      fileName: '_wf_main_global.js',
+      content: content
+    },
+    ...pages.map(v => ({
+      fileName: `_wf_page_${v.path.replace(/\/|\./g, '') || 'root'}.js`,
+      path: v.path,
+      pageFileName: `_wf_page_${v.path.replace(/\/|\./g, '') || 'root'}.js`,
+      originalPagePath: v.importMatch.groups.path,
+      content: `${nonPageImports}
+${v.importMatch[0]}
+${`import './_wf_main_global.js';`}
+
+routes([${v.routeObj}]);`
+    }))
+  ];
+
+  return builtPages;
+}
+
+async function emptyOutdir(dir = config.outdir) {
+  const files = await readdir(dir);
+
+  await Promise.all(files.map(async file => {
+    const filePath = path.join(dir, file);
+    if ((await stat(filePath)).isDirectory()) return emptyOutdir(filePath);
+    await rm(filePath);
+  }));
+}
+
+function getExtension(url) {
+  if (!url.includes('.')) return '';
+  return url.split(/[#?]/)[0].split('.').pop().trim().toLowerCase();
 }
 
 function getMimeType(url) {
@@ -243,173 +354,55 @@ function getMimeType(url) {
   }
 }
 
-function isGlob(str) {
-  return str.includes('*');
-}
-
-function globToRegex(globStr = '') {
-  const length = globStr.length;
-  let regexString = '';
-  let char;
-  for (let i = 0; i < length; i += 1) {
-    char = globStr[i];
-
-    switch (char) {
-      case '/':
-      case '.':
-        regexString += '\\' + char;
-        break;
-
-      case '*':
-        const prevChar = globStr[i - 1];
-        let starCount = 1;
-        while (globStr[i + 1] === '*') {
-          starCount += 1;
-          i += 1;
-        }
-        const nextChar = globStr[i + 1];
-        const isGlobstar = starCount > 1                    // multiple '*''s
-          && (prevChar === '/' || prevChar === undefined)   // from the start of the segment
-          && (nextChar === '/' || nextChar === undefined)   // to the end of the segment
-
-        if (isGlobstar) {
-          regexString += '((?:[^/]*(?:\/|$))*)';
-          i += 1;
-        } else {
-          regexString += '([^/]*)';
-        }
-        break;
-
-      default:
-        regexString += char;
-    }
-  }
-  return new RegExp(regexString);
-}
-
-function getGlobBase(globStr) {
-  if (globStr.startsWith('*')) return path.resolve('.');
-  return path.resolve('.', globStr.split('*')[0]);
-}
-
-async function listFiles(dir, arr = []) {
-  const files = await readdir(dir);
-
-  await Promise.all(files.map(async file => {
-    const filePath = path.join(dir, file);
-    if ((await stat(filePath)).isDirectory()) return listFiles(filePath, arr);
-    arr.push(filePath);
-  }));
-
-  return arr
-}
-
-async function emptyOutdir(dir = config.outdir) {
-  const files = await readdir(dir);
-
-  await Promise.all(files.map(async file => {
-    const filePath = path.join(dir, file);
-    if ((await stat(filePath)).isDirectory()) return emptyOutdir(filePath);
-    await rm(filePath);
-  }));
-}
-
-async function copyFiles(metafile) {
-  await Promise.all(config.copyFiles.map(async ({ from, to, transform, gzip }) => {
-    if (!isGlob(from)) {
-      const hasExtension = !!getExtension(to);
-      if (!hasExtension) to = path.join(to, from.split('/').pop());
-
-      // just copy
-      if (typeof transform !== 'function') {
-        await mkdir(to.split('/').slice(0, -1).join('/'), { recursive: true });
-        await cp(from, to);
-        if (gzip) await gzipFile(to);
-        return
-      }
-
-      // transform and copy
-      const content = await readFile(from, 'utf-8');
-      const transformed = await transform({
-        content,
-        outputFileNames: getFilesNamesForTransform()
-      });
-      await mkdir(to.split('/').slice(0, -1).join('/'), { recursive: true });
-      await writeFile(to, transformed);
-      if (gzip) await gzipFile(to);
-      return
-    }
-
-    // Glob copy
-    const globBase = getGlobBase(from);
-    const regex = globToRegex(from);
-    try {
-      const files = await listFiles(globBase);
-      const filtered = files.filter(file => file.match(regex) !== null);
-
-      // just copy
-      if (typeof transform !== 'function') {
-        await Promise.all(filtered.map(async filePath => {
-          const witePath = path.join(to, filePath.split(globBase).pop());
-          await mkdir(witePath.split('/').slice(0, -1).join('/'), { recursive: true });
-          await cp(filePath, writePath);
-          if (gzip) await gzipFile(writePath);
-        }));
-      }
-
-      // transform and copy
-      await Promise.all(filtered.map(async filePath => {
-        const content = await readFile(filePath, 'utf-8');
-        const transformed = await transform({
-          content,
-          outputFileNames: getFilesNamesForTransform()
-        });
-        const writePath = path.join(path.resolve('.'), to, filePath.split(globBase).pop());
-        await mkdir(writePath.split('/').slice(0, -1).join('/'), { recursive: true });
-        await writeFile(writePath, transformed);
-        if (gzip) await gzipFile(to);
-      }));
-    } catch (e) {
-      console.error(e);
-    }
-  }));
-}
-
-function getOutputAppJSFileName() {
-  let name = config.appJSOutputFilePath.split('/').pop();
-  if (!isDev && config.gzip) name += '.gz';
-  return name;
-}
-
-function getOutputAppCSSFileName() {
-  if (!config.hasAppCSS) return;
-  let name = config.appCSSOutputFilePath.split('/').pop();
-  if (!isDev && config.gzip) name += '.gz';
-  return name;
-}
-
-function getFilesNamesForTransform() {
-  const js = getOutputAppJSFileName();
-  const css = getOutputAppCSSFileName();
-  const arr = [js];
-  if (css) arr.push(css);
-  return arr;
-}
-
-async function copyIndexHTML() {
-  const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
-  await writeFile(config.indexHTMLOutPath, indexFile
-    .replace('app.js', getOutputAppJSFileName())
-    .replace('app.css', getOutputAppCSSFileName()));
-}
-
-async function gzipAppFiles() {
-  if (!config.gzip) return;
-  await gzipFile(config.appJSOutputFilePath);
-  if (config.hasAppCSS) await gzipFile(config.appCSSOutputFilePath);
-}
-
 async function gzipFile(file) {
   const result = await asyncGzip(await readFile(file));
   await writeFile(`${file}.gz`, result);
+}
+
+
+async function buildIndexHTML(indexFiles, pageFiles) {
+  const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+
+  config.indexHTMLOutputData = await Promise.all(indexFiles.map(async filePaths => {
+    const page = config.pageEntryFiles.find(v => v.fileName === filePaths.input.replace('_wf/', ''));
+    const pageModulePath = pageFiles.find(v => v.input === path.join(config.basedir, page.originalPagePath));
+    const pageModule = await import(path.resolve('.', pageModulePath.output));
+    pageModule.default._isPage = true;
+    pageModule.default.useTemplate = false;
+    const template = new pageModule.default().template();
+    const fileContent = await readFile(filePaths.output, 'utf-8');
+    const fileName = filePaths.input.replace('_wf/', config.outdir).replace('_wf_', '').replace('.js', '.html');
+    const obj = {
+      fileName: fileName === path.join(config.outdir, 'app.html') ? path.join(config.outdir, 'index.html') : fileName,
+      content: indexFile
+        .replace(pageContentTagRegex, () => `<page-content>\n${template}\n</page-content>`)
+        .replace(scriptTagRegex, () => `<script type="module" async>
+${fileContent.split('\n').map(str => `    ${str}`).join('\n')}
+  </script>`)
+      // content: indexFile.replace('app.js', filePaths.output.split('/').pop())
+    };
+    return obj;
+  }));
+  config.buildIndexHTMLJS = true;
+  if (!config.buildIndexHTMLCSS) await buildIndexHTMLCSS();
+  else await writeIndexHTML();
+}
+
+async function buildIndexHTMLCSS() {
+  if (!config.hasAppCSS) return;
+  if (config.buildIndexHTMLJS) {
+    config.buildIndexHTMLCSS = true;
+    await Promise.all(config.indexHTMLOutputData.map(async v => {
+      v.content = v.content.replace(cssTagRegex, `<style>${(await readFile(config.appCSSOutputFilePath, 'utf-8')).split('\n').map(str => `    ${str}`).join('\n')}</style>`)
+      // v.content = v.content.replace('app.css', `${config.appCSSOutputFilePath.split('/').pop()}${config.gzip ? '.gz' : ''}`);
+    }));
+    await writeIndexHTML();
+  }
+}
+
+async function writeIndexHTML() {
+  await Promise.all(config.indexHTMLOutputData.map(async v => {
+    await writeFile(v.fileName, v.content);
+    if (config.gzip) await gzipFile(v.fileName);
+  }));
 }

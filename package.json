@@ -11,7 +11,8 @@
     "./build": "./src/client/build.js"
   },
   "scripts": {
-    "start": "nodemon -e js,css,html docs/server.js",
+    "start": "node build.js",
+    "start_old": "nodemon -e js,css,html docs/server.js",
     "start-spa": "node build.js",
     "build": "NODE_ENV=production node build.js"
   },

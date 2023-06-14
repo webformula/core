@@ -15,38 +15,26 @@ export default class Component extends HTMLElement {
    *   If your template uses dynamic variables you do not want to use this */
   static useTemplate = true;
 
-  #id;
+  #id = Array.from(this.constructor.toString()).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
   #root = this;
   #rendered = false;
-
+  #templateElement;
 
   constructor() {
     super();
-
-    // unique id build from class string
-    this.#id = Array.from(this.constructor.toString()).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
-    // convert html string to template literal function
     if (this.constructor.html) this.template = () => new Function('page', `return \`${this.constructor.html}\`;`).call(this, this);
+
     const hasTemplate = !!this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
-    // check if html uses template literal expressions. If it does we do not want to globally store a template element
     if (hasTemplate && this.constructor.useTemplate === true) {
       const isDynamic = this.constructor.html || this.template.toString().includes('${');
       if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
     }
-
-
+    
     /** Render as soon as possible while making sure all class variables exist */
-    // render non page component
     if (!this.constructor._isPage && hasTemplate) {
       requestAnimationFrame(() => {
         this.render();
       });
-
-    // hook up page-content for render
-    } else {
-      const pageContent = document.querySelector('page-content');
-      if (!pageContent) throw Error('Could not find <page-content>');
-      this.#root = pageContent;
     }
   }
 
@@ -55,11 +43,19 @@ export default class Component extends HTMLElement {
   }
 
   get urlParameters() {
-    return locationObject.pathname.match(this.constructor._pagePathRegex)?.groups;
+    return locationObject.pathname.match(this.constructor._pathRegex)?.groups;
   }
 
   get rendered() {
     return this.#rendered;
+  }
+
+  get classId() {
+    return this.#id;
+  }
+
+  get root() {
+    return this.#root;
   }
 
   // override
@@ -78,7 +74,7 @@ export default class Component extends HTMLElement {
    *    }
    *  }
    */
-  template(){return""}
+  template(){return ""}
 
   /** Escape html to make safe for injection */
   escape(str) {
@@ -88,28 +84,33 @@ export default class Component extends HTMLElement {
   };
 
   async render() {
-    console.log('render');
     if (!this.#rendered) this.#prepareRender();
     this.#rendered = true;
 
     await this.beforeRender();
-    // render every time so template literal expression update
     if (!this.constructor.useTemplate) this.#root.innerHTML = this.template();
-    // render from template element
-    else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
+    else this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
     await this.afterRender();
   }
 
   #prepareRender() {
+    if (this.#rendered) return;
+
     if (this.constructor._isPage) {
+      const pageContent = document.querySelector('page-content');
+      if (!pageContent) throw Error('Could not find <page-content>');
+      this.#root = pageContent;
       const title = document.querySelector('title');
       title.innerText = this.constructor.title;
       return;
     }
 
-    if (this.constructor.useTemplate && !templateElements[this.#id]) {
-      templateElements[this.#id] = document.createElement('template');
-      templateElements[this.#id].innerHTML = this.template();
+    if (this.constructor.useTemplate) {
+      if (!templateElements[this.#id]) {
+        templateElements[this.#id] = document.createElement('template');
+        templateElements[this.#id].innerHTML = this.template();
+      }
+      this.#templateElement = templateElements[this.#id];
     }
 
     if (this.constructor.useShadowRoot) {
