@@ -24,8 +24,7 @@ Browsers, javascript, css, and html provide a robust set of features these days.
     - [page.js](#page.js)
     - [page.html](#page.html)
     - [component.js](#component.js)
-    - [Serve app](#iserveapp)
-    - [Build single page app](#buildspa)
+    - [Build app](#buildapp)
 
 
 # Getting started
@@ -280,49 +279,8 @@ body {
 
 <br/>
 
-### **Serve app with Expressjs `server.js`**
-<a name="serveapp"/>
-The serve process will handle:
-- Minification
-- Sourcemaps
-- live relaoding (requires nodemon)
-- Adding hashes to filenames
-- Rewriting imports for app.js and app.js to have hashes
-
-```javascript
-import express from 'express';
-import compression from 'compression';
-import { coreMiddleware } from '@webformula/core/server';
-
-const app = express();
-const port = 3000;
-
-app.use(compression());
-app.use(coreMiddleware('./app'));
-app.use(express.static('./app'));
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
-```
-
-<br/>
-
-### **Serve commands**
-```bash
-# Development run. Includes sourcemaps
-node build.js
-# using nodemon will enable livereload
-nodemon -e js,css,html build.js
-
-# Production run. minifies, turns off livereload and sourcemaps
-NODE_ENV=production node build.js
-```
-
-<br/>
-
 ### **Build single page app `build.js`**
-<a name="buildspa"/>
+<a name="buildapp"/>
 The build process will handle:
 - Minification
 - Sourcemaps
@@ -332,6 +290,10 @@ The build process will handle:
 - Rewriting imports for app.js and app.js to have hashes
 - Gziping content
 - File copying
+- multiple build modes
+  - spa
+  - spaSingleFile
+  - separate
 
 ```javascript
 import build from '@webformula/core/build';
@@ -354,6 +316,19 @@ build({
   outdir: 'dist/',
 
   /**
+   * Default 'spa'
+   * There are 3 modes
+   * All modes will build a index html file for each route with the page template rendered
+   * - spa
+   *   Initially loads only the requested page. Then lazy loads all other pages
+   * - spaSingleFile
+   *   Loads everything with the requested page pre rendered
+   * - separate
+   *   Only loads requested page. Each navigation will load from the server
+   */
+  mode: 'spa',
+
+  /**
    * true when 'NODE_ENV=production' otherwise defaults to false
    * use 'WEBFORMULA_MINIFY' env var to override
    */
@@ -370,6 +345,12 @@ build({
   * use 'WEBFORMULA_GZIP' env var to override
   */
   gzip: true,
+
+  /**
+  * Defaults to true
+  * Not recommended to be false
+  */
+  chunks: true,
 
   devServer: {
     /**
@@ -396,6 +377,14 @@ build({
     {
       from: 'app/pages/**/(?!page)*.html',
       to: 'dist/pages'
+    },
+    {
+      from: 'app/code.js',
+      to: 'dist/code.js',
+      transform({ content, outputFileNames }) {
+        // doo work
+        return content;
+      }
     }
   ],
 
@@ -405,19 +394,15 @@ build({
   // callback after bundle
   onEnd: () => {}
 });
-
-
-// You can access gzipFile directly
-import build, { gzipFile } from '@webformula/core/build';
-
-// this will write 'dist/something.js.gz'
-await gzipFile('dist/something.js');
 ```
 
-### **Build single page app commands**
+### **Build commands**
 ```bash
-# Development run. Includes sourcemaps and livereload
+# Development run
 node build.js
+
+# Development run with watch to enable livereload
+node --watch-path=./app build.js
 
 # Production run. minifies, gzips, and writes files
 NODE_ENV=production node build.js

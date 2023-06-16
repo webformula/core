@@ -30,6 +30,7 @@ class CSSStyleSheet {
 class MutationObserver {
   observe() {}
 }
+class EventSource {}
 const localStorage = {
   getItem() {},
   setItem() {}
@@ -84,6 +85,7 @@ const window = {
   navigator,
   customElements,
   history,
+  EventSource,
   dispatchEvent() {},
   addEventListener() { },
   removeEventListener() { },
@@ -106,3 +108,4 @@ global.matchMedia = matchMedia;
 global.navigator = navigator;
 global.customElements = customElements;
 global.location = location;
+global.EventSource = EventSource;

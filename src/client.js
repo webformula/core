@@ -1,43 +1,14 @@
-import { buildPathRegex } from '../shared.js';
-import Component from './Component.js';
-
-export {
-  Component
-}
+import { buildPathRegex } from './shared.js';
 
 const leadingSlashRegex = /^\//;
 const trailingSlashRegex = /\/$/;
 const app = {
   pages: new Map(),
   paths: [],
-  pageCounter: 0
+  pageCounter: 0,
+  componentModuleQueue: [],
+  preventNavigation: false
 };
-
-
-window.addEventListener('DOMContentLoaded', () => {
-  window.webformulaCoreLinkIntercepts = true;
-  document.addEventListener('click', event => {
-    if (!event.target.matches('[href]')) return;
-
-    // allow external links
-    if (event.target.getAttribute('href').includes('://')) {
-      const target = event.target.getAttribute('target');
-      if (['_blank', '_self', '_parent', '_top'].includes(target)) {
-        window.open(event.target.getAttribute('href'), target).focus();
-      }
-      return;
-    }
-
-    event.preventDefault();
-    route(new URL(event.target.href));
-
-    // the prevent default keeps the link from loosing focus
-    event.target.blur();
-  });
-  window.addEventListener('popstate', event => {
-    route(new URL(event.currentTarget.location), true);
-  });
-});
 
 
 
@@ -65,11 +36,22 @@ export function routes(config = [{
       ...c,
       regex
     });
+
+    if (!componentModule && !app.componentModuleQueue.includes(c.component)) app.componentModuleQueue.push(c.component);
   }
-  route(location);
+  route(location, false, true);
+  runComponentModuleQueue();
+}
+window.wfRoutes = routes;
+
+export function preventNavigation(value = true) {
+  app.preventNavigation = !!value;
 }
 
-async function route(locationObject, back = false) {
+
+async function route(locationObject, back = false, initial = false) {
+  if (!initial && app.preventNavigation) return;
+
   let match = app.paths.find(v => locationObject.pathname.match(v.regex) !== null);
   if (!match) match = app.paths.find(v => v.notFound);
   if (!match) return console.warn(`No page found for path: ${locationObject.pathname}`);
@@ -97,10 +79,48 @@ async function route(locationObject, back = false) {
   if (!back) window.history.pushState({}, nextPage.title, locationObject.pathname);
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
-  // TODO initial render
-  // nextPage.render();
+  if (!initial) nextPage.render();
   document.body.scrollTop = 0;
   document.documentElement.scrollTop = 0;
   nextPage.connectedCallback();
-  window.dispatchEvent(new Event('locationchange'));
+  if (!initial) window.dispatchEvent(new Event('locationchange'));
+}
+
+async function runComponentModuleQueue() {
+  app.componentModuleQueue.forEach(key => {
+    const page = app.pages.get(key);
+    page.componentModulePromise = import(key);
+    page.componentModulePromise
+      .then(module => {
+        page.componentModule = module.default;
+        page.componentModulePromise = undefined;
+      })
+      .catch(e => console.error(e));
+  });
+}
+
+
+if (window._webformulaSinglePage) {
+  window.webformulaCoreLinkIntercepts = true;
+  document.addEventListener('click', event => {
+    if (!event.target.matches('[href]')) return;
+
+    // allow external links
+    if (event.target.getAttribute('href').includes('://')) {
+      const target = event.target.getAttribute('target');
+      if (['_blank', '_self', '_parent', '_top'].includes(target)) {
+        window.open(event.target.getAttribute('href'), target).focus();
+      }
+      return;
+    }
+
+    event.preventDefault();
+    route(new URL(event.target.href));
+
+    // the prevent default keeps the link from loosing focus
+    event.target.blur();
+  });
+  window.addEventListener('popstate', event => {
+    route(new URL(event.currentTarget.location), true);
+  });
 }

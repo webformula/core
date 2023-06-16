@@ -1,67 +1,8 @@
 <h3 class="page-title">Build / Serve</h3>
 <div class="page-subheader mdw-font-title-medium">Serve application from Expressjs or build a single page app</div>
 
-<h6 class="page-secondary-header">Links</h6>
-<ul class="links">
-  <li><a href="#server">Server</a></li>
-  <li><a href="#spa">Single page app</a></li>
-</ul>
-
 <section style="margin-top: 48px;">
-  <mdw-card id="server">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Serve app from express</div>
-      <div class="mdw-supporting-text">coreMiddleware automatically bundles and splits the code for optimal loading</div>
-      <ul>
-        <li>Minification</li>
-        <li>Sourcemaps</li>
-        <li>live relaoding (requires nodemon)</li>
-        <li>Adding hashes to filenames</li>
-        <li>Rewriting imports for app.js and app.css to have hashes and gzip extensions</li>
-      </ul>
-    </div>
-  
-    <pre>
-      <code class="language-javascript">
-  ${`// build.js
-  import express from 'express';
-  import compression from 'compression';
-  import { coreMiddleware } from '@webformula/core/server';
-  
-  const app = express();
-  const port = 3000;
-  
-  app.use(compression());
-  // specify base directory where app.js is
-  app.use(coreMiddleware('./docs'));
-
-  // serve other static files
-  app.use(express.static('./docs'));
-  
-  app.listen(port, () => {
-    console.log(\`Example app listening on port \${port}\`);
-  });`}
-      </code>
-    </pre>
-
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Run commands</div>
-    </div>
-    <pre>
-      <code class="language-bash">
-  ${`# Development run. Includes sourcemaps
-  node build.js
-  # using nodemon will enable livereload
-  nodemon -e js,css,html build.js
-
-  # Production run. minifies, turns off livereload and sourcemaps
-  NODE_ENV=production node build.js
-  `}
-      </code>
-    </pre>
-  </mdw-card>
-
-  <mdw-card id="spa">
+  <mdw-card id="build">
     <div class="mdw-card-content">
       <div class="mdw-headline">Build single page app</div>
       <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.</div>
@@ -99,6 +40,20 @@
     outdir: 'dist/',
 
     /**
+    * Default 'spa'
+    * There are 3 modes
+    * All modes will build a index html file for each route with the page template rendered
+    * - spa
+    * Initially loads only the requested page. Then lazy loads all other pages
+    * - spaSingleFile
+    * Loads everything with the requested page pre rendered
+    * - separate
+    * Only loads requested page. Each navigation will load from the server
+    */
+    mode: 'spa',
+
+
+    /**
      * true when 'NODE_ENV=production' otherwise defaults to false
      * use 'WEBFORMULA_MINIFY' env var to override
      */
@@ -115,6 +70,12 @@
     * use 'WEBFORMULA_GZIP' env var to override
     */
     gzip: true,
+
+    /**
+    * Defaults to true
+    * Not recommended to be false
+    */
+    chunks: true,
 
     devServer: {
       /**
@@ -140,6 +101,14 @@
       {
         from: 'app/pages/**/(?!page)*.html',
         to: 'dist/pages'
+      },
+      {
+        from: 'app/code.js',
+        to: 'dist/code.js',
+        transform({ content, outputFileNames }) {
+          // doo work
+          return content;
+        }
       }
     ],
 
@@ -157,12 +126,14 @@
     </div>
     <pre>
       <code class="language-bash">
-  ${`# Development run. Includes sourcemaps and livereload
+  ${`# Development run
   node build.js
-
+  
+  # Development run with watch to enable livereload
+  node --watch-path=./app build.js
+  
   # Production run. minifies, gzips, and writes files
-  NODE_ENV=production node build.js
-  `}
+  NODE_ENV=production node build.js`}
       </code>
     </pre>
   </mdw-card>

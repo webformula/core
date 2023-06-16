@@ -21,3 +21,11 @@ export function buildPathRegex(route) {
     ''
   );
 }
+
+export function getExtension(url) {
+  if (!url.includes('.')) return '';
+  const split = url.split(/[#?]/)[0].split('.');
+  let ext = split.pop().trim().toLowerCase();
+  if (ext === 'gz') ext = split.pop();
+  return ext;
+}
