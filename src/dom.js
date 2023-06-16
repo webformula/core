@@ -49,7 +49,8 @@ const location = {
   pathname: '/'
 };
 const customElements = {
-  define() { }
+  define() { },
+  get() { }
 };
 const history = {
   pushState() {},

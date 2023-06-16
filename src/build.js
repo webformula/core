@@ -207,7 +207,7 @@ function runServer() {
       return;
     }
 
-    const filePath = path.resolve(path.join(config.outdir, req.url.replace(/%20/g, ' ')));
+    let filePath = path.resolve(path.join(config.outdir, req.url.replace(/%20/g, ' ')));
     const headers = { 'Content-Type': getMimeType(req.url), 'Cache-Control': 'max-age=31536000' };
 
     try {
@@ -220,7 +220,7 @@ function runServer() {
         return;
       }
 
-      const isGzip = filePath.contains('.gz');
+      const isGzip = filePath.includes('.gz');
       const file = await readFile(filePath, isGzip ? undefined : 'utf-8');
       if (isGzip) headers['Content-Encoding'] = 'gzip';
       res.writeHead(200, headers);
@@ -264,7 +264,7 @@ async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
         window.wfRoutes([
           ${pageFiles.filter(b => item !== b).map(b => {
         return b.routeStr.replace(routePageRegex, (match, component) => (
-          match.replace(component, `'./${b.moduleOutput.split('/').pop()}'`)
+          match.replace(component, `'./${b.moduleOutput.split('/').pop()}${config.gzip ? '.gz' : ''}'`)
         ))
       }).join(',\n  ')}
         ]);
