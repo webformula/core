@@ -24,11 +24,11 @@ const isGzip = WEBFORMULA_GZIP === 'false' ? false : true;
 const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
 const cssFilterRegex = /\.css$/;
 const asyncGzip = promisify(gzip);
-const importRegex = /import\s?(\{?\s?(?<name>[\w\s,]+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g;
+const importRegex = /(?:\/\/)?\s?import\s?(\{?\s?(?<name>[\w\s,]+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g;
 const routesRegex = /routes\s?\(\s?\[([\s\S]*.*)\]\s?\);?/;
 const routePageRegex = /component:\s?(.+?)\s?(,|})/;
 const routePathRegex = /path:\s?'?"?\s?(.+?)('|")/;
-const routeConfigObjectRegex = /\{.*\}/g;
+const routeConfigObjectRegex = /(?:\/\/)?\s?\{.*\}/g;
 const scriptTagRegex = /<\s*script[^>]*src="\.?\/?app.js"[^>]*>[^>]*<\s*\/\s*script>/g;
 const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
 const cssTagRegex = /<\s*link[^>]*href="\.?\/?app.css"[^>]*>/;
@@ -108,6 +108,7 @@ const pluginCss = {
 
 
 async function run() {
+  if (config.onStart) await config.onStart();
   config.entryFiles = await parseAppFile();
   await emptyOutdir();
   await mkdir(config.cachedir, { recursive: true });
@@ -159,21 +160,25 @@ async function run() {
     output: key,
     ...metafile.outputs[key]
   }));
+
   const appJSFile = outputs.find(v => v.entryPoint === path.join(config.cachedir, 'app.js'));
   const appCSSFile = Object.keys(appCSSContext?.metafile.outputs).map(key => ({
     output: key,
     ...metafile.outputs[key]
   }))[0];
+  const outputFiles = outputs.concat(appCSSFile).map(v => ({ entryPoint: v.entryPoint, output: v.output }));
+
   config.entryFiles.pageFiles.forEach(page => {
     const pageOutput = path.join(config.cachedir, page.outFileName);
     const pageModuleOutput = path.join(config.cachedir, page.importPath);
     page.finalOutput = outputs.find(output => output.entryPoint === pageOutput)?.output;
     page.moduleOutput = outputs.find(output => output.entryPoint === pageModuleOutput)?.output;
   });
-  await copyFiles(config)
-  await buildIndexHTML(appJSFile, config.entryFiles.pageFiles, appCSSFile);
+  await copyFiles(config, outputFiles)
+  const indexHTMLFiles = await buildIndexHTML(appJSFile, config.entryFiles.pageFiles, appCSSFile);
   await cleanupDist();
-  if (config.gzip) await gzipFiles();
+  if (config.gzip) await gzipFiles(outputFiles.concat(indexHTMLFiles));
+  if (config.onEnd) await config.onEnd();
   if (config.devServer.enabled) runServer();
   if (!isDev) process.exit();
 }
@@ -202,16 +207,22 @@ function runServer() {
       return;
     }
 
-    let contentType = getMimeType(req.url);
-    let filePath = path.resolve(path.join(config.outdir, req.url.replace(/%20/g, ' ')));
-    if (config.gzip && !filePath.includes('.gz')) filePath += '.gz';
+    const filePath = path.resolve(path.join(config.outdir, req.url.replace(/%20/g, ' ')));
+    const headers = { 'Content-Type': getMimeType(req.url), 'Cache-Control': 'max-age=31536000' };
 
     try {
       const found = await access(filePath).then(() => true).catch(() => false);
       if (!found) filePath = filePath.replace('.js', '.js.js');
-      const file = await readFile(filePath, config.gzip ? undefined : 'utf-8');
-      const headers = { 'Content-Type': contentType, 'Cache-Control': 'max-age=86400' };
-      if (config.gzip) headers['Content-Encoding'] = 'gzip';
+
+      if (filePath.endsWith('woff2')) {
+        res.writeHead(200, headers);
+        res.end((await readFile(filePath, 'binary')), 'binary');
+        return;
+      }
+
+      const isGzip = filePath.contains('.gz');
+      const file = await readFile(filePath, isGzip ? undefined : 'utf-8');
+      if (isGzip) headers['Content-Encoding'] = 'gzip';
       res.writeHead(200, headers);
       res.write(file);
       res.end();
@@ -259,7 +270,8 @@ async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
         ]);
       </script>
       ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/esbuild").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`);
-    if (appCSSFile) content = content.replace(cssTagRegex, `<style>${(await readFile(appCSSFile.output, 'utf-8')).split('\n').map(str => `    ${str}`).join('\n')}</style>`);
+    // if (appCSSFile) content = content.replace(cssTagRegex, `<style>${(await readFile(appCSSFile.output, 'utf-8')).split('\n').map(str => `    ${str}`).join('\n')}</style>`);
+    if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" rel="stylesheet">`);
 
     return {
       fileName: item.path === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${item.path.replace(/\/|\.|\s/g, '')}.html`),
@@ -267,6 +279,7 @@ async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
     }
   }));
   await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
+  return data.map(v => ({ output: v.fileName }));
 }
 
 async function buildIndexHTMLSinglePageSingleFile(appJSFile, pageFiles, appCSSFile) {
@@ -291,6 +304,7 @@ async function buildIndexHTMLSinglePageSingleFile(appJSFile, pageFiles, appCSSFi
     }
   }));
   await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
+  return data.map(v => ({ output: v.fileName }));
 }
 
 async function buildIndexHTMLSeparatePage(pageFiles, appCSSFile) {
@@ -315,13 +329,15 @@ async function buildIndexHTMLSeparatePage(pageFiles, appCSSFile) {
     }
   }));
   await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
+  return data.map(v => ({ output: v.fileName }));
 }
 
 async function parseAppFile() {
   const appFileContent = await readFile(config.appFilePath, 'utf-8');
-  const importMatches = [...appFileContent.matchAll(importRegex)];
+  const importMatches = [...appFileContent.matchAll(importRegex)].filter(v => !v[0].trim().startsWith('//'));
   const routesMatch = appFileContent.match(routesRegex);
-  const routes = [...routesMatch[1].matchAll(routeConfigObjectRegex)].map(v => v[0]);
+  const routes = [...routesMatch[1].matchAll(routeConfigObjectRegex)].map(v => v[0]).filter(v => !v.trim().startsWith('//'));
+
   const pages = routes.map(routeStr => {
     const nameMatch = routeStr.match(routePageRegex);
     const pathMatch = routeStr.match(routePathRegex);
@@ -384,22 +400,41 @@ async function emptyOutdir(dir = config.outdir) {
   }));
 }
 
-async function gzipFiles(dir = config.outdir) {
-  const files = (await readdir(dir)).filter(v => v !== '.cache');
+// async function gzipFiles(dir = config.outdir) {
+//   const files = (await readdir(dir)).filter(v => v !== '.cache');
 
-  await Promise.all(files.map(async file => {
-    const filePath = path.join(dir, file);
-    if ((await stat(filePath)).isDirectory()) return gzipFiles(filePath);
-    let content = await readFile(filePath, 'utf-8');
-    content = content.replace(importRegex, (a) => {
-      return a
-        .replace('.gz', '')
-        .replace('.js', '.js.gz')
-        .replace('.css', '.css.gz')
-        .replace('.html', '.html.gz');
-    });
-    const result = await asyncGzip(content);
-    await writeFile(`${filePath}.gz`, result);
+//   await Promise.all(files.map(async file => {
+//     const filePath = path.join(dir, file);
+//     if ((await stat(filePath)).isDirectory()) return gzipFiles(filePath);
+//     let content = await readFile(filePath, 'utf-8');
+//     content = content.replace(importRegex, (a) => {
+//       return a
+//         .replace('.gz', '')
+//         .replace('.js', '.js.gz')
+//         .replace('.css', '.css.gz')
+//         .replace('.html', '.html.gz');
+//     });
+//     const result = await asyncGzip(content);
+//     await writeFile(`${filePath}.gz`, result);
+//   }));
+// }
+
+async function gzipFiles(outputFiles) {
+  await Promise.all(outputFiles.map(async item => {
+    try {
+      let content = await readFile(item.output, 'utf-8');
+      content = content.replace(importRegex, (a) => {
+        return a
+          .replace('.gz', '')
+          .replace('.js', '.js.gz')
+          .replace('.css', '.css.gz')
+          .replace('.html', '.html.gz');
+      });
+      const result = await asyncGzip(content);
+      await writeFile(`${item.output}.gz`, result);
+    } catch (e) {
+      // console.log('error', item, e)
+    }
   }));
 }
 
@@ -424,6 +459,12 @@ function getMimeType(url) {
       return 'image/svg+xml';
     case 'ico':
       return 'image/x-icon';
+    case 'woff2':
+      return 'font/woff2';
+    case 'woff':
+      return 'font/woff';
+    case 'otf':
+      return 'font/otf';
   }
 }
 
@@ -440,24 +481,18 @@ async function cleanupDist() {
 
   switch (config.mode) {
     case 'spa':
-      // remove app.js, app.css
-      await Promise.all(files.map(async file => {
-        if (
-          !file.startsWith('app.js')
-          && !file.startsWith('app.css')
-          && (
-            !file.startsWith('app-')
-            && (
-              !file.endsWith('.js')
-              || !file.endsWith('.js.gz')
-              || !file.endsWith('.css')
-              || !file.endsWith('.css.gz')
+      // remove app.js
+      await Promise.all(
+        files
+          .filter(v => (
+            v.startsWith('app.js')
+            || (
+              v.startsWith('app-')
+              && ( v.endsWith('.js') || v.endsWith('.js.gz') )
             )
-          )
-        ) return;
-        const filePath = path.join(config.outdir, file);
-        await rm(filePath);
-      }));
+          ))
+          .map(file => rm(path.join(config.outdir, file)))
+      );
       break;
     case 'spaSingleFile':
     case 'separate':

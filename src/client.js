@@ -20,6 +20,7 @@ export function routes(config = [{
   const invalid = config.find(r => !r.component || !r.path);
   if (invalid) throw Error('Routes missing properties: { path, component }');
 
+  let isCurrent = false;
   for (const c of config) {
     c.path = `/${c.path.replace(trailingSlashRegex, '').replace(leadingSlashRegex, '')}`;
     if (app.paths.find(v => v.path === c.path)) return;
@@ -36,11 +37,11 @@ export function routes(config = [{
       ...c,
       regex
     });
-
+    if (location.pathname.match(regex)) isCurrent = true;
     if (!componentModule && !app.componentModuleQueue.includes(c.component)) app.componentModuleQueue.push(c.component);
   }
-  route(location, false, true);
-  runComponentModuleQueue();
+  if (isCurrent) route(location, false, true);
+  setTimeout(() => runComponentModuleQueue());
 }
 window.wfRoutes = routes;
 

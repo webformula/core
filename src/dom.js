@@ -25,6 +25,7 @@ class Text {
   data = '';
 }
 class CSSStyleSheet {
+  href = '';
   replaceSync() {}
 };
 class MutationObserver {
@@ -44,6 +45,7 @@ function matchMedia() {
 }
 const styleSheets = [];
 const location = {
+  href: '',
   pathname: '/'
 };
 const customElements = {
@@ -72,7 +74,10 @@ const document = {
     return [new HTMLElement()];
   },
   adoptedStyleSheets: styleSheets,
-  styleSheets
+  styleSheets,
+  fonts: {
+    ready: Promise.resolve([])
+  }
 };
 const window = {
   document,
