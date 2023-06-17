@@ -6,7 +6,9 @@ import { promisify } from 'node:util';
 import { createServer } from 'node:http';
 import { getExtension } from './shared.js';
 import copyFiles from './copyFiles.js';
-import { parseHTML  } from 'linkedom';
+// import { Window } from 'happy-dom';
+import addMockDom from './dom.js';
+
 const {
   WEBFORMULA_DEV,
   WEBFORMULA_SOURCEMAPS,
@@ -218,7 +220,8 @@ async function runEnd({
   appJSFile,
   appCSSFile
 }) {
-  await copyFiles(config, outputFiles)
+  await copyFiles(config, outputFiles);
+  initDom();
   const indexHTMLFiles = await buildIndexHTML(appJSFile, config.entryFiles.pageFiles, appCSSFile);
   await cleanupDist();
   if (config.gzip) await gzipFiles(outputFiles.concat(indexHTMLFiles));
@@ -290,33 +293,43 @@ async function buildIndexHTML(appJSFile, pageFiles, appCSSFile) {
 }
 
 // used to render templates
-function initDom(indexHTML) {
-  const dom = parseHTML(indexHTML);
-  global.window = dom.window;
-  global.document = dom.document;
-  global.HTMLElement = dom.HTMLElement;
-  global.customElements = dom.customElements;
-  global.CSSStyleSheet = dom.CSSStyleSheet;
-  global.MutationObserver = dom.MutationObserver;
-  global.getComputedStyle = dom.getComputedStyle;
-  global.localStorage = dom.localStorage;
-  global.matchMedia = dom.matchMedia;
-  global.navigator = dom.navigator;
-  global.customElements = dom.customElements;
-  global.location = dom.location;
-  global.EventSource = dom.EventSource;
+function initDom() {
+  addMockDom();
+  // TODO look into using functional dom for rendering. This could be needed for dom manipulation during template render.
+  // if (config.isDev) return addMockDom();
+  // class CSSStyleSheet {
+  //   href = '';
+  //   replaceSync() { }
+  // };
+  // const window = new Window();
+  // window.document.body.innerHTML = '<page-content></page-content>';
+  // window.document.fonts = {
+  //   ready: Promise.resolve([])
+  // };
+  // global.window = window;
+  // global.document = window.document;
+  // global.HTMLElement = window.HTMLElement;
+  // global.customElements = window.customElements;
+  // global.MutationObserver = window.MutationObserver;
+  // global.EventSource = window.EventSource;
+  // global.navigator = window.navigator;
+  // global.CSSStyleSheet = CSSStyleSheet;
+  // global.localStorage = window.localStorage;
+  // global.matchMedia = window.matchMedia;
+  // global.location = window.location;
+  // global.getComputedStyle = window.getComputedStyle;
+  // global.requestAnimationFrame = window.requestAnimationFrame;
 }
 
 async function buildIndexHTMLSingleFile(appJSFile, pageFiles, appCSSFile) {
   const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
-  initDom(indexFile);
-
   const data = await Promise.all(pageFiles.map(async item => {
     const pageModule = await import(path.resolve('.', item.moduleOutput));
     customElements.define(`page-${pageCounter++}`, pageModule.default);
     pageModule.default._isPage = true;
     pageModule.default.useTemplate = false;
     const template = new pageModule.default().template();
+
     let content = indexFile
       .replace(pageContentTagRegex, () => `<page-content>\n${template}\n</page-content>`)
       .replace(scriptTagRegex, () => `
@@ -336,8 +349,6 @@ async function buildIndexHTMLSingleFile(appJSFile, pageFiles, appCSSFile) {
 
 async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
   const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
-  initDom(indexFile);
-
   const data = await Promise.all(pageFiles.map(async item => {
     const pageModule = await import(path.resolve('.', item.moduleOutput));
     customElements.define(`page-${pageCounter++}`, pageModule.default);
@@ -373,8 +384,6 @@ async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
 
 async function buildIndexHTMLSeparatePage(pageFiles, appCSSFile) {
   const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
-  initDom(indexFile);
-  
   const data = await Promise.all(pageFiles.map(async item => {
     const pageModule = await import(path.resolve('.', item.moduleOutput));
     customElements.define(`page-${pageCounter++}`, pageModule.default);

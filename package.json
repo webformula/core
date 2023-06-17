@@ -28,7 +28,6 @@
   "devDependencies": {
     "@webformula/core": "file:./",
     "@webformula/material": "^0.9.1",
-    "esbuild": "^0.18.1",
-    "linkedom": "^0.14.26"
+    "esbuild": "^0.18.1"
   }
 }
