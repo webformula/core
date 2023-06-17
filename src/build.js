@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { createServer } from 'node:http';
 import { getExtension } from './shared.js';
 import copyFiles from './copyFiles.js';
-import './dom.js';
+import { parseHTML  } from 'linkedom';
 const {
   WEBFORMULA_DEV,
   WEBFORMULA_SOURCEMAPS,
@@ -14,6 +14,7 @@ const {
   WEBFORMULA_LIVERELOAD,
   WEBFORMULA_GZIP
 } = process.env;
+let pageCounter = 0;
 
 
 const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
@@ -33,7 +34,6 @@ const scriptTagRegex = /<\s*script[^>]*src="\.?\/?app.js"[^>]*>[^>]*<\s*\/\s*scr
 const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
 const cssTagRegex = /<\s*link[^>]*href="\.?\/?app.css"[^>]*>/;
 const config = {};
-
 
 export default async function build(params = {
   basedir: 'app/',
@@ -80,8 +80,9 @@ export default async function build(params = {
   config.hasAppCSS = await access(config.appCSSFilePath).then(e => true).catch(e => false);
   if (config.hasAppCSS) config.appCSSOutputFilePath = path.join(config.outdir, 'app.css');
   if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
-
+  
   await run();
+  if (!isDev) process.exit();
 }
 
 const pluginCss = {
@@ -223,7 +224,6 @@ async function runEnd({
   if (config.gzip) await gzipFiles(outputFiles.concat(indexHTMLFiles));
   if (config.onEnd) await config.onEnd();
   if (config.devServer.enabled) runServer();
-  if (!isDev) process.exit();
 }
 
 function runServer() {
@@ -289,11 +289,31 @@ async function buildIndexHTML(appJSFile, pageFiles, appCSSFile) {
   }
 }
 
+// used to render templates
+function initDom(indexHTML) {
+  const dom = parseHTML(indexHTML);
+  global.window = dom.window;
+  global.document = dom.document;
+  global.HTMLElement = dom.HTMLElement;
+  global.customElements = dom.customElements;
+  global.CSSStyleSheet = dom.CSSStyleSheet;
+  global.MutationObserver = dom.MutationObserver;
+  global.getComputedStyle = dom.getComputedStyle;
+  global.localStorage = dom.localStorage;
+  global.matchMedia = dom.matchMedia;
+  global.navigator = dom.navigator;
+  global.customElements = dom.customElements;
+  global.location = dom.location;
+  global.EventSource = dom.EventSource;
+}
+
 async function buildIndexHTMLSingleFile(appJSFile, pageFiles, appCSSFile) {
   const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+  initDom(indexFile);
 
   const data = await Promise.all(pageFiles.map(async item => {
     const pageModule = await import(path.resolve('.', item.moduleOutput));
+    customElements.define(`page-${pageCounter++}`, pageModule.default);
     pageModule.default._isPage = true;
     pageModule.default.useTemplate = false;
     const template = new pageModule.default().template();
@@ -316,9 +336,11 @@ async function buildIndexHTMLSingleFile(appJSFile, pageFiles, appCSSFile) {
 
 async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
   const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+  initDom(indexFile);
 
   const data = await Promise.all(pageFiles.map(async item => {
     const pageModule = await import(path.resolve('.', item.moduleOutput));
+    customElements.define(`page-${pageCounter++}`, pageModule.default);
     pageModule.default._isPage = true;
     pageModule.default.useTemplate = false;
     const template = new pageModule.default().template();
@@ -338,7 +360,6 @@ async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
         ]);
       </script>
       ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/esbuild").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`);
-    // if (appCSSFile) content = content.replace(cssTagRegex, `<style>${(await readFile(appCSSFile.output, 'utf-8')).split('\n').map(str => `    ${str}`).join('\n')}</style>`);
     if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" rel="stylesheet">`);
 
     return {
@@ -352,9 +373,11 @@ async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
 
 async function buildIndexHTMLSeparatePage(pageFiles, appCSSFile) {
   const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
-
+  initDom(indexFile);
+  
   const data = await Promise.all(pageFiles.map(async item => {
     const pageModule = await import(path.resolve('.', item.moduleOutput));
+    customElements.define(`page-${pageCounter++}`, pageModule.default);
     pageModule.default._isPage = true;
     pageModule.default.useTemplate = false;
     const template = new pageModule.default().template();
@@ -445,6 +468,10 @@ async function emptyOutdir(dir = config.outdir) {
 
 async function gzipFiles(outputFiles) {
   await Promise.all(outputFiles.map(async item => {
+    // some files are only temporarily used to build then deleted
+    const exists = await access(item.output).then(() => true).catch(() => false);
+    if (!exists) return;
+
     try {
       let content = await readFile(item.output, 'utf-8');
       content = content.replace(importRegex, (a) => {
@@ -457,7 +484,7 @@ async function gzipFiles(outputFiles) {
       const result = await asyncGzip(content);
       await writeFile(`${item.output}.gz`, result);
     } catch (e) {
-      // console.log('error', item, e)
+      console.log('error', item, e)
     }
   }));
 }
