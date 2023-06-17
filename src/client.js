@@ -80,7 +80,7 @@ async function route(locationObject, back = false, initial = false) {
   if (!back) window.history.pushState({}, nextPage.title, locationObject.pathname);
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
-  if (!initial || window._webformulaSingleFile === true) nextPage.render();
+  if (!initial) nextPage.render();
   document.body.scrollTop = 0;
   document.documentElement.scrollTop = 0;
   nextPage.connectedCallback();
@@ -100,7 +100,7 @@ async function runComponentModuleQueue() {
   });
 }
 
-
+console.log(window._webformulaSinglePage)
 if (window._webformulaSinglePage) {
   window.webformulaCoreLinkIntercepts = true;
   document.addEventListener('click', event => {

@@ -38,7 +38,7 @@ const config = {};
 export default async function build(params = {
   basedir: 'app/',
   outdir: 'dist/',
-  /** spa, separate, spaSingleFile, singleFile */
+  /** spa, separate, spaSingleFile */
   mode: 'spa',
   minify: true,
   sourcemaps: false,
@@ -107,7 +107,7 @@ const pluginCss = {
 async function run() {
   if (config.onStart) await config.onStart();
   await emptyOutdir();
-  if (config.mode === 'singleFile') await runSingleFile();
+  if (config.mode === 'spaSingleFile') await runSingleFile();
   else await runOthers();
 }
 
@@ -178,7 +178,7 @@ async function runBuild(entryPoints) {
     loader: { '.html': 'text' },
     plugins: [pluginCss],
     minify: config.minify,
-    splitting: config.mode !== 'singleFile',
+    splitting: config.mode !== 'spaSingleFile',
     sourcemap: config.sourcemap
   });
 
@@ -279,12 +279,10 @@ function runServer() {
 
 async function buildIndexHTML(appJSFile, pageFiles, appCSSFile) {
   switch (config.mode) {
-    case 'singleFile':
+    case 'spaSingleFile':
       return buildIndexHTMLSingleFile(appJSFile, pageFiles, appCSSFile);
     case 'spa':
       return buildIndexHTMLSinglePage(pageFiles, appCSSFile);
-    case 'spaSingleFile':
-      return buildIndexHTMLSinglePageSingleFile(appJSFile, pageFiles, appCSSFile);
     case 'separate':
     default:
       return buildIndexHTMLSeparatePage(pageFiles, appCSSFile);
@@ -302,7 +300,7 @@ async function buildIndexHTMLSingleFile(appJSFile, pageFiles, appCSSFile) {
     let content = indexFile
       .replace(pageContentTagRegex, () => `<page-content>\n${template}\n</page-content>`)
       .replace(scriptTagRegex, () => `
-      <script>window._webformulaSingleFile = true;window._webformulaSinglePage = true;</script>
+      <script>window._webformulaSinglePage = true;</script>
       <script src="./${appJSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" type="module" async></script>
       ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/esbuild").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`);
     if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" rel="stylesheet">`);
@@ -341,31 +339,6 @@ async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
       </script>
       ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/esbuild").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`);
     // if (appCSSFile) content = content.replace(cssTagRegex, `<style>${(await readFile(appCSSFile.output, 'utf-8')).split('\n').map(str => `    ${str}`).join('\n')}</style>`);
-    if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" rel="stylesheet">`);
-
-    return {
-      fileName: item.path === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${item.path.replace(/\/|\.|\s/g, '')}.html`),
-      content
-    }
-  }));
-  await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
-  return data.map(v => ({ output: v.fileName }));
-}
-
-async function buildIndexHTMLSinglePageSingleFile(appJSFile, pageFiles, appCSSFile) {
-  const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
-
-  const data = await Promise.all(pageFiles.map(async item => {
-    const pageModule = await import(path.resolve('.', item.moduleOutput));
-    pageModule.default._isPage = true;
-    pageModule.default.useTemplate = false;
-    const template = new pageModule.default().template();
-    let content = indexFile
-      .replace(pageContentTagRegex, () => `<page-content>\n${template}\n</page-content>`)
-      .replace(scriptTagRegex, () => `
-      <script>window._webformulaSinglePage = true;</script>
-      <script src="./${appJSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" type="module" async></script>
-      ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/esbuild").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`);
     if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" rel="stylesheet">`);
 
     return {
@@ -531,7 +504,7 @@ async function cleanupDist() {
   ]);
 
   switch (config.mode) {
-    case 'singleFile':
+    case 'spaSingleFile':
       return Promise.all(
         files
           .filter(v => (
@@ -567,7 +540,6 @@ async function cleanupDist() {
           .map(file => rm(path.join(config.outdir, file)))
       );
       break;
-    case 'spaSingleFile':
     case 'separate':
       // remove page files
       await Promise.all(files.map(async file => {
