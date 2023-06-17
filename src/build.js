@@ -24,7 +24,7 @@ const isGzip = WEBFORMULA_GZIP === 'false' ? false : true;
 const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
 const cssFilterRegex = /\.css$/;
 const asyncGzip = promisify(gzip);
-const importRegex = /(?:\/\/)?\s?import\s?(\{?\s?(?<name>[\w\s,]+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g;
+const importRegex = /(?:\/\/)?\s?import\s?(\{?\s?(?<name>[\w\s,\$]+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g;
 const routesRegex = /routes\s?\(\s?\[([\s\S]*.*)\]\s?\);?/;
 const routePageRegex = /component:\s?(.+?)\s?(,|})/;
 const routePathRegex = /path:\s?'?"?\s?(.+?)('|")/;
@@ -38,12 +38,11 @@ const config = {};
 export default async function build(params = {
   basedir: 'app/',
   outdir: 'dist/',
-  /** spa, separate, spaSingleFile */
+  /** spa, separate, spaSingleFile, singleFile */
   mode: 'spa',
   minify: true,
   sourcemaps: false,
   gzip: true,
-  chunks: true,
   devServer: {
     enabled: true,
     port: 3000,
@@ -67,7 +66,6 @@ export default async function build(params = {
   config.minify = params.minify === false ? false : params.minify === true ? true : isMinify;
   config.gzip = params.gzip === false ? false : params.gzip === true ? true : isGzip;
   config.sourcemaps = params.sourcemaps === false ? false : params.sourcemaps === true ? true : isSourceMaps;
-  config.chunks = params.chunks !== false ? true : false;
   config.devServer = params.devServer || { enabled: false };
   config.devServer.enabled = params?.devServer?.enabled === false ? false : true;
   config.devServer.port = params?.devServer?.port || 3000;
@@ -106,32 +104,71 @@ const pluginCss = {
   }
 };
 
-
 async function run() {
   if (config.onStart) await config.onStart();
-  config.entryFiles = await parseAppFile();
   await emptyOutdir();
+  if (config.mode === 'singleFile') await runSingleFile();
+  else await runOthers();
+}
+
+async function runSingleFile() {
+  config.entryFiles = await parseAppFile();
+  await mkdir(config.cachedir, { recursive: true });
+  await cp(config.basedir, config.cachedir, { recursive: true });
+  await Promise.all([
+    ...config.entryFiles.pageFiles.map(v => writeFile(path.join(config.cachedir, v.outFileName), v.content))
+  ]);
+
+  const buildData = await runBuild([config.appFilePath, ...config.entryFiles.pageFiles.map(v => ({
+    in: path.join(config.cachedir, v.importPath),
+    out: path.join(config.outdir, v.outPageFileName)
+  }))]);
+
+  config.entryFiles.pageFiles.forEach(page => {
+    const pageModuleOutput = path.join(config.cachedir, page.importPath);
+    page.moduleOutput = buildData.outputs.find(output => output.entryPoint === pageModuleOutput)?.output;
+  });
+
+  await runEnd(buildData);
+}
+
+async function runOthers() {
+  config.entryFiles = await parseAppFile();
   await mkdir(config.cachedir, { recursive: true });
   await cp(config.basedir, config.cachedir, { recursive: true });
   await Promise.all([
     ...config.entryFiles.appFiles.map(v => writeFile(path.join(config.cachedir, v.outFileName), v.content)),
     ...config.entryFiles.pageFiles.map(v => writeFile(path.join(config.cachedir, v.outFileName), v.content))
   ]);
+
+  const buildData = await runBuild([
+    ...config.entryFiles.appFiles.map(v => ({
+      in: path.join(config.cachedir, v.outFileName),
+      out: path.join(config.outdir, v.outFileName)
+    })),
+    ...config.entryFiles.pageFiles.map(v => ({
+      in: path.join(config.cachedir, v.outFileName),
+      out: path.join(config.outdir, v.outFileName)
+    })),
+    ...config.entryFiles.pageFiles.map(v => ({
+      in: path.join(config.cachedir, v.importPath),
+      out: path.join(config.outdir, v.outPageFileName)
+    }))
+  ]);
+
+  config.entryFiles.pageFiles.forEach(page => {
+    const pageOutput = path.join(config.cachedir, page.outFileName);
+    const pageModuleOutput = path.join(config.cachedir, page.importPath);
+    page.finalOutput = buildData.outputs.find(output => output.entryPoint === pageOutput)?.output;
+    page.moduleOutput = buildData.outputs.find(output => output.entryPoint === pageModuleOutput)?.output;
+  });
+
+  await runEnd(buildData);
+}
+
+async function runBuild(entryPoints) {
   const { metafile } = await esbuild.build({
-    entryPoints: [
-      ...config.entryFiles.appFiles.map(v => ({
-        in: path.join(config.cachedir, v.outFileName),
-        out: path.join(config.outdir, v.outFileName)
-      })),
-      ...config.entryFiles.pageFiles.map(v => ({
-        in: path.join(config.cachedir, v.outFileName),
-        out: path.join(config.outdir, v.outFileName)
-      })),
-      ...config.entryFiles.pageFiles.map(v => ({
-        in: path.join(config.cachedir, v.importPath),
-        out: path.join(config.outdir, v.outPageFileName)
-      }))
-    ],
+    entryPoints,
     bundle: true,
     outdir: config.outdir,
     metafile: true,
@@ -141,9 +178,8 @@ async function run() {
     loader: { '.html': 'text' },
     plugins: [pluginCss],
     minify: config.minify,
-    splitting: config.chunks,
-    sourcemap: config.sourcemap,
-    // banner: (!isDev || !config.devServer.liveReload) ? undefined : { js: ' (() => new EventSource("/esbuild").onmessage = () => location.reload())();' }
+    splitting: config.mode !== 'singleFile',
+    sourcemap: config.sourcemap
   });
 
   const appCSSContext = !config.hasAppCSS ? undefined : await esbuild.build({
@@ -156,24 +192,31 @@ async function run() {
     loader: { '.css': 'css' }
   });
 
+
   const outputs = Object.keys(metafile.outputs).map(key => ({
     output: key,
     ...metafile.outputs[key]
   }));
-
-  const appJSFile = outputs.find(v => v.entryPoint === path.join(config.cachedir, 'app.js'));
+  const appJSFile = outputs.find(v => v.entryPoint === path.join(config.cachedir, 'app.js') || v.entryPoint === path.join(config.basedir, 'app.js'));
   const appCSSFile = Object.keys(appCSSContext?.metafile.outputs).map(key => ({
     output: key,
     ...metafile.outputs[key]
   }))[0];
   const outputFiles = outputs.concat(appCSSFile).map(v => ({ entryPoint: v.entryPoint, output: v.output }));
 
-  config.entryFiles.pageFiles.forEach(page => {
-    const pageOutput = path.join(config.cachedir, page.outFileName);
-    const pageModuleOutput = path.join(config.cachedir, page.importPath);
-    page.finalOutput = outputs.find(output => output.entryPoint === pageOutput)?.output;
-    page.moduleOutput = outputs.find(output => output.entryPoint === pageModuleOutput)?.output;
-  });
+  return {
+    appJSFile,
+    appCSSFile,
+    outputFiles,
+    outputs
+  };
+}
+
+async function runEnd({
+  outputFiles,
+  appJSFile,
+  appCSSFile
+}) {
   await copyFiles(config, outputFiles)
   const indexHTMLFiles = await buildIndexHTML(appJSFile, config.entryFiles.pageFiles, appCSSFile);
   await cleanupDist();
@@ -236,6 +279,8 @@ function runServer() {
 
 async function buildIndexHTML(appJSFile, pageFiles, appCSSFile) {
   switch (config.mode) {
+    case 'singleFile':
+      return buildIndexHTMLSingleFile(appJSFile, pageFiles, appCSSFile);
     case 'spa':
       return buildIndexHTMLSinglePage(pageFiles, appCSSFile);
     case 'spaSingleFile':
@@ -244,6 +289,31 @@ async function buildIndexHTML(appJSFile, pageFiles, appCSSFile) {
     default:
       return buildIndexHTMLSeparatePage(pageFiles, appCSSFile);
   }
+}
+
+async function buildIndexHTMLSingleFile(appJSFile, pageFiles, appCSSFile) {
+  const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+
+  const data = await Promise.all(pageFiles.map(async item => {
+    const pageModule = await import(path.resolve('.', item.moduleOutput));
+    pageModule.default._isPage = true;
+    pageModule.default.useTemplate = false;
+    const template = new pageModule.default().template();
+    let content = indexFile
+      .replace(pageContentTagRegex, () => `<page-content>\n${template}\n</page-content>`)
+      .replace(scriptTagRegex, () => `
+      <script>window._webformulaSingleFile = true;window._webformulaSinglePage = true;</script>
+      <script src="./${appJSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" type="module" async></script>
+      ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/esbuild").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`);
+    if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" rel="stylesheet">`);
+
+    return {
+      fileName: item.path === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${item.path.replace(/\/|\.|\s/g, '')}.html`),
+      content
+    }
+  }));
+  await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
+  return data.map(v => ({ output: v.fileName }));
 }
 
 async function buildIndexHTMLSinglePage(pageFiles, appCSSFile) {
@@ -383,7 +453,7 @@ async function parseAppFile() {
         ${`import './wf_main_global.js';`}
 
         routes([
-          ${v.routeStr}
+          ${!config.gzip ? v.routeStr : v.routeStr.replace('.gz', '').replace('.js', '.js.gz')}
         ]);
       `.replace(/        /g, '') // remove the leading 8 spaces to fix indent
     }))
@@ -399,25 +469,6 @@ async function emptyOutdir(dir = config.outdir) {
     await rm(filePath);
   }));
 }
-
-// async function gzipFiles(dir = config.outdir) {
-//   const files = (await readdir(dir)).filter(v => v !== '.cache');
-
-//   await Promise.all(files.map(async file => {
-//     const filePath = path.join(dir, file);
-//     if ((await stat(filePath)).isDirectory()) return gzipFiles(filePath);
-//     let content = await readFile(filePath, 'utf-8');
-//     content = content.replace(importRegex, (a) => {
-//       return a
-//         .replace('.gz', '')
-//         .replace('.js', '.js.gz')
-//         .replace('.css', '.css.gz')
-//         .replace('.html', '.html.gz');
-//     });
-//     const result = await asyncGzip(content);
-//     await writeFile(`${filePath}.gz`, result);
-//   }));
-// }
 
 async function gzipFiles(outputFiles) {
   await Promise.all(outputFiles.map(async item => {
@@ -480,6 +531,28 @@ async function cleanupDist() {
   ]);
 
   switch (config.mode) {
+    case 'singleFile':
+      return Promise.all(
+        files
+          .filter(v => (
+            v !== '.cache'
+            && (v.includes('.js') || v.includes('.css'))
+            && !v.startsWith('app.js')
+            && !(
+              v.startsWith('app-')
+              && (v.endsWith('.js') || v.endsWith('.js.gz'))
+            )
+            && !v.startsWith('app.css')
+            && !(
+              v.startsWith('app-')
+              && (v.endsWith('.css') || v.endsWith('.css.gz'))
+            )
+          ))
+          .map(async file => {
+            if ((await stat(path.join(config.outdir, file))).isDirectory()) return;
+            await rm(path.join(config.outdir, file)).catch(() => console.log('error', file));
+          })
+      );
     case 'spa':
       // remove app.js
       await Promise.all(
