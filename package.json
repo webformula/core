@@ -2,16 +2,16 @@
   "name": "@webformula/core",
   "version": "0.9.6",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
-  "main": "src/client/index.js",
+  "main": "src/index.js",
   "type": "module",
   "exports": {
-    ".": "./src/client/index.js",
-    "./client": "./src/client/index.js",
-    "./server": "./src/server/index.js",
-    "./build": "./src/client/build.js"
+    ".": "./src/index.js",
+    "./client": "./src/index.js",
+    "./build": "./src/build.js"
   },
   "scripts": {
-    "start": "nodemon -e js,css,html docs/server.js",
+    "start": "node --watch-path=./src --watch-path=./docs build.js",
+    "start_old": "nodemon -e js,css,html docs/server.js",
     "start-spa": "node build.js",
     "build": "NODE_ENV=production node build.js"
   },
@@ -27,10 +27,10 @@
   "homepage": "https://github.com/webformula/core#readme",
   "devDependencies": {
     "@webformula/core": "file:./",
-    "@webformula/material": "^0.8.5",
+    "@webformula/material": "^0.9.1",
     "compression": "^1.7.4",
     "esbuild": "^0.18.1",
     "express": "^4.18.2",
-    "nodemon": "^2.0.22"
+    "linkedom": "^0.14.26"
   }
 }

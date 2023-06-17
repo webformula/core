@@ -45,7 +45,7 @@ export function createFetcher(instanceConfig = {
     }
     return response
   };
-  
+
   return instance;
 }
 

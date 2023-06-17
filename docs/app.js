@@ -17,19 +17,31 @@ routes([
   { path: '/notfound', component: notFound, notFound: true }
 ]);
 
-document.querySelector('#hljsscript').addEventListener('load', () => {
-  hljs.highlightAll();
-});
 
-window.addEventListener('DOMContentLoaded', () => {
+if (document.readyState !== 'loading') {
+  if (typeof hljs !== 'undefined') hljs.highlightAll();
   if (location.hash) {
     setTimeout(() => {
       handleHashAnchor(location.hash, false);
     });
   }
+} else {
+  window.addEventListener('DOMContentLoaded', () => {
+    hljs.highlightAll();
+    if (location.hash) {
+      setTimeout(() => {
+        handleHashAnchor(location.hash, false);
+      });
+    }
+  });
+}
+
+document.querySelector('#hljsscript').addEventListener('load', () => {
+  hljs.highlightAll();
 });
 
 window.addEventListener('locationchange', () => {
+  console.log('locationchange')
   setTimeout(() => {
     if (typeof hljs !== 'undefined') hljs.highlightAll();
     if (!location.hash) return;

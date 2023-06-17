@@ -8,8 +8,7 @@
   <li><a href="#appjs">app.js</a></li>
   <li><a href="#appcss">app.css</a></li>
   <li><a href="#page">Page</a></li>
-  <li><a href="#server">Server side</a></li>
-  <li><a href="#spa">spa</a></li>
+  <li><a href="#build">build</a></li>
 </ul>
 
 <section style="margin-top: 48px;">
@@ -208,57 +207,12 @@
     </pre>
   </mdw-card>
 
-
-  <mdw-card id="server">
+  <mdw-card id="build">
     <div class="mdw-card-content">
-      <div class="mdw-headline">Serve app from express</div>
-      <div class="mdw-subheader">server.js</div>
-      <div class="mdw-supporting-text">coreMiddleware automatically bundles and splits the code for optimal loading</div>
-      <a href="/build">Serve details</a>
-    </div>
-  
-    <pre>
-      <code class="language-javascript">
-  ${`import express from 'express';
-  import compression from 'compression';
-  import { coreMiddleware } from '@webformula/core/server';
-  
-  const app = express();
-  const port = 3000;
-  
-  app.use(compression());
-  app.use(coreMiddleware('./app'));
-  app.use(express.static('./app'));
-  
-  app.listen(port, () => {
-    console.log(\`Example app listening on port \${port}\`);
-  });`}
-      </code>
-    </pre>
-
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Run commands</div>
-    </div>
-    <pre>
-      <code class="language-bash">
-  ${`# Development run. Includes sourcemaps
-  node build.js
-  # using nodemon will enable livereload
-  nodemon -e js,css,html build.js
-
-  # Production run. minifies, turns off livereload and sourcemaps
-  NODE_ENV=production node build.js
-  `}
-      </code>
-    </pre>
-  </mdw-card>
-
-  <mdw-card id="spa">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Build single page app</div>
+      <div class="mdw-headline">Build app</div>
       <div class="mdw-subheader">build.js</div>
       <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.</div>
-      <a href="/build#spa">Build config</a>
+      <a href="/build">Build config</a>
     </div>
     
     <pre>
@@ -278,8 +232,11 @@
     </div>
     <pre>
       <code class="language-bash">
-  ${`# Development run. Includes sourcemaps and livereload
+  ${`# Development run
   node build.js
+
+  # Development run with watch to enable livereload
+  node --watch-path=./app build.js
 
   # Production run. minifies, gzips, and writes files
   NODE_ENV=production node build.js
