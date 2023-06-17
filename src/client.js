@@ -100,7 +100,6 @@ async function runComponentModuleQueue() {
   });
 }
 
-console.log(window._webformulaSinglePage)
 if (window._webformulaSinglePage) {
   window.webformulaCoreLinkIntercepts = true;
   document.addEventListener('click', event => {
