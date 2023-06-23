@@ -7,7 +7,7 @@
   "exports": {
     ".": "./src/index.js",
     "./client": "./src/index.js",
-    "./build": "./src/build.js"
+    "./build": "./src/build/index.js"
   },
   "scripts": {
     "start": "node --watch-path=./src --watch-path=./docs build.js",

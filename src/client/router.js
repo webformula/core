@@ -1,9 +1,9 @@
-import { buildPathRegex } from './shared.js';
+import { buildPathRegex } from '../shared.js';
 
 const leadingSlashRegex = /^\//;
 const trailingSlashRegex = /\/$/;
 const app = {
-  pages: new Map(),
+  // pages: new Map(),
   paths: [],
   pageCounter: 0,
   componentModuleQueue: [],
@@ -26,24 +26,19 @@ export function routes(config = [{
     if (app.paths.find(v => v.path === c.path)) return;
 
     const regex = buildPathRegex(c.path);
-    const componentModule = typeof c.component === 'string' ? undefined : c.component;
     // can have multiple paths with same page
-    if (!app.pages.has(c.component)) app.pages.set(c.component, {
-      component: c.component,
-      componentModule,
-      notFoundPage: c.notFoundPage
-    });
+    // if (!app.pages.has(c.component)) app.pages.set(c.component, {
+    //   component: c.component,
+    //   notFoundPage: c.notFoundPage
+    // });
     app.paths.push({
       ...c,
       regex
     });
-    if (location.pathname.match(regex)) isCurrent = true;
-    if (!componentModule && !app.componentModuleQueue.includes(c.component)) app.componentModuleQueue.push(c.component);
-  }
+    if (location.pathname.match(regex)) isCurrent = true;  }
   if (isCurrent) route(location, false, true);
-  setTimeout(() => runComponentModuleQueue());
 }
-window.wfRoutes = routes;
+// window.getRoutes = () => app;
 
 export function preventNavigation(value = true) {
   app.preventNavigation = !!value;
@@ -54,29 +49,30 @@ async function route(locationObject, back = false, initial = false) {
   if (!initial && app.preventNavigation) return;
 
   let match = app.paths.find(v => locationObject.pathname.match(v.regex) !== null);
+  console.log(locationObject.pathname, match)
   if (!match) match = app.paths.find(v => v.notFound);
-  if (!match) return console.warn(`No page found for path: ${locationObject.pathname}`);
-
-  const page = app.pages.get(match.component);
+  if (!match) console.warn(`No page found for path: ${locationObject.pathname}`);
 
   // using web components for pages so we need to define it
-  if (!page.componentModule._defined) {
-    page.componentModule.useTemplate = false;
-    page.componentModule._isPage = true;
-    page.componentModule._pagePathRegex = match.regex;
-    customElements.define(`page-${app.pageCounter++}`, page.componentModule);
-    page.componentModule._defined = true;
+  if (!match.component._defined) {
+    match.component = await Promise.resolve(match.component);
+    if (typeof match.component !== 'function') match.component = match.component.default;
+    match.component.useTemplate = false;
+    match.component._isPage = true;
+    match.component._pagePathRegex = match.regex;
+    customElements.define(`page-${app.pageCounter++}`, match.component);
+    match.component._defined = true;
   }
 
   const currentPage = window.page;
-  const samePage = currentPage?.constructor === page.componentModule;
+  const samePage = currentPage?.constructor === match.component;
   if (samePage) {
     if (locationObject.hash === location.hash) return;
     if (!back) window.history.pushState({}, currentPage.title, locationObject.pathname);
     window.dispatchEvent(new Event('hashchange'));
     return;
   }
-  const nextPage = new page.componentModule();
+  const nextPage = new match.component();
   if (!back) window.history.pushState({}, nextPage.title, locationObject.pathname);
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
@@ -87,20 +83,7 @@ async function route(locationObject, back = false, initial = false) {
   if (!initial) window.dispatchEvent(new Event('locationchange'));
 }
 
-async function runComponentModuleQueue() {
-  app.componentModuleQueue.forEach(key => {
-    const page = app.pages.get(key);
-    page.componentModulePromise = import(key);
-    page.componentModulePromise
-      .then(module => {
-        page.componentModule = module.default;
-        page.componentModulePromise = undefined;
-      })
-      .catch(e => console.error(e));
-  });
-}
-
-if (window._webformulaSinglePage) {
+// if (window._webformulaSinglePage) {
   window.webformulaCoreLinkIntercepts = true;
   document.addEventListener('click', event => {
     if (!event.target.matches('[href]')) return;
@@ -119,8 +102,8 @@ if (window._webformulaSinglePage) {
 
     // the prevent default keeps the link from loosing focus
     event.target.blur();
-  });
+  }, false);
   window.addEventListener('popstate', event => {
     route(new URL(event.currentTarget.location), true);
   });
-}
+// }

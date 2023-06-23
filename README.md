@@ -290,10 +290,6 @@ The build process will handle:
 - Rewriting imports for app.js and app.js to have hashes
 - Gziping content
 - File copying
-- multiple build modes
-  - spa
-  - spaSingleFile
-  - separate
 
 ```javascript
 import build from '@webformula/core/build';
@@ -316,17 +312,10 @@ build({
   outdir: 'dist/',
 
   /**
-   * Default 'spa'
-   * There are 3 modes
-   * All modes will build a index html file for each route with the page template rendered
-   * - spa
-   *   Initially loads only the requested page. Then lazy loads all other pages
-   * - spaSingleFile
-   *   Loads everything with the requested page pre rendered
-   * - separate
-   *   Only loads requested page. Each navigation will load from the server
+   * Default true
+   * Split code using routes for optimal loading 
    */
-  mode: 'spa',
+  chunks: true,
 
   /**
    * true when 'NODE_ENV=production' otherwise defaults to false
@@ -345,12 +334,6 @@ build({
   * use 'WEBFORMULA_GZIP' env var to override
   */
   gzip: true,
-
-  /**
-  * Defaults to true
-  * Not recommended to be false
-  */
-  chunks: true,
 
   devServer: {
     /**

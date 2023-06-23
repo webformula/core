@@ -1,6 +1,6 @@
-import Component from './Component.js';
-import { routes } from './client.js';
-import { fetcher, createFetcher } from './fetcher.js';
+import Component from './client/Component.js';
+import { routes } from './client/router.js';
+import { fetcher, createFetcher } from './client/fetcher.js';
 
 export {
   Component,

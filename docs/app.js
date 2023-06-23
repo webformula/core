@@ -41,7 +41,6 @@ document.querySelector('#hljsscript').addEventListener('load', () => {
 });
 
 window.addEventListener('locationchange', () => {
-  console.log('locationchange')
   setTimeout(() => {
     if (typeof hljs !== 'undefined') hljs.highlightAll();
     if (!location.hash) return;
