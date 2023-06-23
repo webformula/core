@@ -27,6 +27,7 @@ const dynamicImportRegex = /[\/\/\s]?(?:await)?\s?import\s?\(['|"](?<path>.+?)['
 const routesRegex = /routes\s?\(\s?(\[[\s\S]*.*\])\s?\);?/;
 const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
 const scriptTagRegex = /<\s*script[^>]*src="\.?\/?app.js"[^>]*>[^>]*<\s*\/\s*script>/g;
+const titleTagRegex = /<head>(?:.|\n)+(<title>.?<\/title>)(?:.|\n)+<\/head>/g;
 const cssTagRegex = /<\s*link[^>]*href="\.?\/?app.css"[^>]*>/;
 const config = {
   pageCounter: 0
@@ -195,6 +196,9 @@ async function buildIndexHTMLs(pageFiles, appCSSFile) {
       `).replace(/    /g, ' ')
       .replace(pageContentTagRegex, () => `<page-content>\n${template.split('\n').map(v => `    ${v}`).join('\n')}\n</page-content>`);
     if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" rel="stylesheet">`);
+
+    if (content.match(titleTagRegex)) content = content.replace(titleTagRegex, (a, b) => a.replace(b, `<title>${pageModule.default.title}</title>`));
+    else content = content.replace('<head>', `<head>\n  <title>${pageModule.default.title}</title>`);
 
     return {
       fileName: page.path === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${page.path.replace(/\/|\.|\s/g, '')}.html`),

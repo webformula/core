@@ -75,34 +75,34 @@ async function route(locationObject, back = false, initial = false) {
   if (!back) window.history.pushState({}, nextPage.title, locationObject.pathname);
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
-  if (!initial) nextPage.render();
-  document.body.scrollTop = 0;
-  document.documentElement.scrollTop = 0;
+  if (!initial) {
+    nextPage.render();
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }
   nextPage.connectedCallback();
   if (!initial) window.dispatchEvent(new Event('locationchange'));
 }
 
-// if (window._webformulaSinglePage) {
-  window.webformulaCoreLinkIntercepts = true;
-  document.addEventListener('click', event => {
-    if (!event.target.matches('[href]')) return;
+window.webformulaCoreLinkIntercepts = true;
+document.addEventListener('click', event => {
+  if (!event.target.matches('[href]')) return;
 
-    // allow external links
-    if (event.target.getAttribute('href').includes('://')) {
-      const target = event.target.getAttribute('target');
-      if (['_blank', '_self', '_parent', '_top'].includes(target)) {
-        window.open(event.target.getAttribute('href'), target).focus();
-      }
-      return;
+  // allow external links
+  if (event.target.getAttribute('href').includes('://')) {
+    const target = event.target.getAttribute('target');
+    if (['_blank', '_self', '_parent', '_top'].includes(target)) {
+      window.open(event.target.getAttribute('href'), target).focus();
     }
+    return;
+  }
 
-    event.preventDefault();
-    route(new URL(event.target.href));
+  event.preventDefault();
+  route(new URL(event.target.href));
 
-    // the prevent default keeps the link from loosing focus
-    event.target.blur();
-  }, false);
-  window.addEventListener('popstate', event => {
-    route(new URL(event.currentTarget.location), true);
-  });
-// }
+  // the prevent default keeps the link from loosing focus
+  event.target.blur();
+}, false);
+window.addEventListener('popstate', event => {
+  route(new URL(event.currentTarget.location), true);
+});
