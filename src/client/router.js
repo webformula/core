@@ -49,7 +49,6 @@ async function route(locationObject, back = false, initial = false) {
   if (!initial && app.preventNavigation) return;
 
   let match = app.paths.find(v => locationObject.pathname.match(v.regex) !== null);
-  console.log(locationObject.pathname, match)
   if (!match) match = app.paths.find(v => v.notFound);
   if (!match) console.warn(`No page found for path: ${locationObject.pathname}`);
 

@@ -22,8 +22,8 @@ const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
 const isGzip = WEBFORMULA_GZIP === 'false' ? false : true;
 const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
 const cssFilterRegex = /\.css$/;
-const importRegex = /(?:\/\/)?\s?import(?:\s|'|")(\{?\s?(?<name>[\w\s,\$]+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g;
-const dynamicImportRegex = /(?:\/\/)?\s?(?:await)?\s?import\s?\(['|"](?<path>.+?)['|"]\)\s?(;|\n)/g;
+const importRegex = /[\/\/\s]?import[\s'"]?(\{?\s?(?<name>[\w\s,\$]+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g;
+const dynamicImportRegex = /[\/\/\s]?(?:await)?\s?import\s?\(['|"](?<path>.+?)['|"]\)\s?(;|\n|,)/g;
 const routesRegex = /routes\s?\(\s?(\[[\s\S]*.*\])\s?\);?/;
 const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
 const scriptTagRegex = /<\s*script[^>]*src="\.?\/?app.js"[^>]*>[^>]*<\s*\/\s*script>/g;
@@ -151,7 +151,7 @@ async function run() {
   const appJSFile = outputs.find(v => v.entryPoint === config.appFilePath);
   const appCSSFile = Object.keys(appCSSContext?.metafile.outputs).map(key => ({
     output: key,
-    ...metafile.outputs[key]
+    ...appCSSContext.metafile.outputs[key]
   }))[0];
   if (config.hasAppCSS) outputs = outputs.concat(appCSSFile);
 
@@ -254,6 +254,7 @@ async function gzipFiles(outputFiles) {
           .replace('.css', '.css.gz')
           .replace('.html', '.html.gz');
       });
+
       content = content.replace(dynamicImportRegex, a => {
         return a
           .replace('.gz', '')
