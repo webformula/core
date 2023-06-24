@@ -1,19 +1,17 @@
 <h3 class="page-title">Build / Serve</h3>
-<div class="page-subheader mdw-font-title-medium">Serve application from Expressjs or build a single page app</div>
+<div class="page-subheader mdw-font-title-medium">Serve or build app with bundles optimized based on routes</div>
 
 <section style="margin-top: 48px;">
   <mdw-card id="build">
     <div class="mdw-card-content">
-      <div class="mdw-headline">Build single page app</div>
-      <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.</div>
+      <div class="mdw-headline">Build app</div>
+      <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured. Builds are also optimized based on route entry points.</div>
       <ul>
         <li>Minification</li>
         <li>Sourcemaps</li>
         <li>Dev server</li>
         <li>live relaoding</li>
-        <li>Adding hashes to filenames</li>
-        <li>Rewriting imports for app.js and app.js to have hashes</li>
-        <li>Gziping content</li>
+        <li>Gzip content</li>
         <li>File copying</li>
       </ul>
     </div>
@@ -40,40 +38,46 @@
     outdir: 'dist/',
 
     /**
-    * Default true
-    * Split code using routes for optimal loading
-    */
+     * Default true
+     * Split code using routes for optimal loading
+     */
     chunks: true,
 
-
     /**
-     * true when 'NODE_ENV=production' otherwise defaults to false
-     * use 'WEBFORMULA_MINIFY' env var to override
+     * Minify code
+     * Set to 'true' when 'NODE_ENV=production'
+     *   otherwise it defaults to 'false'
      */
     minify: true,
 
     /**
-    * false when 'NODE_ENV=production' otherwise defaults to true
-    * use 'WEBFORMULA_SOURCEMAPS' env var to override
-    */
+     * Create source maps
+     * Set to 'false' when 'NODE_ENV=production'
+     *   otherwise it defaults to 'true'
+     */
     sourcemaps: false,
 
     /**
-    * true when 'NODE_ENV=production' otherwise defaults to false
-    * use 'WEBFORMULA_GZIP' env var to override
-    */
+     * Compress code
+     * Set to 'true' when 'NODE_ENV=production'
+     *   otherwise it defaults to 'false'
+     */
     gzip: true,
 
     devServer: {
       /**
-      * false when 'NODE_ENV=production' otherwise defaults to true
-      */
+       * Run dev server
+       * Set to 'false' when 'NODE_ENV=production'
+       *   otherwise it defaults to 'true'
+       */
       enabled: true,
 
       /**
-      * false when 'NODE_ENV=production' otherwise defaults to true
-      * use 'WEBFORMULA_LIVERELOAD' env var to override
-      */
+       * Livereload
+       * Simply use watch to enable 'node --watch build.js'
+       * Set to 'false' when 'NODE_ENV=production'
+       *   otherwise it defaults to 'true'
+       */
       liveReload: true
 
       port: 3000,
@@ -105,6 +109,54 @@
     // callback after bundle
     onEnd: () => {}
   });`}
+      </code>
+    </pre>
+
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">Native server</div>
+    </div>
+    <pre>
+      <code class="language-javascript">
+  ${`import { createServer } from 'node:http';
+  import { middlewareNode } from '@webformula/core/middleware';
+  
+  // same options as above
+  const middleware = middlewareNode({
+    basedir: 'docs/',
+    outdir: 'dist/',
+    copyFiles: [
+      { from: 'docs/favicon.ico', to: 'dist/' }
+    ]
+  });
+  
+  createServer(async (req, res) => {
+  const handled = await middleware(req, res);
+    if (handled === true) return;
+    
+    // Do other stuff
+  }).listen(3000);`}
+      </code>
+    </pre>
+    
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">Express server</div>
+    </div>
+    <pre>
+      <code class="language-javascript">
+  ${`import express from 'express';
+  import { middlewareExpress } from '@webformula/core/middleware';
+  
+  const app = express();
+  // same options as above
+  app.use(middlewareExpress({
+    basedir: 'docs/',
+    outdir: 'dist/',
+    copyFiles: [
+      { from: 'docs/favicon.ico', to: 'dist/' }
+    ]
+  }));
+  app.use(express.static('./docs'));
+  app.listen(3000);`}
       </code>
     </pre>
 

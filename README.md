@@ -320,33 +320,40 @@ build({
   chunks: true,
 
   /**
-   * true when 'NODE_ENV=production' otherwise defaults to false
-   * use 'WEBFORMULA_MINIFY' env var to override
+   * Minify code
+   * Set to 'true' when 'NODE_ENV=production'
+   *   otherwise it defaults to 'false'
    */
   minify: true,
 
   /**
-  * false when 'NODE_ENV=production' otherwise defaults to true
-  * use 'WEBFORMULA_SOURCEMAPS' env var to override
-  */
+   * Create source maps
+   * Set to 'false' when 'NODE_ENV=production'
+   *   otherwise it defaults to 'true'
+   */
   sourcemaps: false,
 
   /**
-  * true when 'NODE_ENV=production' otherwise defaults to false
-  * use 'WEBFORMULA_GZIP' env var to override
-  */
+   * Compress code
+   * Set to 'true' when 'NODE_ENV=production'
+   *   otherwise it defaults to 'false'
+   */
   gzip: true,
 
   devServer: {
     /**
-    * false when 'NODE_ENV=production' otherwise defaults to true
-    */
+     * Run dev server
+     * Set to 'false' when 'NODE_ENV=production'
+     *   otherwise it defaults to 'true'
+     */
     enabled: true,
 
     /**
-    * false when 'NODE_ENV=production' otherwise defaults to true
-    * use 'WEBFORMULA_LIVERELOAD' env var to override
-    */
+     * Livereload
+     * Simply use watch to enable 'node --watch build.js'
+     * Set to 'false' when 'NODE_ENV=production'
+     *   otherwise it defaults to 'true'
+     */
     liveReload: true
 
     port: 3000,
