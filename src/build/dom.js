@@ -36,7 +36,9 @@ const localStorage = {
   getItem() { },
   setItem() { }
 };
-const navigator = {};
+const navigator = {
+  maxTouchPoints: 0
+};
 function getComputedStyle() {
   return {};
 }
@@ -55,6 +57,12 @@ const customElements = {
 const history = {
   pushState() { },
   popState() { }
+}
+const screen = {
+  orientation: {
+    type: 'landscape-primary',
+    addEventListener() {}
+  }
 }
 const document = {
   location,
@@ -92,6 +100,7 @@ const window = {
   customElements,
   history,
   EventSource,
+  screen,
   dispatchEvent() { },
   addEventListener() { },
   removeEventListener() { },
@@ -116,4 +125,5 @@ export default function add() {
   global.customElements = customElements;
   global.location = location;
   global.EventSource = EventSource;
+  global.screen = screen;
 }
