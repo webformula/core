@@ -1,18 +1,17 @@
 {
   "name": "@webformula/core",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
   "main": "src/index.js",
   "type": "module",
   "exports": {
     ".": "./src/index.js",
     "./client": "./src/index.js",
-    "./build": "./src/build/index.js"
+    "./build": "./src/build/index.js",
+    "./middleware": "./src/middleware.js"
   },
   "scripts": {
     "start": "node --watch-path=./src --watch-path=./docs build.js",
-    "start_old": "nodemon -e js,css,html docs/server.js",
-    "start-spa": "node build.js",
     "build": "NODE_ENV=production node build.js"
   },
   "repository": {

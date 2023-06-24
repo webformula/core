@@ -6,9 +6,10 @@ Simple no thrills micro framework. Super performant and light-weight!
 - ⚡ Lightweight - 1.8KB compressed (GZIP)
 - ⚡ Fast - leverages native browser features
 - ⚡ Simple - No complex concepts
-- ⚡ 0 dependencies in build
-- ⚡ Server side & Single page app
+- ⚡ Single page app with index HTML for each route
 - ⚡ Includes bundling. No need for Webpack
+- ⚡ Bundles with route level chunk optimization or single file
+- ⚡ Server middleware
 
 ### About
 Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (2KB). You can create your web application and decide weather to build it as a single page app or server it.
@@ -25,6 +26,7 @@ Browsers, javascript, css, and html provide a robust set of features these days.
     - [page.html](#page.html)
     - [component.js](#component.js)
     - [Build app](#buildapp)
+    - [Server midddleware](#middleware)
 
 
 # Getting started
@@ -389,4 +391,61 @@ node --watch-path=./app build.js
 
 # Production run. minifies, gzips, and writes files
 NODE_ENV=production node build.js
+```
+
+
+<br/>
+
+### **Build single page app `build.js`**
+<a name="middleware"/>
+Use middleware to handle routing and file serving. GZIP compression is automatically handled.
+- Native server
+- Express server
+- Enable livereload with `node --watch`
+
+### **Native server**
+```javascript
+import { createServer } from 'node:http';
+import { middlewareNode } from '@webformula/core/middleware';
+
+const middleware = middlewareNode({
+  basedir: 'docs/',
+  outdir: 'dist/',
+  copyFiles: [
+    { from: 'docs/favicon.ico', to: 'dist/' }
+  ]
+});
+
+createServer(async (req, res) => {
+  const handled = await middleware(req, res);
+  if (handled === true) return;
+
+  // Do other stuff
+}).listen(3000);
+```
+
+### **Express server**
+```javascript
+import express from 'express';
+import { middlewareExpress } from '@webformula/core/middleware';
+
+const app = express();
+app.use(middlewareExpress({
+  basedir: 'docs/',
+  outdir: 'dist/',
+  copyFiles: [
+    { from: 'docs/favicon.ico', to: 'dist/' }
+  ]
+}));
+app.use(express.static('./docs'));
+
+app.listen(3000, () => {
+  console.log(`Example app listening on port ${port}`)
+});
+```
+
+### **Livereload**
+Simply use node --watch to enable livereload
+```bash
+node --watch-path=./src --watch-path=./docs server.js
 ```

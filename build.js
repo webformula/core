@@ -1,6 +1,7 @@
 import build from '@webformula/core/build';
 
 build({
+  chunks: false,
   basedir: 'docs/',
   outdir: 'dist/',
   copyFiles: [

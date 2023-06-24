@@ -3,7 +3,6 @@ import { buildPathRegex } from '../shared.js';
 const leadingSlashRegex = /^\//;
 const trailingSlashRegex = /\/$/;
 const app = {
-  // pages: new Map(),
   paths: [],
   pageCounter: 0,
   componentModuleQueue: [],
@@ -26,11 +25,6 @@ export function routes(config = [{
     if (app.paths.find(v => v.path === c.path)) return;
 
     const regex = buildPathRegex(c.path);
-    // can have multiple paths with same page
-    // if (!app.pages.has(c.component)) app.pages.set(c.component, {
-    //   component: c.component,
-    //   notFoundPage: c.notFoundPage
-    // });
     app.paths.push({
       ...c,
       regex
@@ -38,7 +32,6 @@ export function routes(config = [{
     if (location.pathname.match(regex)) isCurrent = true;  }
   if (isCurrent) route(location, false, true);
 }
-// window.getRoutes = () => app;
 
 export function preventNavigation(value = true) {
   app.preventNavigation = !!value;
@@ -66,13 +59,15 @@ async function route(locationObject, back = false, initial = false) {
   const currentPage = window.page;
   const samePage = currentPage?.constructor === match.component;
   if (samePage) {
-    if (locationObject.hash === location.hash) return;
-    if (!back) window.history.pushState({}, currentPage.title, locationObject.pathname);
-    window.dispatchEvent(new Event('hashchange'));
+    const hashMatches = locationObject.hash === location.hash;
+    const searchMatches = locationObject.search === location.search;
+    if (hashMatches && searchMatches) return;
+    if (!back) window.history.pushState({}, currentPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
+    if (!hashMatches) window.dispatchEvent(new Event('hashchange'));
     return;
   }
   const nextPage = new match.component();
-  if (!back) window.history.pushState({}, nextPage.title, locationObject.pathname);
+  if (!back) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
   if (!initial) {
@@ -81,28 +76,32 @@ async function route(locationObject, back = false, initial = false) {
     document.documentElement.scrollTop = 0;
   }
   nextPage.connectedCallback();
-  if (!initial) window.dispatchEvent(new Event('locationchange'));
+  requestAnimationFrame(() => {
+    if (!initial) window.dispatchEvent(new Event('locationchange'));
+  });
 }
 
-window.webformulaCoreLinkIntercepts = true;
-document.addEventListener('click', event => {
-  if (!event.target.matches('[href]')) return;
+if (!window._webformulaServer) {
+  window.webformulaCoreLinkIntercepts = true;
+  document.addEventListener('click', event => {
+    if (!event.target.matches('[href]')) return;
 
-  // allow external links
-  if (event.target.getAttribute('href').includes('://')) {
-    const target = event.target.getAttribute('target');
-    if (['_blank', '_self', '_parent', '_top'].includes(target)) {
-      window.open(event.target.getAttribute('href'), target).focus();
+    // allow external links
+    if (event.target.getAttribute('href').includes('://')) {
+      const target = event.target.getAttribute('target');
+      if (['_blank', '_self', '_parent', '_top'].includes(target)) {
+        window.open(event.target.getAttribute('href'), target).focus();
+      }
+      return;
     }
-    return;
-  }
 
-  event.preventDefault();
-  route(new URL(event.target.href));
+    event.preventDefault();
+    route(new URL(event.target.href));
 
-  // the prevent default keeps the link from loosing focus
-  event.target.blur();
-}, false);
-window.addEventListener('popstate', event => {
-  route(new URL(event.currentTarget.location), true);
-});
+    // the prevent default keeps the link from loosing focus
+    event.target.blur();
+  }, false);
+  window.addEventListener('popstate', event => {
+    route(new URL(event.currentTarget.location), true);
+  });
+}

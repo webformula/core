@@ -6,24 +6,12 @@ import esbuild from 'esbuild';
 import addMockDom from './dom.js';
 import copyFiles from './copyFiles.js';
 import devServer from './devServer.js';
+import { buildPathRegex } from '../shared.js';
 
 const asyncGzip = promisify(gzip);
-const {
-  WEBFORMULA_DEV,
-  WEBFORMULA_SOURCEMAPS,
-  WEBFORMULA_MINIFY,
-  WEBFORMULA_LIVERELOAD,
-  WEBFORMULA_GZIP
-} = process.env;
-const webformulaDev = WEBFORMULA_DEV === 'true' ? true : WEBFORMULA_DEV === 'false' ? false : undefined;
-const isDev = webformulaDev !== undefined ? webformulaDev : process.env.NODE_ENV !== 'production';
-const isSourceMaps = WEBFORMULA_SOURCEMAPS === 'false' ? false : isDev;
-const isMinify = WEBFORMULA_MINIFY === 'false' ? false : true;
-const isGzip = WEBFORMULA_GZIP === 'false' ? false : true;
-const isLiveReload = WEBFORMULA_LIVERELOAD === 'false' ? false : isDev;
+const isDev = process.env.NODE_ENV !== 'production';
 const cssFilterRegex = /\.css$/;
 const importRegex = /[\/\/\s]?import[\s'"]?(\{?\s?(?<name>[\w\s,\$]+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g;
-const dynamicImportRegex = /[\/\/\s]?(?:await)?\s?import\s?\(['|"](?<path>.+?)['|"]\)\s?(;|\n|,)/g;
 const routesRegex = /routes\s?\(\s?(\[[\s\S]*.*\])\s?\);?/;
 const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
 const scriptTagRegex = /<\s*script[^>]*src="\.?\/?app.js"[^>]*>[^>]*<\s*\/\s*script>/g;
@@ -60,13 +48,13 @@ export default async function build(params = {
   config.basedir = params.basedir || 'app/';
   config.outdir = params.outdir || 'dist/';
   config.chunks = params.chunks === false ? false : true;
-  config.minify = params.minify === false ? false : params.minify === true ? true : isMinify;
-  config.gzip = params.gzip === false ? false : params.gzip === true ? true : isGzip;
-  config.sourcemaps = params.sourcemaps === false ? false : params.sourcemaps === true ? true : isSourceMaps;
+  config.minify = params.minify === false ? false : params.minify === true ? true : !isDev;
+  config.gzip = params.gzip === false ? false : params.gzip === true ? true : !isDev;
+  config.sourcemaps = params.sourcemaps === false ? false : params.sourcemaps === true ? true : isDev;
   config.devServer = params.devServer || { enabled: false };
   config.devServer.enabled = params?.devServer?.enabled === false ? false : true;
   config.devServer.port = params?.devServer?.port || 3000;
-  config.devServer.liveReload = params?.devServer?.liveReload === false ? false : params?.devServer?.liveReload === true ? true : isLiveReload;
+  config.devServer.liveReload = params?.devServer?.liveReload === false ? false : params?.devServer?.liveReload === true ? true : isDev;
   config.copyFiles = (params.copyFiles || []).filter(({ from }) => !!from);
   config.onStart = params.onStart;
   config.onEnd = params.onEnd;
@@ -74,11 +62,13 @@ export default async function build(params = {
   config.indexHTMLPath = path.join(config.basedir, '/index.html');
   config.appCSSFilePath = path.join(config.basedir, '/app.css');
   config.hasAppCSS = await access(config.appCSSFilePath).then(e => true).catch(e => false);
+  config.isMiddleware = params.isMiddleware;
   if (config.hasAppCSS) config.appCSSOutputFilePath = path.join(config.outdir, 'app.css');
   if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
 
-  await run();
-  if (!isDev) process.exit();
+  const data = await run();
+  if (!isDev && config?.devServer?.enabled !== true) process.exit();
+  return data;
 }
 
 
@@ -156,7 +146,7 @@ async function run() {
   }))[0];
   if (config.hasAppCSS) outputs = outputs.concat(appCSSFile);
 
-  await copyFiles(config, outputs);
+  const copiedFiles = await copyFiles(config, outputs);
 
   // build index html pages for each page
   parsed.pages.forEach(v => {
@@ -175,7 +165,28 @@ async function run() {
 
   if (config.gzip) await gzipFiles(outputs.concat(indexHTMLFiles));
   if (config.onEnd) await config.onEnd();
-  if (config.devServer.enabled) devServer(config);
+
+  const returnData = {
+    routes: parsed.pages.map(v => ({
+      route: v.path,
+      regex: buildPathRegex(v.path),
+      filePath: v.indexHTMLFileName,
+      fileName: v.indexHTMLFileName.split('/').pop()
+    })),
+    files: outputs
+      .map(v => ({
+        filePath: v.output,
+        fileName: v.output.split('/').pop()
+      })).concat(copiedFiles),
+    gzip: config.gzip
+  };
+
+  if (config.devServer.enabled) devServer({
+    ...returnData,
+    devServer: config.devServer
+  });
+
+  return returnData;
 }
 
 async function buildIndexHTMLs(pageFiles, appCSSFile) {
@@ -202,9 +213,10 @@ async function buildIndexHTMLs(pageFiles, appCSSFile) {
 
     let content = indexFile
       .replace(scriptTagRegex, () => `
+        ${config.isMiddleware ? `<script>window._webformulaServer = true;</script>` : ''}
         <script src="${page.appScriptPath}" type="module" async></script>
         ${page.pageScriptPath ? `<script src="${page.pageScriptPath}" type="module" async></script>` : ''}
-        ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/esbuild").onerror = () => setTimeout(() => location.reload(), 500);</script>`}
+        ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/livereload").onerror = () => setTimeout(() => location.reload(), 500);</script>`}
         ${scriptChunkImports.map(v => `<script src="${v}" type="module" async></script>`).join('\n')}
       `).replace(/    /g, ' ')
       .replace(pageContentTagRegex, () => `<page-content>\n${template.split('\n').map(v => `    ${v}`).join('\n')}\n</page-content>`);
@@ -212,9 +224,11 @@ async function buildIndexHTMLs(pageFiles, appCSSFile) {
 
     if (content.match(titleTagRegex)) content = content.replace(titleTagRegex, (a, b) => a.replace(b, `<title>${pageModule.default.title}</title>`));
     else content = content.replace('<head>', `<head>\n  <title>${pageModule.default.title}</title>`);
-
+    
+    const fileName = page.path === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${page.path.replace(/\/|\.|\s/g, '')}.html`);
+    page.indexHTMLFileName = fileName;
     return {
-      fileName: page.path === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${page.path.replace(/\/|\.|\s/g, '')}.html`),
+      fileName,
       content
     }
   }));

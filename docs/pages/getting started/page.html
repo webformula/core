@@ -9,6 +9,7 @@
   <li><a href="#appcss">app.css</a></li>
   <li><a href="#page">Page</a></li>
   <li><a href="#build">build</a></li>
+  <li><a href="#middleware">Server middleware</a></li>
 </ul>
 
 <section style="margin-top: 48px;">
@@ -241,6 +242,71 @@
   # Production run. minifies, gzips, and writes files
   NODE_ENV=production node build.js
   `}
+      </code>
+    </pre>
+  </mdw-card>
+
+  <mdw-card id="middleware">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Serve app</div>
+      <div class="mdw-subheader">server.js</div>
+      <div class="mdw-supporting-text">Handle routing and file serving with middleware. GZIP compression is automatically handled.</div>
+      <a href="/serve">Serve config</a>
+    </div>
+    
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">Native server</div>
+    </div>
+    <pre>
+      <code class="language-javascript">
+  ${`import { createServer } from 'node:http';
+  import { middlewareNode } from '@webformula/core/middleware';
+  
+  const middleware = middlewareNode({
+    basedir: 'docs/',
+    outdir: 'dist/',
+    copyFiles: [
+      { from: 'docs/favicon.ico', to: 'dist/' }
+    ]
+  });
+  
+  createServer(async (req, res) => {
+  const handled = await middleware(req, res);
+    if (handled === true) return;
+    
+    // Do other stuff
+  }).listen(3000);`}
+      </code>
+    </pre>
+
+  <div class="mdw-card-content" style="margin-top: 12px">
+    <div class="mdw-subheader">Express server</div>
+  </div>
+  <pre>
+      <code class="language-javascript">
+  ${`import express from 'express';
+  import { middlewareExpress } from '@webformula/core/middleware';
+  
+  const app = express();
+  app.use(middlewareExpress({
+    basedir: 'docs/',
+    outdir: 'dist/',
+    copyFiles: [
+      { from: 'docs/favicon.ico', to: 'dist/' }
+    ]
+  }));
+  app.use(express.static('./docs'));
+  app.listen(3000);`}
+      </code>
+    </pre>
+
+    <div class="mdw-card-content" style="margin-top: 12px">
+      <div class="mdw-subheader">Livereload</div>
+    </div>
+    <pre>
+      <code class="language-bash">
+  ${`# Simply use node --watch to enable livereload
+  node --watch-path=./src --watch-path=./docs server.js`}
       </code>
     </pre>
   </mdw-card>

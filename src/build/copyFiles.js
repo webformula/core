@@ -6,7 +6,8 @@ import { promisify } from 'node:util';
 const asyncGzip = promisify(gzip);
 
 export default async function copyFiles(config, outputFileNames) {
-  await Promise.all(config.copyFiles.map(async ({ from, to, transform, gzip }) => {
+  return Promise.all(config.copyFiles.flatMap(async (file) => {
+    let { from, to, transform, gzip } = file;
     const isGlob = from.includes('*');
     if (!isGlob) {
       const hasExtension = !!getExtension(to);
@@ -17,7 +18,13 @@ export default async function copyFiles(config, outputFileNames) {
         await mkdir(to.split('/').slice(0, -1).join('/'), { recursive: true });
         await cp(from, to);
         if (gzip) await gzipFile(to);
-        return
+        return {
+          copiedFile: true,
+          gzip,
+          fileName: to.split('/').pop(),
+          filePath: to,
+          entryFilePath: from
+        };
       }
 
       // transform and copy
@@ -29,7 +36,13 @@ export default async function copyFiles(config, outputFileNames) {
       await mkdir(to.split('/').slice(0, -1).join('/'), { recursive: true });
       await writeFile(to, transformed);
       if (gzip) await gzipFile(to);
-      return
+      return {
+        copiedFile: true,
+        gzip,
+        fileName: to.split('/').pop(),
+        filePath: to,
+        entryFilePath: from
+      };
     }
 
     // Glob copy
@@ -41,25 +54,40 @@ export default async function copyFiles(config, outputFileNames) {
 
       // just copy
       if (typeof transform !== 'function') {
-        await Promise.all(filtered.map(async filePath => {
+        return Promise.all(filtered.map(async filePath => {
           const witePath = path.join(to, filePath.split(globBase).pop());
           await mkdir(witePath.split('/').slice(0, -1).join('/'), { recursive: true });
           await cp(filePath, writePath);
           if (gzip) await gzipFile(writePath);
+          return {
+            copiedFile: true,
+            gzip,
+            fileName: writePath.split('/').pop(),
+            filePath: writePath,
+            entryFilePath: from
+          };
         }));
       }
 
       // transform and copy
-      await Promise.all(filtered.map(async filePath => {
+      return Promise.all(filtered.map(async filePath => {
         const content = await readFile(filePath, 'utf-8');
         const transformed = await transform({
           content,
           outputFileNames
         });
         const writePath = path.join(path.resolve('.'), to, filePath.split(globBase).pop());
+        file.filePath = writePath;
         await mkdir(writePath.split('/').slice(0, -1).join('/'), { recursive: true });
         await writeFile(writePath, transformed);
         if (gzip) await gzipFile(to);
+        return {
+          copiedFile: true,
+          gzip,
+          fileName: writePath.split('/').pop(),
+          filePath: writePath,
+          entryFilePath: from
+        };
       }));
     } catch (e) {
       console.error(e);
