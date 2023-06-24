@@ -263,22 +263,7 @@ async function gzipFiles(outputFiles) {
     if (!exists) return;
 
     try {
-      let content = await readFile(item.output, 'utf-8');
-      // content = content.replace(importRegex, a => {
-      //   return a
-      //     .replace('.gz', '')
-      //     .replace('.js', '.js.gz')
-      //     .replace('.css', '.css.gz')
-      //     .replace('.html', '.html.gz');
-      // });
-
-      // content = content.replace(dynamicImportRegex, a => {
-      //   return a
-      //     .replace('.gz', '')
-      //     .replace('.js', '.js.gz')
-      //     .replace('.css', '.css.gz')
-      //     .replace('.html', '.html.gz');
-      // });
+      let content = await readFile(item.output);
       const result = await asyncGzip(content);
       await writeFile(item.output, result);
     } catch (e) {
