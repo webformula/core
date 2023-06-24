@@ -67,7 +67,7 @@ export default async function build(params = {
   if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
 
   const data = await run();
-  if (!isDev && config?.devServer?.enabled !== true) process.exit();
+  if (!isDev) process.exit();
   return data;
 }
 
