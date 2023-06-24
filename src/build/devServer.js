@@ -17,7 +17,7 @@ export default function runServer(config) {
     if (!getExtension(req.url)) {
       const filePath = req.url.split('/').pop();
       const fileName = filePath === '' ? 'index.html' : await access(path.join(config.outdir, `${filePath}.html`)).then(() => true).catch(() => false) ? `${filePath}.html` : 'notfound.html';
-      const file = await readFile(`${path.join(config.outdir, fileName)}${config.gzip ? '.gz' : ''}`, config.gzip ? undefined : 'utf-8');
+      const file = await readFile(`${path.join(config.outdir, fileName)}`, config.gzip ? undefined : 'utf-8');
 
       const headers = { 'Content-Type': 'text/html' };
       if (config.gzip) headers['Content-Encoding'] = 'gzip';
@@ -40,9 +40,8 @@ export default function runServer(config) {
         return;
       }
 
-      const isGzip = filePath.includes('.gz');
-      const file = await readFile(filePath, isGzip ? undefined : 'utf-8');
-      if (isGzip) headers['Content-Encoding'] = 'gzip';
+      let file = await readFile(filePath);
+      if (isGzip(file)) headers['Content-Encoding'] = 'gzip';
       res.writeHead(200, headers);
       res.write(file);
       res.end();
@@ -52,6 +51,11 @@ export default function runServer(config) {
       res.end();
     }
   }).listen(config.devServer.port);
+}
+
+function isGzip(buf) {
+  if (!buf || buf.length < 3) return false;
+  return buf[0] === 0x1F && buf[1] === 0x8B && buf[2] === 0x08;
 }
 
 function getMimeType(url) {

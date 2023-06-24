@@ -161,14 +161,14 @@ async function run() {
   // build index html pages for each page
   parsed.pages.forEach(v => {
     v.moduleOutput = outputs.find(b => b.entryPoint === v.modulePath)?.output;
-    v.appScriptPath = `./${appJSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}`;
-    if (config.chunks) v.pageScriptPath = `./${v.moduleOutput.split('/').pop()}${config.gzip ? '.gz' : ''}`;
+    v.appScriptPath = `./${appJSFile.output.split('/').pop()}`;
+    if (config.chunks) v.pageScriptPath = `./${v.moduleOutput.split('/').pop()}`;
   });
   const indexHTMLFiles = await buildIndexHTMLs(parsed.pages, appCSSFile);
 
   if (!config.chunks) {
     await Promise.all(outputs
-      .filter(v => v.entryPoint !== config.appFilePath)
+      .filter(v => v.entryPoint !== config.appFilePath && v.entryPoint !== config.appCSSFilePath)
       .map(v => rm(v.output)));
     outputs = outputs.filter(v => v.entryPoint === config.appFilePath || v.entryPoint === config.appCSSFilePath)
   }
@@ -188,14 +188,27 @@ async function buildIndexHTMLs(pageFiles, appCSSFile) {
     pageModule.default.useTemplate = false;
     const template = new pageModule.default().template();
 
+    // pull out imported chucks so we can preload them
+    const scriptChunkImports = [...(await readFile(path.join(config.outdir, page.appScriptPath), 'utf-8')).matchAll(importRegex)]
+      .filter(v => v.groups.path.startsWith('./chunk-'))
+      .map(v => v.groups.path);
+    if (page.pageScriptPath) {
+      [...(await readFile(path.join(config.outdir, page.pageScriptPath), 'utf-8')).matchAll(importRegex)]
+        .filter(v => v.groups.path.startsWith('./chunk-'))
+        .forEach(v => {
+          if (!scriptChunkImports.includes(v.groups.path)) scriptChunkImports.push(v.groups.path);
+        });
+    }
+
     let content = indexFile
       .replace(scriptTagRegex, () => `
         <script src="${page.appScriptPath}" type="module" async></script>
         ${page.pageScriptPath ? `<script src="${page.pageScriptPath}" type="module" async></script>` : ''}
         ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/esbuild").onerror = () => setTimeout(() => location.reload(), 500);</script>`}
+        ${scriptChunkImports.map(v => `<script src="${v}" type="module" async></script>`).join('\n')}
       `).replace(/    /g, ' ')
       .replace(pageContentTagRegex, () => `<page-content>\n${template.split('\n').map(v => `    ${v}`).join('\n')}\n</page-content>`);
-    if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}${config.gzip ? '.gz' : ''}" rel="stylesheet">`);
+    if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}" rel="stylesheet">`);
 
     if (content.match(titleTagRegex)) content = content.replace(titleTagRegex, (a, b) => a.replace(b, `<title>${pageModule.default.title}</title>`));
     else content = content.replace('<head>', `<head>\n  <title>${pageModule.default.title}</title>`);
@@ -251,23 +264,23 @@ async function gzipFiles(outputFiles) {
 
     try {
       let content = await readFile(item.output, 'utf-8');
-      content = content.replace(importRegex, a => {
-        return a
-          .replace('.gz', '')
-          .replace('.js', '.js.gz')
-          .replace('.css', '.css.gz')
-          .replace('.html', '.html.gz');
-      });
+      // content = content.replace(importRegex, a => {
+      //   return a
+      //     .replace('.gz', '')
+      //     .replace('.js', '.js.gz')
+      //     .replace('.css', '.css.gz')
+      //     .replace('.html', '.html.gz');
+      // });
 
-      content = content.replace(dynamicImportRegex, a => {
-        return a
-          .replace('.gz', '')
-          .replace('.js', '.js.gz')
-          .replace('.css', '.css.gz')
-          .replace('.html', '.html.gz');
-      });
+      // content = content.replace(dynamicImportRegex, a => {
+      //   return a
+      //     .replace('.gz', '')
+      //     .replace('.js', '.js.gz')
+      //     .replace('.css', '.css.gz')
+      //     .replace('.html', '.html.gz');
+      // });
       const result = await asyncGzip(content);
-      await writeFile(`${item.output}.gz`, result);
+      await writeFile(item.output, result);
     } catch (e) {
       console.log('error', item, e)
     }

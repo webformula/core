@@ -134,5 +134,5 @@ async function listFiles(dir, arr = []) {
 
 async function gzipFile(file) {
   const result = await asyncGzip(await readFile(file));
-  await writeFile(`${file}.gz`, result);
+  await writeFile(file, result);
 }
