@@ -165,8 +165,9 @@ async function run() {
 
   if (config.gzip) await gzipFiles(outputs.concat(indexHTMLFiles));
   if (config.onEnd) await config.onEnd();
-
+  
   const returnData = {
+    outdir: config.outdir,
     routes: parsed.pages.map(v => ({
       route: v.path,
       regex: buildPathRegex(v.path),
@@ -177,7 +178,7 @@ async function run() {
       .map(v => ({
         filePath: v.output,
         fileName: v.output.split('/').pop()
-      })).concat(copiedFiles),
+      })).concat(...copiedFiles),
     gzip: config.gzip
   };
 

@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { createReadStream } from 'node:fs';
 import { handleRoute, handleFiles } from '../middleware.js';
 
 export default function runServer(app) {
@@ -13,14 +14,22 @@ export default function runServer(app) {
       });
       return true;
     }
-
     let file = await handleRoute(req.url, app);
     if (!file) file = await handleFiles(req.url, app);
+    console.log(req.url, file)
     if (file) {
+      const stream = createReadStream(file.filePath);
+      stream.on('error', err => {
+        console.log(err);
+        res.end();
+      });
       res.writeHead(200, file.headers);
-      file.stream.on('error', err => console.error(err));
-      file.stream.pipe(res);
-      return;
+
+      return new Promise((resolve, reject) => {
+        stream.on('error', err => reject(err));
+        stream.on('end', () => resolve(true));
+        stream.pipe(res);
+      });
     }
   }).listen(app.devServer.port);
 }

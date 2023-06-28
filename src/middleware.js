@@ -1,4 +1,5 @@
 import { createReadStream } from 'node:fs';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
 import build from './build/index.js';
 import { getExtension, getMimeType, buildPathRegex } from './shared.js';
@@ -43,9 +44,10 @@ export function middlewareExpress(params = exampleParams) {
       let file = await handleRoute(req.url);
       if (!file) file = await handleFiles(req.url);
       if (file) {
-        file.stream.on('error', err => next(err));
+        const stream = createReadStream(file.filePath);
+        stream.on('error', err => next(err));
         res.writeHead(200, file.headers);
-        file.stream.pipe(res);
+        stream.pipe(res);
         return;
       }
       next();
@@ -73,12 +75,17 @@ export function middlewareNode(params = exampleParams) {
     let file = await handleRoute(req.url, app);
     if (!file) file = await handleFiles(req.url, app);
     if (file) {
+      const stream = createReadStream(file.filePath);
+      stream.on('error', err => {
+        console.log(err);
+        res.end();
+      });
       res.writeHead(200, file.headers);
 
       return new Promise((resolve, reject) => {
-        file.stream.on('error', err => reject(err));
-        file.stream.on('end', () => resolve(true));
-        file.stream.pipe(res);
+        stream.on('error', err => reject(err));
+        stream.on('end', () => resolve(true));
+        stream.pipe(res);
       });
     }
     return false;
@@ -99,28 +106,31 @@ export async function handleRoute(url, app) {
   if (app.gzip) headers['Content-encoding'] = 'gzip';
 
   return {
-    stream: createReadStream(path.resolve('.', match.filePath)),
+    filePath: path.resolve('.', match.filePath),
     headers
   };
 }
 
 export async function handleFiles(url, app) {
   if (!getExtension(url)) return;
-
   const fileName = url.split('/').pop();
   const match = app.files.find(v => v.fileName === fileName);
-  if (!match) return false;
-  const stream = createReadStream(match.filePath);
-  stream.on('error', err => next(err));
   const headers = {
     'Content-Type': getMimeType(url),
     'Cache-Control': 'public, max-age=10000'
   };
-  const gzip = match.copiedFile ? match.gzip : app.gzip;
-  if (gzip) headers['Content-encoding'] = 'gzip';
+  let filePath;
+  if (match) {
+    filePath = path.resolve('.', match.filePath);
+    const gzip = match.copiedFile ? match.gzip : app.gzip;
+    if (gzip) headers['Content-encoding'] = 'gzip';
+  } else {
+    filePath = path.join(app.outdir, url);
+    if (!(await access(filePath).then(() => true).catch(() => false))) return false;
+  }
 
   return {
-    stream,
+    filePath,
     headers
   };
 }
