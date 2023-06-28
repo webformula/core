@@ -114,7 +114,8 @@ export async function handleRoute(url, app) {
 export async function handleFiles(url, app) {
   if (!getExtension(url)) return;
   const fileName = url.split('/').pop();
-  const match = app.files.find(v => v.fileName === fileName);
+  const match = app.files.find(v => v.filePath.endsWith(url.replace(/\%20/g, ' ')));
+  if (fileName.includes('basic-')) console.log(url, match, app.files.find(v => v.filePath.endsWith(url.replace(/\%20/g, ' '))))
   const headers = {
     'Content-Type': getMimeType(url),
     'Cache-Control': 'public, max-age=10000'

@@ -16,7 +16,6 @@ export default function runServer(app) {
     }
     let file = await handleRoute(req.url, app);
     if (!file) file = await handleFiles(req.url, app);
-    console.log(req.url, file)
     if (file) {
       const stream = createReadStream(file.filePath);
       stream.on('error', err => {
