@@ -58,7 +58,7 @@
     
     <pre>
       <code class="language-javascript">
-  ${`import { Component } from '@webformula/core';
+  ${page.escape(`import { Component } from '@webformula/core';
   import html from './component.html'; // automatically bundles
   
   class CustomButton extends Component {
@@ -99,7 +99,7 @@
   }
   
   // define web component
-  customElements.define('custom-button', CustomButton);`}
+  customElements.define('custom-button', CustomButton);`)}
       </code>
     </pre>
   </mdw-card>
