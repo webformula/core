@@ -80,7 +80,7 @@ export default async function copyFiles(config, outputFileNames) {
         file.filePath = writePath;
         await mkdir(writePath.split('/').slice(0, -1).join('/'), { recursive: true });
         await writeFile(writePath, transformed);
-        if (gzip) await gzipFile(to);
+        if (gzip) await gzipFile(writePath);
         return {
           copiedFile: true,
           gzip,
