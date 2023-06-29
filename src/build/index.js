@@ -220,7 +220,7 @@ async function buildIndexHTMLs(pageFiles, appCSSFile) {
         ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/livereload").onerror = () => setTimeout(() => location.reload(), 500);</script>`}
         ${scriptChunkImports.map(v => `<script src="${v}" type="module" async></script>`).join('\n')}
       `).replace(/    /g, ' ')
-      .replace(pageContentTagRegex, () => `<page-content>\n${template.split('\n').map(v => `    ${v}`).join('\n')}\n</page-content>`);
+      .replace(pageContentTagRegex, () => `<page-content>\n${template.split('\n').join('\n')}\n</page-content>`);
     if (appCSSFile) content = content.replace(cssTagRegex, `<link href="./${appCSSFile.output.split('/').pop()}" rel="stylesheet">`);
 
     if (content.match(titleTagRegex)) content = content.replace(titleTagRegex, (a, b) => a.replace(b, `<title>${pageModule.default.title}</title>`));
