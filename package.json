@@ -1,6 +1,6 @@
 {
   "name": "@webformula/core",
-  "version": "0.12.4",
+  "version": "0.12.5",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
   "main": "src/index.js",
   "type": "module",
@@ -12,7 +12,8 @@
   },
   "scripts": {
     "start": "node --watch-path=./src --watch-path=./docs build.js",
-    "build": "NODE_ENV=production node build.js"
+    "build": "NODE_ENV=production node build.js",
+    "deploy": "node deploy.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@webformula/core": "file:./",
     "@webformula/material": "^0.10.0",
+    "aws-sdk": "^2.1407.0",
     "esbuild": "^0.18.1"
   }
 }
