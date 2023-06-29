@@ -27,7 +27,7 @@
   "homepage": "https://github.com/webformula/core#readme",
   "devDependencies": {
     "@webformula/core": "file:./",
-    "@webformula/material": "^0.10.0",
+    "@webformula/material": "^0.10.1",
     "aws-sdk": "^2.1407.0",
     "esbuild": "^0.18.1"
   }
