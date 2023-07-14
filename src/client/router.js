@@ -70,10 +70,14 @@ async function route(locationObject, back = false, initial = false) {
   if (!back) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
+
   if (!initial) {
+    if (nextPage.rendered) nextPage.beforeRender();
     nextPage.render();
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
+  } else {
+    nextPage.afterRender();
   }
   nextPage.connectedCallback();
   requestAnimationFrame(() => {
