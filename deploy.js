@@ -1,6 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
 import AWS from 'aws-sdk';
-import { getMimeType } from './src/shared.js';
 
 const s3 = new AWS.S3();
 const files = await readdir('dist');
@@ -34,3 +33,33 @@ await Promise.all(files.map(async Key => {
     ACL: 'public-read'
   }).promise();
 }));
+
+function getMimeType(url) {
+  switch (getExtension(url)) {
+    case 'js':
+      return 'application/javascript';
+    case 'html':
+      return 'text/html';
+    case 'css':
+      return 'text/css';
+    case 'json':
+      return 'text/json';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'ico':
+      return 'image/x-icon';
+    case 'woff2':
+      return 'font/woff2';
+    case 'woff':
+      return 'font/woff';
+    case 'otf':
+      return 'font/otf';
+  }
+}
