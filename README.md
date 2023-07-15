@@ -1,7 +1,6 @@
-<span style="color:#520099;">or make it blue</span>
+test[blue]
 
-<span style="color: #FF69B4;">Why did the tomato turn red?</span>
-
+test[blue](#)
 
 ## @webfurmula/core
 Simple no thrills micro framework. Super performant and light-weight!
