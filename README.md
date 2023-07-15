@@ -4,7 +4,9 @@ Simple no thrills micro framework. Super performant and light-weight!
 
 $${\color{red}Red}$$
 $$\color{red}Red$$
-<code style="color: red">test</code>
+<span style="color:red">
+Text content
+</span>
 ```diff
     + app/
     └── routes/
