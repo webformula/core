@@ -182,7 +182,8 @@ routes([
       route: v.routePath,
       regex: v.regex,
       filePath: v.indexHTMLFileName,
-      fileName: v.indexHTMLFileName.split('/').pop()
+      fileName: v.indexHTMLFileName.split('/').pop(),
+      notFound: v.notFound
     })),
     files: outputs
       .map(v => ({
@@ -285,14 +286,14 @@ async function getRoutes() {
       .replace(/\[/g, '/[')
       .replace(/\[\.{3}(.+)\]/, '*$1')
       .replace(/\[(.+)\]/, ':$1');
-    
+
     return {
       filePath: v,
       importPath: `./routes${rawRoutePath}/index.js`,
       routePath,
       regex: buildPathRegex(routePath),
-      routeModuleName: rawRoutePath.replace(routeToNameRegex, ''),
-      notFound: rawRoutePath.startsWith('notfound')
+      routeModuleName: `r_${rawRoutePath.replace(routeToNameRegex, '')}`,
+      notFound: rawRoutePath === '/404'
     };
   });
 }

@@ -50,6 +50,8 @@ app/
 └── routes/
     ├── index/
     │   └── index.js      # /
+    ├── 404/
+    │   └── index.js      # /404 (or any url that is not found)
     ├── one/
     │   └── index.js      # one/
     ├── two[id?]/
@@ -67,13 +69,15 @@ app/
 - app/routes/three/[id]/index.js → **`three/:id`**
 - app/routes/four/[...rest]/index.js → **`four/*`**
 
-#### Route details
+#### Routing details
+- `routes/index/index.js` Root page (/)
+- `routes/404/index.js` Not found page. Auto redirect on non matching routes
+- `index.js` Route component file
 - `[id]` Directory that represents a url parameter
 - `[id?]` Directory that represents an options url parameter
 - `name[id?]` Inline url parameter to avoid sub folder
 - `[...rest]` Directory that represents catch-all route
 - `[...rest?]` Directory that represents optional catch-all route
-- `index.js` Route component file
 
 Check out the [page.js section](#page.js) for details on how to get url parameters in route component
 

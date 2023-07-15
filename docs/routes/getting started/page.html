@@ -76,6 +76,8 @@
   └── routes/
       ├── index/
       │   └── index.js     # /
+      ├── 404/
+      │   └── index.js     # /404 (or any url that is not found)
       ├── one/
       │   └── index.js     # one/
       ├── two[id?]/
@@ -96,13 +98,16 @@
       <div class="mdw-font-body-large route-list">app/routes/three/[id]/index.js → <span>three/:id</span></div>
       <div class="mdw-font-body-large route-list">app/routes/four/[...rest]/index.js →
         <span>four/*</span></div>
+
       <div class="mdw-font-title-medium" style="margin-top: 24px; margin-bottom: 8px;">Directory route details</div>
+      <div class="mdw-font-body-large route-list"><span>routes/index/index.js</span> Root page (/)</div>
+      <div class="mdw-font-body-large route-list"><span>routes/404/index.js</span> Not found page. Auto redirect on non matching routes</div>
+      <div class="mdw-font-body-large route-list"><span>index.js</span> Route component file</div>
       <div class="mdw-font-body-large route-list"><span>[id]</span> Directory that represents a url parameter</div>
       <div class="mdw-font-body-large route-list"><span>[id?]</span> Directory that represents an options url parameter</div>
       <div class="mdw-font-body-large route-list"><span>name[id?]</span> Inline url parameter to avoid sub folder</div>
       <div class="mdw-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
       <div class="mdw-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all route</div>
-      <div class="mdw-font-body-large route-list"><span>index.js</span> Route component file</div>
     </div>
   </mdw-card>
 
