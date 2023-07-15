@@ -1,12 +1,14 @@
+<style>
+H1{color:Blue !important;}
+H2{color:DarkOrange !important;}
+p{color:Black !important;}
+</style>
+
 ## @webfurmula/core
 Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
-$${\color{red}Red}$$
-$$\color{red}Red$$
-<span style="color:red">
-Text content
-</span>
+
 ```diff
     + app/
     └── routes/
