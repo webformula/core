@@ -7,7 +7,7 @@ Simple no thrills micro framework. Super performant and light-weight!
 + app/
 - └── routes/
     ├── index/
-    │   └── index.js      # /
+    │   └── index.js      - # /
     ├── one/
     │   └── index.js      # one/
     ├── two[id?]/
