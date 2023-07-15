@@ -3,7 +3,7 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 
-```css
+```javascript
 app/
 └── routes/
     ├── index/
