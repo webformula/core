@@ -18,6 +18,7 @@ Browsers, javascript, css, and html provide a robust set of features these days.
 ## Table of Contents  
 - [Getting started](#gettingstarted)
   - [Installation](#installation)
+  - [Routing](#routing)
   - [Example code](#examplecode)
     - [index.html](#index.html)
     - [app.js](#app.js)
@@ -39,6 +40,42 @@ Browsers, javascript, css, and html provide a robust set of features these days.
 ```bash
 npm install @webformula/core
 ```
+
+## **Routing**
+<a name="routing"/>
+@Webformula/core uses directory based routing. All routes go in a 'routes' folder.
+
+```yaml
+app/
+└── routes/
+    ├── index/
+    │   └── index.js      # /
+    ├── one/
+    │   └── index.js      # one/
+    ├── two[id?]/
+    │   └── index.js      # two/:id?
+    ├── three/
+    │   └── [id]/
+    │       └── index.js  # three/:id
+    └── four/
+        └── [...rest]/
+            └── index.js  # four/* (four/a/b/)
+```
+- app/routes/index/index.js → **`/`**
+- app/routes/one/index.js → **`one`**
+- app/routes/two[id?]/index.js → **`two/:id?`**
+- app/routes/three/[id]/index.js → **`three/:id`**
+- app/routes/four/[...rest]/index.js → **`four/*`**
+
+#### Route details
+- `[id]` Directory that represents a url parameter
+- `[id?]` Directory that represents an options url parameter
+- `name[id?]` Inline url parameter to avoid sub folder
+- `[...rest]` Directory that represents catch-all route
+- `[...rest?]` Directory that represents optional catch-all route
+- `index.js` Route component file
+
+Check out the [page.js section](#page.js) for details on how to get url parameters in route component
 
 
 ## **Example code**
@@ -78,28 +115,18 @@ npm install @webformula/core
 <a name="app.js"/>
 
 ```javascript
-  import { routes } from '@webformula/core';
-  import home from './pages/home/page.js';
-  import one from './pages/one/page.js';
-  import notFound from './pages/notfound/page.js';
-  
-  routes([
-    { path: '/', component: home },
-    { path: '/one', component: one },
-    { path: '/notfound', component: notFound, notFound: true }
-  ]);
+  /* Main app file
+   *   you can import any code in here
+   */
+
+  import someModule from './someModule.js';
+
+  // routes are automatically loaded based on directory routing
 ```
 
 Prevent navigation allows you to lock down the app for uses like authentication
 ```javascript
-  import { routes, preventNavigation } from '@webformula/core';
-  import home from './pages/home/page.js';
-  import login from './pages/login/page.js';
-  
-  routes([
-    { path: '/', component: home },
-    { path: '/login', component: login }
-  ]);
+  import { preventNavigation } from '@webformula/core';
 
   // if not authenticated redirect to login and prevent navigation
   if (!document.cookie.includes('authenticated=true')) {
@@ -124,7 +151,7 @@ body {
 
 <br/>
 
-### **Basic page `pages/home/page.js`**
+### **Basic page `routes/home/index.js`**
 <a name="page.js"/>
 
 ```javascript
@@ -206,7 +233,7 @@ body {
 
 <br/>
 
-### **HTML page template `pages/home/page.html`** Can use javascript template literal syntax
+### **HTML page template `routes/home/page.html`** Can use javascript template literal syntax
 <a name="page.html"/>
 
 ```html
@@ -367,8 +394,8 @@ build({
       gzip: true
     },
     {
-      from: 'app/pages/**/(?!page)*.html',
-      to: 'dist/pages'
+      from: 'app/routes/**/(?!page)*.html',
+      to: 'dist/routes'
     },
     {
       from: 'app/code.js',

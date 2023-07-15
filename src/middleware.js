@@ -2,7 +2,6 @@ import { createReadStream } from 'node:fs';
 import { access } from 'node:fs/promises';
 import path from 'node:path';
 import build from './build/index.js';
-import { getExtension, getMimeType, buildPathRegex } from './shared.js';
 
 const app = { };
 const exampleParams = {
@@ -95,7 +94,7 @@ export function middlewareNode(params = exampleParams) {
 export async function handleRoute(url, app) {
   if (getExtension(url)) return;
 
-  let match = app.routes.find(v => url.match(v.regex) !== null);
+  let match = app.routes.find(v => url.replace(/\%20/g, ' ').match(v.regex) !== null);
   if (!match) {
     // assume 404 and load not found
     match = app.routes.find(v => v.notFound);
@@ -113,7 +112,6 @@ export async function handleRoute(url, app) {
 
 export async function handleFiles(url, app) {
   if (!getExtension(url)) return;
-  const fileName = url.split('/').pop();
   const match = app.files.find(v => v.filePath.endsWith(url.replace(/\%20/g, ' ')));
   const headers = {
     'Content-Type': getMimeType(url),
@@ -142,4 +140,42 @@ async function init(params) {
   app.gzip = gzip;
   app.routes = routes;
   app.files = files;
+}
+
+function getExtension(url) {
+  if (!url.includes('.')) return '';
+  const split = url.split(/[#?]/)[0].split('.');
+  let ext = split.pop().trim().toLowerCase();
+  if (ext === 'gz') ext = split.pop();
+  return ext;
+}
+
+function getMimeType(url) {
+  switch (getExtension(url)) {
+    case 'js':
+      return 'application/javascript';
+    case 'html':
+      return 'text/html';
+    case 'css':
+      return 'text/css';
+    case 'json':
+      return 'text/json';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'ico':
+      return 'image/x-icon';
+    case 'woff2':
+      return 'font/woff2';
+    case 'woff':
+      return 'font/woff';
+    case 'otf':
+      return 'font/otf';
+  }
 }
