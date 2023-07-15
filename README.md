@@ -3,7 +3,7 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 $${\color{red}Red}$$
-\color{red}Red
+$$\color{red}Red$$
 <code style="color: red">test</code>
 ```diff
     + app/
