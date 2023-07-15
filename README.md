@@ -3,11 +3,11 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 
-```diff
-+ app/
-- └── routes/
+```css
+app/
+└── routes/
     ├── index/
-    │   └── index.js      - # /
+    │   └── index.js      # /
     ├── one/
     │   └── index.js      # one/
     ├── two[id?]/
