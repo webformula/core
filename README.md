@@ -1,5 +1,4 @@
- <span style="color:red;">your text here > </span>
-
+\textcolor{red}{red}
 ## @webfurmula/core
 Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
