@@ -1,13 +1,9 @@
-test[blue]
-
-test[blue](#)
-
 ## @webfurmula/core
 Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 
-```diff
+```bash
     + app/
     └── routes/
         ├── index/
