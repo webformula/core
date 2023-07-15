@@ -2,6 +2,23 @@
 Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
+```diff
+    app/
+    └── routes/
+        ├── index/
+        │   └── index.js      # /
+        ├── one/
+        │   └── index.js      # one/
+        ├── two[id?]/
+        │   └── index.js      # two/:id?
+        ├── three/
+        │   └── [id]/
+        │       └── index.js  # three/:id
+        └── four/
+            └── [...rest]/
+                └── index.js  # four/* (four/a/b/)
+```
+
 ### Highlights
 - ⚡ Lightweight - 1.8KB compressed (GZIP)
 - ⚡ Fast - leverages native browser features
