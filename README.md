@@ -1,4 +1,8 @@
-\textcolor{red}{red}
+<span style="color:#520099;">or make it blue</span>
+
+<span style="color: #FF69B4;">Why did the tomato turn red?</span>
+
+
 ## @webfurmula/core
 Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
