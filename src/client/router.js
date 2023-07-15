@@ -21,7 +21,8 @@ export function routes(config = [{
     c.path = `/${c.path.replace(trailingSlashRegex, '').replace(leadingSlashRegex, '')}`;
     if (app.paths.find(v => v.path === c.path)) return;
     app.paths.push(c);
-    if (location.pathname.replace(/\%20/g, ' ').match(c.regex)) isCurrent = true;  }
+    if (location.pathname.replace(/\%20/g, ' ').match(c.regex)) isCurrent = true;
+  }
   if (isCurrent) route(location, false, true);
 }
 

@@ -23,6 +23,7 @@ const parameterRegex = /(\/)?([:*])(\w+)(\?)?/g;
 const wildcardRegex = /\*/g;
 const replaceWidCardString = '(?:.*)';
 const followedBySlashRegexString = '(?:\/$|$)';
+const routeToNameRegex = /\/|\.|\s|\[|\]|\?/g;
 const config = {
   pageCounter: 0
 };
@@ -95,14 +96,6 @@ const pluginCss = {
         export default styles;`;
       return { contents };
     });
-
-    // build.onLoad({ filter: /app\.js/ }, async args => {
-    //   let contents = await readFile(args.path, 'utf-8');
-    //   config.importMatches.forEach(v => (
-    //     contents = contents.replace(v[0], () => `const ${v.groups.name} = import('${v.groups.path}');`)
-    //   ));
-    //   return { contents };
-    // });
 
     build.onLoad({ filter: /app\.js/ }, async args => {
       let contents = await readFile(args.path, 'utf-8');
@@ -298,7 +291,7 @@ async function getRoutes() {
       importPath: `./routes${rawRoutePath}/index.js`,
       routePath,
       regex: buildPathRegex(routePath),
-      routeModuleName: rawRoutePath.replace(/\/|\.|\s|\[|\]|\?/g, ''),
+      routeModuleName: rawRoutePath.replace(routeToNameRegex, ''),
       notFound: rawRoutePath.startsWith('notfound')
     };
   });
