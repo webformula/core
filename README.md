@@ -3,21 +3,21 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 
-```bash
-    + app/
-    └── routes/
-        ├── index/
-        │   └── index.js      # /
-        ├── one/
-        │   └── index.js      # one/
-        ├── two[id?]/
-        │   └── index.js      # two/:id?
-        ├── three/
-        │   └── [id]/
-        │       └── index.js  # three/:id
-        └── four/
-            └── [...rest]/
-                └── index.js  # four/* (four/a/b/)
+```diff
++ app/
+- └── routes/
+    ├── index/
+    │   └── index.js      # /
+    ├── one/
+    │   └── index.js      # one/
+    ├── two[id?]/
+    │   └── index.js      # two/:id?
+    ├── three/
+    │   └── [id]/
+    │       └── index.js  # three/:id
+    └── four/
+        └── [...rest]/
+            └── index.js  # four/* (four/a/b/)
 ```
 
 ### Highlights
