@@ -1,5 +1,3 @@
-const leadingSlashRegex = /^\//;
-const trailingSlashRegex = /\/$/;
 const app = {
   paths: [],
   pageCounter: 0,
@@ -18,10 +16,10 @@ export function routes(config = [{
 
   let isCurrent = false;
   for (const c of config) {
-    c.path = `/${c.path.replace(trailingSlashRegex, '').replace(leadingSlashRegex, '')}`;
-    if (app.paths.find(v => v.path === c.path)) return;
-    app.paths.push(c);
-    if (location.pathname.replace(/\%20/g, ' ').match(c.regex)) isCurrent = true;
+    if (!app.paths.find(v => v.path === c.path)) {
+      app.paths.push(c);
+      isCurrent = location.pathname.match(c.regex) !== null;
+    }
   }
   if (isCurrent) route(location, false, true);
 }
@@ -34,7 +32,7 @@ export function preventNavigation(value = true) {
 async function route(locationObject, back = false, initial = false) {
   if (!initial && app.preventNavigation) return;
 
-  let match = app.paths.find(v => locationObject.pathname.replace(/\%20/g, ' ').match(v.regex) !== null);
+  let match = app.paths.find(v => locationObject.pathname.match(v.regex) !== null);
   if (!match) match = app.paths.find(v => v.notFound);
   if (!match) console.warn(`No page found for path: ${locationObject.pathname}`);
 

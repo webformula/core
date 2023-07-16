@@ -9,20 +9,6 @@ import devServer from './devServer.js';
 
 const asyncGzip = promisify(gzip);
 const isDev = process.env.NODE_ENV !== 'production';
-const cssFilterRegex = /\.css$/;
-const importRegex = /[\/\/\s]?import[\s'"]?(\{?\s?(?<name>[\w\s,\$]+?)\s?\}?\s?from)?\s?['|"](?<path>.+?)['|"]\s?(;|\n)/g;
-const routesImport = /import(.|\n)+routes(.|\n)+from.+@webformula\/core/;
-const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
-const scriptTagRegex = /<\s*script[^>]*src="\.?\/?app.js"[^>]*>[^>]*<\s*\/\s*script>/g;
-const titleTagRegex = /<head>(?:.|\n)+(<title>.?<\/title>)(?:.|\n)+<\/head>/g;
-const cssTagRegex = /<\s*link[^>]*href="\.?\/?app.css"[^>]*>/;
-const containsVariableOrWildcardRegex = /\/:|\*/g;
-const hashRegexString = '(#(.*))?';
-const searchRegexString = '(\\?([^#]*))?';
-const parameterRegex = /(\/)?([:*])(\w+)(\?)?/g;
-const wildcardRegex = /\*/g;
-const replaceWidCardString = '(?:.*)';
-const followedBySlashRegexString = '(?:\/$|$)';
 const routeToNameRegex = /\/|\.|\s|\[|\]|\?/g;
 const config = {
   pageCounter: 0
@@ -65,11 +51,11 @@ export default async function build(params = {
   config.copyFiles = (params.copyFiles || []).filter(({ from }) => !!from);
   config.onStart = params.onStart;
   config.onEnd = params.onEnd;
+  config.isMiddleware = params.isMiddleware;
   config.appFilePath = path.join(config.basedir, '/app.js');
   config.indexHTMLPath = path.join(config.basedir, '/index.html');
   config.appCSSFilePath = path.join(config.basedir, '/app.css');
   config.hasAppCSS = await access(config.appCSSFilePath).then(e => true).catch(e => false);
-  config.isMiddleware = params.isMiddleware;
   if (config.hasAppCSS) config.appCSSOutputFilePath = path.join(config.outdir, 'app.css');
   if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
 
@@ -79,9 +65,13 @@ export default async function build(params = {
 }
 
 
+const cssFilterRegex = /\.css$/;
+const routesImport = /import(.|\n)+routes(.|\n)+from.+@webformula\/core/;
 const pluginCss = {
   name: 'css',
   setup(build) {
+
+    // bundle css file and inline
     build.onLoad({ filter: cssFilterRegex }, async args => {
       const contextCss = await esbuild.build({
         entryPoints: [args.path],
@@ -97,6 +87,7 @@ const pluginCss = {
       return { contents };
     });
 
+    // inject route config to app.js
     build.onLoad({ filter: /app\.js/ }, async args => {
       let contents = await readFile(args.path, 'utf-8');
       contents = `${contents.match(routesImport) === null ? 'import { routes } from \'@webformula/core\';' : ''}${contents}\n${config.routesCode}`;
@@ -109,25 +100,23 @@ async function run() {
   if (config.onStart) await config.onStart();
   await emptyOutdir();
 
-  const routeComponents = await getRoutes();
-  const routesCode = `${routeComponents.map(v => `const ${v.routeModuleName} = import('${v.importPath}');`).join('\n')}
+  const routes = await getRoutes();
+  config.routesCode = `${routes.map(v => `const ${v.routeModuleName} = import('${v.importPath}');`).join('\n')}
 
 routes([
-  ${routeComponents.map(v => `{
+  ${routes.map(v => `{
     path: '${v.routePath}',
     regex: ${v.regex},
     component: ${v.routeModuleName}${!v.notFound ? '' : `,
     notFound: true`}
   }`)}
 ]);`;
-  config.routesCode = routesCode;
-  const entryPoints = [
-    config.appFilePath,
-    ...routeComponents.map(v => v.filePath)
-  ];
 
   const { metafile } = await esbuild.build({
-    entryPoints,
+    entryPoints: [
+      config.appFilePath,
+      ...routes.map(v => v.filePath)
+    ],
     bundle: true,
     outdir: config.outdir,
     metafile: true,
@@ -151,34 +140,21 @@ routes([
     loader: { '.css': 'css' }
   });
 
-  let outputs = Object.keys(metafile.outputs).map(key => ({
-    output: key,
-    ...metafile.outputs[key]
-  }));
-  const appJSFile = outputs.find(v => v.entryPoint === config.appFilePath);
-  const appCSSFile = Object.keys(appCSSContext?.metafile.outputs).map(key => ({
-    output: key,
-    ...appCSSContext.metafile.outputs[key]
-  }))[0];
-  if (config.hasAppCSS) outputs = outputs.concat(appCSSFile);
+  const {
+    routeConfigs,
+    outputs,
+    appJSFile,
+    appCSSFile
+  } = buildOutputs(metafile.outputs, appCSSContext?.metafile.outputs, routes);
 
+  const indexHTMLFiles = await buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs);
   const copiedFiles = await copyFiles(config, outputs);
-  const pages = routeComponents.map(v => {
-    const moduleOutput = outputs.find(b => b.entryPoint === v.filePath)?.output
-    return {
-      ...v,
-      moduleOutput,
-      pageScriptPath: !config.chunks ? undefined : `/${moduleOutput.split('/').pop()}`
-    };
-  });
-  const indexHTMLFiles = await buildIndexHTMLFile(appJSFile, appCSSFile, pages);
-
   if (config.gzip) await gzipFiles(outputs.concat(indexHTMLFiles));
   if (config.onEnd) await config.onEnd();
 
   const returnData = {
     outdir: config.outdir,
-    routes: pages.map(v => ({
+    routes: routeConfigs.map(v => ({
       route: v.routePath,
       regex: v.regex,
       filePath: v.indexHTMLFileName,
@@ -200,51 +176,90 @@ routes([
   return returnData;
 }
 
-async function buildIndexHTMLFile(appJSFile, appCSSFile, pages) {
-  const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+
+const headRegex = /<head>((?:.|\n)+)<\/head>/;
+const tagsRegex = /<[^>]*>(?:<\/[^>]*>)?/g;
+const linkStartRegex = /^<link/;
+const scriptStartRegex = /^<script/;
+const titleStartRegex = /^<title/;
+const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
+
+async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
   const appScriptPath = `/${appJSFile.output.split('/').pop()}`;
+  const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+
+  // find correct positions for modulepreload, links, scripts
+  const headTags = indexFile
+    .match(headRegex)[1]
+    .match(tagsRegex);
+  const firstLinkIndex = headTags.findIndex(v => v.match(linkStartRegex));
+  const lastLinkIndex = headTags.findLastIndex(v => v.match(linkStartRegex));
+  const firstScriptIndex = headTags.findIndex(v => v.match(scriptStartRegex));
+  const titleIndex = headTags.findIndex(v => v.match(titleStartRegex));
+  if (titleIndex) headTags[titleIndex] = 'replace:title';
+  else headTags.unshift('replace:title');
+  headTags.splice(0, 0, 'replace:modulepreload');
+  if (firstScriptIndex === -1 && firstScriptIndex === -1) {
+    headTags.push('replace:css');
+    headTags.push('replace:js');
+  } else {
+    if (firstScriptIndex === -1) {
+      headTags.splice(lastLinkIndex + 1, 0, 'replace:css');
+      headTags.push('replace:js');
+    } else if (firstLinkIndex === -1 || firstScriptIndex < lastLinkIndex) {
+      headTags.splice(firstScriptIndex, 0, 'replace:css', 'replace:js');
+    } else {
+      headTags.splice(firstScriptIndex, 0, 'replace:js');
+      headTags.splice(lastLinkIndex + 1, 0, 'replace:css');
+    }
+  }
   addMockDom();
 
-  const data = await Promise.all(pages.map(async page => {
-    const pageModule = await import(path.resolve('.', page.moduleOutput));
-    customElements.define(`page-${config.pageCounter++}`, pageModule.default);
-    pageModule.default._isPage = true;
-    pageModule.default.useTemplate = false;
-    const template = new pageModule.default().template();
+  const data = await Promise.all(routeConfigs.map(async route => {
+    // load page to build template
+    const routeModule = await import(path.resolve('.', route.output));
+    customElements.define(`page-${config.pageCounter++}`, routeModule.default);
+    routeModule.default._isPage = true;
+    routeModule.default.useTemplate = false;
+    const template = new routeModule.default().template();
+    
+    // get imported chunks to preload
+    const importChunks = appJSFile.imports.map(v => v.path.split('/').pop()).filter(v => v.startsWith('chunk-'));
+    route.imports.forEach(v => {
+      if (v.path.includes('chunk-') && !importChunks.includes(v.path)) importChunks.push(v.path.split('/').pop());
+    });
 
-    // pull out imported chucks so we can preload them
-    const scriptChunkImports = [...(await readFile(path.join(config.outdir, appScriptPath), 'utf-8')).matchAll(importRegex)]
-      .filter(v => v.groups.path.startsWith('./chunk-'))
-      .map(v => v.groups.path);
-    if (page.pageScriptPath) {
-      [...(await readFile(path.join(config.outdir, page.pageScriptPath), 'utf-8')).matchAll(importRegex)]
-        .filter(v => v.groups.path.startsWith('./chunk-'))
-        .forEach(v => {
-          if (!scriptChunkImports.includes(v.groups.path)) scriptChunkImports.push(v.groups.path);
-        });
-    }
-
-    let content = indexFile
-      .replace(scriptTagRegex, () => `
-        ${config.isMiddleware ? `<script>window._webformulaServer = true;</script>` : ''}
-        ${scriptChunkImports.map(v => `<script src="${v}" type="module" async></script>`).join('\n')}
-        <script src="${appScriptPath}" type="module" async></script>
-        ${page.pageScriptPath ? `<script src="${page.pageScriptPath}" type="module" async></script>` : ''}
-        ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/livereload").onerror = () => setTimeout(() => location.reload(), 500);</script>`}
-      `)
+    // setup style and script tags
+    // wite route template
+    const content = indexFile
+      .replace(headRegex, `<head>
+  ${headTags
+      .join('\n  ')
+      .replace('replace:title', `<title>${routeModule.default.title}</title>`)
+      .replace(
+        'replace:modulepreload',
+        `<link rel="modulepreload" href="${appScriptPath}" />
+  ${route.routeScriptPath ? `<link rel="modulepreload" href="${route.routeScriptPath}" />` : ''}
+  ${importChunks.map(v => `<link rel="modulepreload" href="/${v}" />`).join('\n  ')}`
+      )
+      .replace(
+        'replace:js',
+        `${route.routeScriptPath ? `<script src="${route.routeScriptPath}" type="module" async></script>` : ''}
+  <script src="${appScriptPath}" type="module" async></script>
+  ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/livereload").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`
+      )
+      .replace('replace:css', !appCSSFile ? '' : `<link href="/${appCSSFile.output.split('/').pop()}" rel="stylesheet">`)}
+</head>`)
       .replace(pageContentTagRegex, () => `<page-content>\n${template.split('\n').join('\n')}\n</page-content>`);
-    if (appCSSFile) content = content.replace(cssTagRegex, `<link href="/${appCSSFile.output.split('/').pop()}" rel="stylesheet">`);
 
-    if (content.match(titleTagRegex)) content = content.replace(titleTagRegex, (a, b) => a.replace(b, `<title>${pageModule.default.title}</title>`));
-    else content = content.replace('<head>', `<head>\n  <title>${pageModule.default.title}</title>`);
-
-    const fileName = page.routePath === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${page.routePath.replace(/\/|\.|\s/g, '')}.html`);
-    page.indexHTMLFileName = fileName;
+    const fileName = route.routePath === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${route.routePath.replace(routeToNameRegex, '')}.html`);
+    route.indexHTMLFileName = fileName;
     return {
       fileName,
       content
     };
   }));
+  
   await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
   return data.map(v => ({ output: v.fileName }));
 }
@@ -274,18 +289,27 @@ async function gzipFiles(outputFiles) {
   }));
 }
 
+
+const leadingTrailingSlashRegex = /^\/|\/$/g;
+const indexPathRegex = /^index$/;
+const slashBeforeBracketRegex = /\/?\[/g;
+const restUrlRegex = /\[\.{3}(.+)\]/;
+const parameterUrlRegex = /\[(.+)\]/;
+
 async function getRoutes() {
   const routePaths = await getRoutePaths();
   const routeStripper = new RegExp(`${config.basedir}routes|\/index\.js$`, 'g');
+  let hasIndex = false;
 
-  return routePaths.map(v => {
+  const routes = routePaths.map(v => {
     const rawRoutePath = v.replace(routeStripper, '');
-    const routePath = rawRoutePath
-      .replace('/index', '/')
-      .replace(/\/\[/g, '[')
-      .replace(/\[/g, '/[')
-      .replace(/\[\.{3}(.+)\]/, '*$1')
-      .replace(/\[(.+)\]/, ':$1');
+    const routePath = `/${rawRoutePath
+      .replace(leadingTrailingSlashRegex, '')
+      .replace(indexPathRegex, '')
+      .replace(slashBeforeBracketRegex, '/[')
+      .replace(restUrlRegex, '*$1')
+      .replace(parameterUrlRegex, ':$1')}`;
+    if (routePath === '/') hasIndex = true;
 
     return {
       filePath: v,
@@ -296,6 +320,8 @@ async function getRoutes() {
       notFound: rawRoutePath === '/404'
     };
   });
+  if (!hasIndex) console.warn('Missing index route. `routes/index/index.js`');
+  return routes;
 }
 
 async function getRoutePaths(dir = path.join(config.basedir, 'routes'), arr = []) {
@@ -308,8 +334,19 @@ async function getRoutePaths(dir = path.join(config.basedir, 'routes'), arr = []
   return arr;
 }
 
+
+const spaceRegex = /\s/g;
+const containsVariableOrWildcardRegex = /\/:|\*/g;
+const searchRegexString = '(\\?([^#]*))?';
+const hashRegexString = '(#(.*))?';
+const wildcardRegex = /\*/g;
+const replaceWidCardString = '(?:.*)';
+const followedBySlashRegexString = '(?:\/$|$)';
+const parameterRegex = /(\/)?([:*])(\w+)(\?)?/g;
+
 function buildPathRegex(route) {
-  route = route.trim().replace(/\s/g, '[\\s-]');
+  // replace space with regex character set for space or hyphen or encoded space
+  route = route.trim().replace(spaceRegex, '[\\s-]|%20');
   if (route.match(containsVariableOrWildcardRegex) === null) {
     // Do not allow hashes on root or and hash links
     if (route.trim() === '/' || route.includes('#')) return new RegExp(`^${route}$`);
@@ -326,4 +363,37 @@ function buildPathRegex(route) {
     }${followedBySlashRegexString}$`,
     ''
   );
+}
+
+function buildOutputs(appOutputs, appCSSOutputs, routes) {
+  const outputs = Object.keys(appOutputs).map(key => ({
+    output: key,
+    ...appOutputs[key]
+  }));
+
+  let appCSSFile;
+  if (appCSSOutputs) {
+    appCSSFile = Object.keys(appCSSOutputs).map(key => ({
+      output: key,
+      ...appCSSOutputs[key]
+    }))[0];
+    outputs.push(appCSSFile)
+  }
+
+  const routeConfigs = routes.map(v => {
+    const moduleOutput = outputs.find(b => b.entryPoint === v.filePath);
+    return {
+      ...v,
+      output: moduleOutput.output,
+      imports: moduleOutput.imports,
+      routeScriptPath: !config.chunks ? undefined : `/${moduleOutput.output.split('/').pop()}`
+    };
+  });
+
+  return {
+    routeConfigs,
+    outputs,
+    appJSFile: outputs.find(v => v.entryPoint === config.appFilePath),
+    appCSSFile
+  };
 }

@@ -94,7 +94,7 @@ export function middlewareNode(params = exampleParams) {
 export async function handleRoute(url, app) {
   if (getExtension(url)) return;
 
-  let match = app.routes.find(v => url.replace(/\%20/g, ' ').match(v.regex) !== null);
+  let match = app.routes.find(v => url.match(v.regex) !== null);
   if (!match) {
     // assume 404 and load not found
     match = app.routes.find(v => v.notFound);
@@ -115,7 +115,7 @@ export async function handleFiles(url, app) {
   const match = app.files.find(v => v.filePath.endsWith(url.replace(/\%20/g, ' ')));
   const headers = {
     'Content-Type': getMimeType(url),
-    'Cache-Control': 'public, max-age=10000'
+    'Cache-Control': 'max-age=604800'
   };
   let filePath;
   if (match) {
