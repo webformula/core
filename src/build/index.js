@@ -178,7 +178,7 @@ routes([
 
 
 const headRegex = /<head>((?:.|\n)+)<\/head>/;
-const tagsRegex = /<[^>]*>(?:<\/[^>]*>)?/g;
+const tagsRegex = /<[^>]*>[^<]*(?:<\/[^>]*>)?/g;
 const linkStartRegex = /^<link/;
 const scriptStartRegex = /^<script/;
 const titleStartRegex = /^<title/;
@@ -244,8 +244,8 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
       )
       .replace(
         'replace:js',
-        `${route.routeScriptPath ? `<script src="${route.routeScriptPath}" type="module" async></script>` : ''}
-  <script src="${appScriptPath}" type="module" async></script>
+        `${route.routeScriptPath ? `<script src="${route.routeScriptPath}" type="module" defer></script>` : ''}
+  <script src="${appScriptPath}" type="module" defer></script>
   ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/livereload").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`
       )
       .replace('replace:css', !appCSSFile ? '' : `<link href="/${appCSSFile.output.split('/').pop()}" rel="stylesheet">`)}
@@ -346,7 +346,7 @@ const parameterRegex = /(\/)?([:*])(\w+)(\?)?/g;
 
 function buildPathRegex(route) {
   // replace space with regex character set for space or hyphen or encoded space
-  route = route.trim().replace(spaceRegex, '[\\s-]|%20');
+  route = route.trim().replace(spaceRegex, '(?:[\\s-]|%20)');
   if (route.match(containsVariableOrWildcardRegex) === null) {
     // Do not allow hashes on root or and hash links
     if (route.trim() === '/' || route.includes('#')) return new RegExp(`^${route}$`);
