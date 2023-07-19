@@ -1,10 +1,16 @@
 class HTMLElement {
+  constructor() {
+    this.content = {
+      append() { }
+    };
+  }
+
   get classList() {
     return {
       add() { },
       contains() { },
       toggle() { },
-      remove() { }
+      remove() { },
     }
   }
   get parentElement() {
@@ -20,6 +26,7 @@ class HTMLElement {
   addEventListener() { }
   removeEventListener() { }
   dispatchEvent() { }
+  append() { }
 }
 class Text {
   data = '';

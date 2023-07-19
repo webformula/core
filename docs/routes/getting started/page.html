@@ -4,6 +4,7 @@
 <div class="mdw-font-headline-small page-secondary-header">Links</div>
 <ul class="links">
   <li><a href="#install">Install</a></li>
+  <li><a href="#routing">Routing</a></li>
   <li><a href="#indexhtml">index.html</a></li>
   <li><a href="#appjs">app.js</a></li>
   <li><a href="#appcss">app.css</a></li>
@@ -63,6 +64,54 @@
   </mdw-card>
 
 
+  <mdw-card id="routing">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Routing</div>
+      <div class="mdw-subheader">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
+    </div>
+  
+    <pre>
+      <code class="language-yaml">
+  ${page.escape(`app/
+  └── routes/
+      ├── index/
+      │   └── index.js     # /
+      ├── 404/
+      │   └── index.js     # /404 (or any url that is not found)
+      ├── one/
+      │   └── index.js     # one/
+      ├── two[id?]/
+      │   └── index.js     # two/:id?
+      ├── three/
+      │   └── [id]/
+      │       └── index.js # three/:id
+      └── four/
+          └── [...all]/
+              └── index.js # four/* (four/a/b/)`)}
+      </code>
+    </pre>
+
+    <div style="margin: 18px">
+      <div class="mdw-font-body-large route-list">app/routes/index/index.js → <span>/</span></div>
+      <div class="mdw-font-body-large route-list">app/routes/one/index.js → <span>one</span></div>
+      <div class="mdw-font-body-large route-list">app/routes/two[id?]/index.js → <span>two/:id?</span></div>
+      <div class="mdw-font-body-large route-list">app/routes/three/[id]/index.js → <span>three/:id</span></div>
+      <div class="mdw-font-body-large route-list">app/routes/four/[...rest]/index.js →
+        <span>four/*</span></div>
+
+      <div class="mdw-font-title-medium" style="margin-top: 24px; margin-bottom: 8px;">Directory route details</div>
+      <div class="mdw-font-body-large route-list"><span>routes/index/index.js</span> Root page (/)</div>
+      <div class="mdw-font-body-large route-list"><span>routes/404/index.js</span> Not found page. Auto redirect on non matching routes</div>
+      <div class="mdw-font-body-large route-list"><span>index.js</span> Route component file</div>
+      <div class="mdw-font-body-large route-list"><span>[id]</span> Directory that represents a url parameter</div>
+      <div class="mdw-font-body-large route-list"><span>[id?]</span> Directory that represents an options url parameter</div>
+      <div class="mdw-font-body-large route-list"><span>name[id?]</span> Inline url parameter to avoid sub folder</div>
+      <div class="mdw-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
+      <div class="mdw-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all route</div>
+    </div>
+  </mdw-card>
+
+
   <mdw-card id="appjs">
     <div class="mdw-card-content">
       <div class="mdw-headline">Main application file</div>
@@ -72,16 +121,13 @@
 
     <pre>
       <code class="language-javascript">
-  ${`import { routes } from '@webformula/core';
-  import home from './pages/home/page.js';
-  import one from './pages/one/page.js';
-  import notFound from './pages/notfound/page.js';
+  ${`/* Main app file
+  * you can import any code in here
+  */
   
-  routes([
-    { path: '/', component: home },
-    { path: '/one', component: one },
-    { path: '/notfound', component: notFound, notFound: true }
-  ]);`}
+  import someModule from './someModule.js';
+  
+  // routes are automatically loaded based on directory routing`}
       </code>
     </pre>
 
@@ -91,8 +137,8 @@
     <pre>
       <code class="language-javascript">
   ${`import { routes, preventNavigation } from '@webformula/core';
-  import home from './pages/home/page.js';
-  import login from './pages/login/page.js';
+  import home from './routes/home/index.js';
+  import login from './routes/login/index.js';
   
   routes([
     { path: '/', component: home },

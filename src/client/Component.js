@@ -51,11 +51,11 @@ export default class Component extends HTMLElement {
   }
 
   get searchParameters() {
-    return Object.fromEntries([...new URLSearchParams(locationObject.search).entries()]);
+    return Object.fromEntries([...new URLSearchParams(location.search).entries()]);
   }
 
   get urlParameters() {
-    return locationObject.pathname.match(this.constructor._pagePathRegex)?.groups;
+    return location.pathname.match(this.constructor._pagePathRegex)?.groups;
   }
 
   get rendered() {
@@ -71,7 +71,7 @@ export default class Component extends HTMLElement {
   async afterRender() { }
 
   /** Return HTML template string.
-   *  ./page.js
+   *  ./index.js
    *  new class one extends Page {
    *    template() {
    *       return `<div>${this.var}</div>`;

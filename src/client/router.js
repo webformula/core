@@ -1,14 +1,9 @@
-import { buildPathRegex } from '../shared.js';
-
-const leadingSlashRegex = /^\//;
-const trailingSlashRegex = /\/$/;
 const app = {
   paths: [],
   pageCounter: 0,
   componentModuleQueue: [],
   preventNavigation: false
 };
-
 
 
 export function routes(config = [{
@@ -21,15 +16,11 @@ export function routes(config = [{
 
   let isCurrent = false;
   for (const c of config) {
-    c.path = `/${c.path.replace(trailingSlashRegex, '').replace(leadingSlashRegex, '')}`;
-    if (app.paths.find(v => v.path === c.path)) return;
-
-    const regex = buildPathRegex(c.path);
-    app.paths.push({
-      ...c,
-      regex
-    });
-    if (location.pathname.match(regex)) isCurrent = true;  }
+    if (!app.paths.find(v => v.path === c.path)) {
+      app.paths.push(c);
+      isCurrent = location.pathname.match(c.regex) !== null;
+    }
+  }
   if (isCurrent) route(location, false, true);
 }
 
