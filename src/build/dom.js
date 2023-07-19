@@ -3,6 +3,10 @@ class HTMLElement {
     this.content = {
       append() { }
     };
+    this.style = {
+      setProperty() {},
+      getPropertyValue() {}
+    };
   }
 
   get classList() {
