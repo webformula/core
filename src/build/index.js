@@ -261,6 +261,7 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
   }));
   
   await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
+  if (config.chunks === false) await Promise.all(routeConfigs.map(async v => rm(v.output)));
   return data.map(v => ({ output: v.fileName }));
 }
 
