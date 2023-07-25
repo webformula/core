@@ -1,54 +1,25 @@
-class HTMLElement {
-  constructor() {
-    this.content = {
-      append() { }
-    };
-    this.style = {
-      setProperty() {},
-      getPropertyValue() {}
-    };
-  }
+import { parseHTML } from 'linkedom';
 
-  get classList() {
-    return {
-      add() { },
-      contains() { },
-      toggle() { },
-      remove() { },
-    }
-  }
-  get parentElement() {
-    return new HTMLElement();
-  }
-  querySelector() {
-    return new HTMLElement();
-  }
-  querySelectorAll() {
-    return [new HTMLElement()];
-  }
-  insertAdjacentElement() { }
-  addEventListener() { }
-  removeEventListener() { }
-  dispatchEvent() { }
-  append() { }
-}
-class Text {
-  data = '';
-}
+// TODO do i need to inject the app index.html
+const dom = parseHTML(`<!doctype html>
+<html lang="en">
+  <head>
+    <title></title>
+  </head>
+  <body>
+    <page-content></page-content>
+  </body>
+</html>`);
+
+
 class CSSStyleSheet {
   href = '';
   replaceSync() { }
 };
-class MutationObserver {
-  observe() { }
-}
 class EventSource { }
 const localStorage = {
   getItem() { },
   setItem() { }
-};
-const navigator = {
-  maxTouchPoints: 0
 };
 function getComputedStyle() {
   return {};
@@ -60,10 +31,6 @@ const styleSheets = [];
 const location = {
   href: '',
   pathname: '/'
-};
-const customElements = {
-  define() { },
-  get() { }
 };
 const history = {
   pushState() { },
@@ -79,68 +46,25 @@ const visualViewport = {
   width: 400,
   height: 900
 };
-const document = {
-  location,
-  body: new HTMLElement(),
-  documentElement: new HTMLElement(),
-  createTextNode() {
-    return new Text();
-  },
-  createElement() {
-    return new HTMLElement();
-  },
-  addEventListener() { },
-  removeEventListener() { },
-  querySelector() {
-    return new HTMLElement();
-  },
-  querySelectorAll() {
-    return [new HTMLElement()];
-  },
-  adoptedStyleSheets: styleSheets,
-  styleSheets,
-  fonts: {
-    ready: Promise.resolve([])
-  }
-};
-const window = {
-  document,
-  location,
-  CSSStyleSheet,
-  MutationObserver,
-  getComputedStyle,
-  localStorage,
-  matchMedia,
-  navigator,
-  customElements,
-  history,
-  EventSource,
-  screen,
-  dispatchEvent() { },
-  addEventListener() { },
-  removeEventListener() { },
-  querySelector() {
-    return new HTMLElement();
-  },
-  querySelectorAll() {
-    return [new HTMLElement()];
-  },
-  visualViewport
-}
+
+dom.document.adoptedStyleSheets = styleSheets;
+dom.document.styleSheets = styleSheets;
+dom.document.fonts = { ready: Promise.resolve([]) };
 
 export default function add() {
-  global.window = window
-  global.HTMLElement = HTMLElement;
-  global.document = document;
+  global.window = dom.window
+  global.HTMLElement = dom.HTMLElement;
+  global.document = dom.document;
   global.CSSStyleSheet = CSSStyleSheet;
-  global.MutationObserver = MutationObserver;
+  global.MutationObserver = dom.MutationObserver;
   global.getComputedStyle = getComputedStyle;
   global.localStorage = localStorage;
   global.matchMedia = matchMedia;
-  global.navigator = navigator;
-  global.customElements = customElements;
+  global.navigator = dom.navigator;
+  global.customElements = dom.customElements;
   global.location = location;
   global.EventSource = EventSource;
   global.screen = screen;
   global.visualViewport = visualViewport;
+  global.history = history;
 }

@@ -98,8 +98,7 @@ const pluginCss = {
 
 async function run() {
   if (config.onStart) await config.onStart();
-  await emptyOutdir();
-
+  await cleanOutdir();
   const routes = await getRoutes();
   config.routesCode = `${routes.map(v => `const ${v.routeModuleName} = import('${v.importPath}');`).join('\n')}
 
@@ -252,10 +251,8 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
 </head>`)
       .replace(pageContentTagRegex, () => `<page-content>\n${template.split('\n').join('\n')}\n</page-content>`);
 
-    const fileName = route.routePath === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${route.routePath.replace(routeToNameRegex, '')}.html`);
-    route.indexHTMLFileName = fileName;
     return {
-      fileName,
+      fileName: route.indexHTMLFileName,
       content
     };
   }));
@@ -265,11 +262,11 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
   return data.map(v => ({ output: v.fileName }));
 }
 
-async function emptyOutdir(dir = config.outdir) {
+async function cleanOutdir(dir = config.outdir) {
   const files = await readdir(dir);
   await Promise.all(files.map(async file => {
     const filePath = path.join(dir, file);
-    if ((await stat(filePath)).isDirectory()) return emptyOutdir(filePath);
+    if ((await stat(filePath)).isDirectory()) return cleanOutdir(filePath);
     await rm(filePath);
   }));
 }
@@ -311,11 +308,13 @@ async function getRoutes() {
       .replace(restUrlRegex, '*$1')
       .replace(parameterUrlRegex, ':$1')}`;
     if (routePath === '/') hasIndex = true;
+    const indexHTMLFileName = routePath === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${routePath.replace(routeToNameRegex, '')}.html`);
 
     return {
       filePath: v,
       importPath: `./routes${rawRoutePath}/index.js`,
       routePath,
+      indexHTMLFileName,
       regex: buildPathRegex(routePath),
       routeModuleName: `r_${rawRoutePath.replace(routeToNameRegex, '')}`,
       notFound: rawRoutePath === '/404'
@@ -383,10 +382,12 @@ function buildOutputs(appOutputs, appCSSOutputs, routes) {
 
   const routeConfigs = routes.map(v => {
     const moduleOutput = outputs.find(b => b.entryPoint === v.filePath);
+
     return {
       ...v,
       output: moduleOutput.output,
       imports: moduleOutput.imports,
+      htmlImports: Object.keys(moduleOutput.inputs).filter(v => v.endsWith('html')),
       routeScriptPath: !config.chunks ? undefined : `/${moduleOutput.output.split('/').pop()}`
     };
   });
