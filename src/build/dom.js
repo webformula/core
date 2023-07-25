@@ -75,6 +75,10 @@ const screen = {
     addEventListener() {}
   }
 }
+const visualViewport = {
+  width: 400,
+  height: 900
+};
 const document = {
   location,
   body: new HTMLElement(),
@@ -120,7 +124,8 @@ const window = {
   },
   querySelectorAll() {
     return [new HTMLElement()];
-  }
+  },
+  visualViewport
 }
 
 export default function add() {
@@ -137,4 +142,5 @@ export default function add() {
   global.location = location;
   global.EventSource = EventSource;
   global.screen = screen;
+  global.visualViewport = visualViewport;
 }
