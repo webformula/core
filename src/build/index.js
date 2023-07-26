@@ -308,8 +308,7 @@ async function getRoutes() {
       .replace(restUrlRegex, '*$1')
       .replace(parameterUrlRegex, ':$1')}`;
     if (routePath === '/') hasIndex = true;
-    const indexHTMLFileName = routePath === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${routePath.replace(routeToNameRegex, '')}.html`);
-
+    const indexHTMLFileName = routePath === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${routePath.replace(spaceRegex, '-').replace(routeToNameRegex, '')}.html`);
     return {
       filePath: v,
       importPath: `./routes${rawRoutePath}/index.js`,
