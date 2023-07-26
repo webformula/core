@@ -18,7 +18,7 @@ export function routes(config = [{
   for (const c of config) {
     if (!app.paths.find(v => v.path === c.path)) {
       app.paths.push(c);
-      isCurrent = location.pathname.match(c.regex) !== null;
+      if (!isCurrent) isCurrent = location.pathname.match(c.regex) !== null;
     }
   }
   if (isCurrent) route(location, false, true);
