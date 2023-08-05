@@ -245,7 +245,29 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
         'replace:js',
         `${route.routeScriptPath ? `<script src="${route.routeScriptPath}" type="module" defer></script>` : ''}
   <script src="${appScriptPath}" type="module" defer></script>
-  ${(!isDev || !config.devServer.liveReload) ? '' : `<script>new EventSource("/livereload").onerror = () => setTimeout(() => location.reload(), 500);</script>`}`
+  ${(!isDev || !config.devServer.liveReload) ? '' : `<script>
+  let isReloading = false;
+  new EventSource("/livereload").onerror = async () => {
+    if (isReloading) return;
+    isReloading = true;
+    await pingServer();
+    location.reload();
+  };
+
+  async function pingServer(wait = 20) {
+    return new Promise(resolve => {
+      setTimeout(async () => {
+        try {
+          await fetch('/devserver-ping');
+          resolve();
+        } catch (e) {
+          await pingServer(Math.min(15000, wait + (wait * 0.5)));
+          resolve();
+        }
+      }, wait);
+    });
+  }
+  </script>`}`
       )
       .replace('replace:css', !appCSSFile ? '' : `<link href="/${appCSSFile.output.split('/').pop()}" rel="stylesheet">`)}
 </head>`)
