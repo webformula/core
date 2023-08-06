@@ -1,5 +1,6 @@
 import '@webformula/material/components/navigation';
 import '@webformula/material/components/card';
+import '@webformula/material/components/button';
 
 window.addEventListener('load', () => {
   hljs.highlightAll();
