@@ -27,6 +27,9 @@ function getComputedStyle() {
 function matchMedia() {
   return { matches: false };
 }
+function requestAnimationFrame(cb = () => {}) {
+  cb();
+}
 const styleSheets = [];
 const location = {
   href: '',
@@ -67,4 +70,5 @@ export default function add() {
   global.screen = screen;
   global.visualViewport = visualViewport;
   global.history = history;
+  global.requestAnimationFrame = requestAnimationFrame;
 }

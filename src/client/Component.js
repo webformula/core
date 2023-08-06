@@ -23,8 +23,6 @@ export default class Component extends HTMLElement {
   constructor() {
     super();
 
-    // unique id build from class string
-    this.#id = Array.from(this.constructor.toString()).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
     // convert html string to template literal function
     if (this.constructor.html) this.template = () => new Function('page', `return \`${this.constructor.html}\`;`).call(this, this);
     const hasTemplate = !!this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
@@ -106,9 +104,12 @@ export default class Component extends HTMLElement {
       return;
     }
 
-    if (this.constructor.useTemplate && !templateElements[this.#id]) {
-      templateElements[this.#id] = document.createElement('template');
-      templateElements[this.#id].innerHTML = this.template();
+    if (this.constructor.useTemplate) {
+      if (!this.#id) this.#id = Array.from(this.constructor.toString()).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
+      if (!templateElements[this.#id]) {
+        templateElements[this.#id] = document.createElement('template');
+        templateElements[this.#id].innerHTML = this.template();
+      }
     }
 
     if (this.constructor.useShadowRoot) {
