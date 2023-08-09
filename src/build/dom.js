@@ -54,6 +54,8 @@ dom.document.adoptedStyleSheets = styleSheets;
 dom.document.styleSheets = styleSheets;
 dom.document.fonts = { ready: Promise.resolve([]) };
 
+dom.window.scrollTo = () => {};
+
 export default function add() {
   global.window = dom.window
   global.HTMLElement = dom.HTMLElement;
