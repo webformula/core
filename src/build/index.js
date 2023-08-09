@@ -121,7 +121,6 @@ routes([
     metafile: true,
     entryNames: '[name]-[hash]',
     format: 'esm',
-    target: 'esnext',
     loader: { '.html': 'text' },
     plugins: [pluginCss],
     minify: config.minify,
@@ -176,6 +175,7 @@ routes([
 }
 
 
+const htmlCommentsRegex = /<!--[\s\S]*?-->/g;
 const headRegex = /<head>((?:.|\n)+)<\/head>/;
 const tagsRegex = /<[^>]*>[^<]*(?:<\/[^>]*>)?/g;
 const linkStartRegex = /^<link/;
@@ -189,6 +189,7 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
 
   // find correct positions for modulepreload, links, scripts
   const headTags = indexFile
+    .replace(htmlCommentsRegex, '')
     .match(headRegex)[1]
     .match(tagsRegex);
   const firstLinkIndex = headTags.findIndex(v => v.match(linkStartRegex));
