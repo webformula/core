@@ -181,7 +181,7 @@ const tagsRegex = /<[^>]*>[^<]*(?:<\/[^>]*>)?/g;
 const linkStartRegex = /^<link/;
 const scriptStartRegex = /^<script/;
 const titleStartRegex = /^<title/;
-const pageContentTagRegex = /<\s?page-content\s?>[^>]*<\s?\/\s?page-content\s?>/;
+const pageContentTagRegex = /(<\s?page-content\s?>)[^>]*(<\s?\/\s?page-content\s?>)|(<[^>]*id="page-content"[^>]*>)[^>]*(<\/[^>]*>)/;
 
 async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
   const appScriptPath = `/${appJSFile.output.split('/').pop()}`;
@@ -272,7 +272,7 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
       )
       .replace('replace:css', !appCSSFile ? '' : `<link href="/${appCSSFile.output.split('/').pop()}" rel="stylesheet">`)}
 </head>`)
-      .replace(pageContentTagRegex, () => `<page-content>\n${template.split('\n').join('\n')}\n</page-content>`);
+      .replace(pageContentTagRegex, (_, startA, endA, startB, endB) => `${startA || startB}\n${template.split('\n').join('\n')}\n${endA || endB}`);
 
     return {
       fileName: route.indexHTMLFileName,

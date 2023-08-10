@@ -42,8 +42,8 @@ export default class Component extends HTMLElement {
 
     // hook up page-content for render
     } else {
-      const pageContent = document.querySelector('page-content');
-      if (!pageContent) throw Error('Could not find <page-content>');
+      const pageContent = document.querySelector('page-content') || document.querySelector('#page-content');
+      if (!pageContent) throw Error('Could not find page-content');
       this.#root = pageContent;
     }
   }
