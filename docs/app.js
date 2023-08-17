@@ -23,8 +23,8 @@ function handleHashAnchor(hash, animate = true) {
   try {
     const element = document.querySelector(hash);
     if (element) {
-      if (animate) document.querySelector('page-content').scroll({ top: element.offsetTop, behavior: 'smooth' });
-      else document.querySelector('page-content').scroll({ top: element.offsetTop });
+      if (animate) document.documentElement.scroll({ top: element.offsetTop, behavior: 'smooth' });
+      else document.documentElement.scroll({ top: element.offsetTop });
     }
   } catch { console.log('error'); }
 }

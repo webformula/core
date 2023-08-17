@@ -1,6 +1,6 @@
 {
   "name": "@webformula/core",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
   "main": "src/index.js",
   "type": "module",
@@ -26,12 +26,12 @@
   },
   "homepage": "https://github.com/webformula/core#readme",
   "dependencies": {
-    "esbuild": "^0.19.0",
+    "esbuild": "^0.19.2",
     "linkedom": "^0.15.1"
   },
   "devDependencies": {
     "@webformula/core": "file:./",
-    "@webformula/material": "^0.14.1",
+    "@webformula/material": "^0.14.2",
     "aws-sdk": "^2.1407.0"
   }
 }
