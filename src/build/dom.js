@@ -55,6 +55,7 @@ dom.document.styleSheets = styleSheets;
 dom.document.fonts = { ready: Promise.resolve([]) };
 
 dom.window.scrollTo = () => {};
+dom.setTimeout = () => {};
 
 export default function add() {
   global.window = dom.window

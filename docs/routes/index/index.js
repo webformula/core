@@ -16,10 +16,5 @@ export default class extends Component {
   
   constructor() {
     super();
-
-    // setTimeout(() => {
-    //   this.test = 'change';
-    //   console.log(this.test);
-    // }, 2000)
   }
 }

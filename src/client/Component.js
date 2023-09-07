@@ -19,7 +19,7 @@ export default class Component extends HTMLElement {
   #root = this;
   #rendered = false;
   #variableReferences = {};
-  #proxies;
+  #proxy;
 
 
   constructor() {
@@ -49,36 +49,40 @@ export default class Component extends HTMLElement {
       this.#root = pageContent;
     }
 
+    // proxy entire class so we can handle variable binding
+    const proxies = new WeakMap();
     const that = this;
     const proxyHandler = {
       get(target, key, receiver) {
         if (key == 'isProxy') return true;
 
+        // create sub proxy for nested paths: this.one.two
         if (that.#variableReferences[key]) {
           const varValue = target[key];
           if (typeof varValue == 'undefined') return;
           if (!varValue.isProxy && typeof varValue === 'object') {
             const prox = new Proxy(varValue, proxyHandler);
-            const routes = [].concat(that.#proxies.get(receiver) || []);
+            const routes = [].concat(proxies.get(receiver) || []);
             routes.push(key);
-            that.#proxies.set(prox, routes);
+            proxies.set(prox, routes);
             target[key] = prox;
           }
         }
 
-        const value = target[key];
-        return (typeof value === 'function') ? value.bind(target) : value;
+        let value = target[key];
+        // bind render to original class object so it has access to private variables;
+        if (key === 'render' && typeof value === 'function') value = value.bind(target);
+        return value;
       },
 
       set(target, key, value, receiver) {
         target[key] = value;
-
-        const path = [].concat(that.#proxies.get(receiver) || [], key).join('.');
+        const path = [].concat(proxies.get(receiver) || [], key).join('.');
         const variableReference = that.#variableReferences[path];
         if (!variableReference) return;
 
         for (const variable of variableReference) {
-          const element = that.#root.querySelector(`[bind="${variable.index}"]`);
+          const element = that.#root.querySelector(`[wfc-bind="${variable.id}"]`);
           let templateValue;
           try {
             templateValue = variable.template();
@@ -87,10 +91,12 @@ export default class Component extends HTMLElement {
           if (variable.type === 'content') element.innerText = templateValue;
           else if (variable.type === 'attribute') element.setAttribute(variable.attribute, templateValue);
         }
+
+        return true;
       }
     };
-    this.#proxies = new WeakMap();
-    return new Proxy(this, proxyHandler);
+    this.#proxy = new Proxy(this, proxyHandler);
+    return this.#proxy
   }
 
   get searchParameters() {
@@ -134,12 +140,12 @@ export default class Component extends HTMLElement {
     if (!this.#rendered) this.#prepareRender();
     this.#rendered = true;
 
-    await this.beforeRender();
+    await this.beforeRender.call(this.#proxy); // bind to proxy
     // render every time so template literal expression update
     if (!this.constructor.useTemplate) this.#root.innerHTML = this.template();
     // render from template element
     else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
-    await this.afterRender();
+    await this.afterRender.call(this.#proxy); // bind to proxy
   }
 
   #prepareRender() {
@@ -164,50 +170,71 @@ export default class Component extends HTMLElement {
   }
 
   tagParse(templateString) {
-    const variables = [...templateString.matchAll(/\$\{\s?(?:page|this)\.([^\}\(]*)\}/g)];
-    this.#variableReferences = variables.reverse().reduce((acc, item, i) => {
-      const property = item[1];
-      if (!acc[property]) acc[property] = [];
-      const previousString = templateString.slice(0, item.index);
+    const expressions = [...templateString.matchAll(/\${.*}/g)];
+    const expressionVariables = expressions.map((expression, i) => ({
+      id: i, // each expression correlates to a specific expression
+      expression, // ${this.var}
+      variables: [...expression[0].matchAll(/(?:page|this)((?:\.[a-zA-Z0-9_]+)+)/g)].map(v => v[1].replace(/^\./, '')) // this.var -> var
+    }));
+    
+    // build hash lookup by property for each expression
+    // reverse array so the indexes are correct when modifying the templateString
+    this.#variableReferences = expressionVariables.reverse().reduce((acc, { id, expression, variables }) => {
+      const previousString = templateString.slice(0, expression.index);
+
+      // expression is in the content of an element: <div>${this.var}</div>
       const contentMatch = previousString.match(/<\s*?([^\s>]+)[^>]*>([^<>]*)?$/);
       if (contentMatch) {
-        const newElement = contentMatch[0].replace(contentMatch[1], `${contentMatch[1]} bind="${i}" `);
+        // add wfc-bind attribute for reference
+        const newElement = contentMatch[0].replace(contentMatch[1], `${contentMatch[1]} wfc-bind="${id}" `);
         const postContentString = templateString.slice(contentMatch.index + contentMatch[0].length - (contentMatch[2] ? contentMatch[2].length : 0));
         const postContentMatch = postContentString.match(/([^<]*)/);
-        templateString = templateString.substring(0, contentMatch.index) + newElement + templateString.substring(item.index);
-        
-        const variable = {
-          index: i,
+        templateString = templateString.substring(0, contentMatch.index) + newElement + templateString.substring(expression.index);
+
+        const variableConfig = {
+          id,
           type: 'content',
+          // sub template method for specific expression
           template: () => new Function('page', `return \`${postContentMatch[0]}\`;`).call(this, this)
         };
 
-        const properties = property.split('.').slice(1).map(prop => property.slice(0, property.indexOf(prop) - 1)).concat(property);
-        properties.forEach(parentProperty => {
-          if (!acc[parentProperty]) acc[parentProperty] = [];
-          acc[parentProperty].push(variable);
+        // build object for each level of path: this.one.two -> [one.two, two]
+        // This is needed because proxies only provide the property being changed
+        variables.forEach(variable => {
+          const properties = variable.split('.').slice(1).map(prop => variable.slice(0, variable.indexOf(prop) - 1)).concat(variable);
+          properties.forEach(parentProperty => {
+            if (!acc[parentProperty]) acc[parentProperty] = [];
+            acc[parentProperty].push(variableConfig);
+          });
         });
-      }
+      } else {
+        // expression is in the attribute of an element: <input value="${this.var}">
+        const attrMatch = previousString.match(/<\s?[^>]+\s([^=]+)=\s*?\"\s*?$/);
+        if (attrMatch) {
+          // add wfc-bind attribute for reference
+          const newElement = attrMatch[0].replace(attrMatch[1], ` wfc-bind="${id}" ${attrMatch[1]}`);
+          const postAttrString = templateString.slice(attrMatch.index + attrMatch[0].length - (attrMatch[2] ? attrMatch[2].length : 0));
+          const postAttrMatch = postAttrString.match(/([^"]*)/);
+          templateString = templateString.substring(0, attrMatch.index) + newElement + templateString.substring(expression.index);
 
-      const attrMatch = previousString.match(/<\s?[^>]+\s([^=]+)=\s*?\"\s*?$/);
-      if (attrMatch) {
-        const newElement = attrMatch[0].replace(attrMatch[1], ` bind="${i}" ${attrMatch[1]}`);
-        const postAttrString = templateString.slice(attrMatch.index + attrMatch[0].length - (attrMatch[2] ? attrMatch[2].length : 0));
-        const postAttrMatch = postAttrString.match(/([^"]*)/);
-        templateString = templateString.substring(0, attrMatch.index) + newElement + templateString.substring(item.index);
+          const variableConfig = {
+            id,
+            type: 'attribute',
+            attribute: attrMatch[1],
+            // sub template method for specific expression
+            template: () => new Function('page', `return \`${postAttrMatch[0]}\`;`).call(this, this)
+          };
 
-        const variable = {
-          index: i,
-          type: 'attribute',
-          attribute: attrMatch[1],
-          template: () => new Function('page', `return \`${postAttrMatch[0]}\`;`).call(this, this)
-        };
-
-        const properties = property.split('.').slice(1).map(prop => property.slice(0, property.indexOf(prop) - 1)).concat(property);
-        properties.forEach(parentProperty => {
-          if (!acc[parentProperty]) acc[parentProperty] = [];
-          acc[parentProperty].push(variable);
-        });
+          // build object for each level of path: this.one.two -> [one.two, two]
+          // This is needed because proxies only provide the property being changed
+          variables.forEach(variable => {
+            const properties = variable.split('.').slice(1).map(prop => variable.slice(0, variable.indexOf(prop) - 1)).concat(variable);
+            properties.forEach(parentProperty => {
+              if (!acc[parentProperty]) acc[parentProperty] = [];
+              acc[parentProperty].push(variableConfig);
+            });
+          });
+        }
       }
 
       return acc;
