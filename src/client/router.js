@@ -62,15 +62,14 @@ async function route(locationObject, back = false, initial = false) {
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
 
+  if (nextPage.rendered) nextPage.beforeRender();
+  nextPage.render();
   if (!initial) {
-    if (nextPage.rendered) nextPage.beforeRender();
-    nextPage.render();
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     // document.querySelector('page-content').scrollTop = 0;
-  } else {
-    nextPage.afterRender();
   }
+  nextPage.afterRender();
   nextPage.connectedCallback();
   requestAnimationFrame(() => {
     if (!initial) window.dispatchEvent(new Event('locationchange'));
