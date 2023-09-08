@@ -29,7 +29,8 @@ export default class Component extends HTMLElement {
     let templateString;
     if (this.constructor.html) templateString = this.constructor.html;
     else templateString = this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
-    this.template = () => new Function('page', `return \`${this.expressionParse(templateString)}\`;`).call(this, this);
+    templateString = this.#expressionParse(templateString);
+    this.template = () => new Function('page', `return \`${templateString}\`;`).call(this, this);
     const hasTemplate = !!this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
     // check if html uses template literal expressions. If it does we do not want to globally store a template element
     if (hasTemplate && this.constructor.useTemplate === true) {
@@ -51,51 +52,53 @@ export default class Component extends HTMLElement {
     }
 
     // proxy entire class so we can handle variable binding
-    const proxies = new WeakMap();
-    const that = this;
-    const proxyHandler = {
-      get(target, key, receiver) {
-        if (key == 'isProxy') return true;
+    if (Object.keys(this.#variableReferences).length > 0) {
+      const proxies = new WeakMap();
+      const that = this;
+      const proxyHandler = {
+        get(target, key, receiver) {
+          if (key == 'isProxy') return true;
 
-        // create sub proxy for nested paths: this.one.two
-        if (that.#variableReferences[key]) {
-          const varValue = target[key];
-          if (typeof varValue == 'undefined') return;
-          if (!varValue.isProxy && typeof varValue === 'object') {
-            const prox = new Proxy(varValue, proxyHandler);
-            const routes = [].concat(proxies.get(receiver) || [], key);
-            proxies.set(prox, routes);
-            target[key] = prox;
+          // create sub proxy for nested paths: this.one.two
+          if (that.#variableReferences[key]) {
+            const varValue = target[key];
+            if (typeof varValue == 'undefined') return;
+            if (!varValue.isProxy && typeof varValue === 'object') {
+              const prox = new Proxy(varValue, proxyHandler);
+              const routes = [].concat(proxies.get(receiver) || [], key);
+              proxies.set(prox, routes);
+              target[key] = prox;
+            }
           }
-        }
 
-        const value = target[key];
-        // bind render to original class object so it has access to private variables;
-        if (key === 'render' && typeof value === 'function') return value.bind(target);
-        return value;
-      },
+          const value = target[key];
+          // bind render to original class object so it has access to private variables;
+          if (key === 'render' && typeof value === 'function') return value.bind(target);
+          return value;
+        },
 
-      set(target, key, value, receiver) {
-        const path = [].concat(proxies.get(receiver) || [], key).join('.');
-        const variableReference = that.#variableReferences[path];
-        if (!variableReference) return Reflect.set(target, key, value, receiver);
-        target[key] = value;
+        set(target, key, value, receiver) {
+          const path = [].concat(proxies.get(receiver) || [], key).join('.');
+          const variableReference = that.#variableReferences[path];
+          if (!variableReference) return Reflect.set(target, key, value, receiver);
+          target[key] = value;
 
-        for (const variable of variableReference) {
-          const element = that.#root.querySelector(`[wfc-bind="${variable.id}"]`);
-          let templateValue;
-          try { templateValue = variable.template(); } catch (e) { }
-          if (variable.type === 'content') element.innerText = templateValue;
-          else if (variable.type === 'attribute') {
-            if (element.nodeName === 'INPUT' && variable.attribute === 'value') element.value = templateValue;
-            element.setAttribute(variable.attribute, templateValue);
+          for (const variable of variableReference) {
+            const element = that.#root.querySelector(`[wfc-bind="${variable.id}"]`);
+            let templateValue;
+            try { templateValue = variable.template(); } catch (e) { }
+            if (variable.type === 'content') element.innerText = templateValue;
+            else if (variable.type === 'attribute') {
+              if (element.nodeName === 'INPUT' && variable.attribute === 'value') element.value = templateValue;
+              element.setAttribute(variable.attribute, templateValue);
+            }
           }
+          return true;
         }
-        return true;
-      }
-    };
-    this.#proxy = new Proxy(this, proxyHandler);
-    return this.#proxy
+      };
+      this.#proxy = new Proxy(this, proxyHandler);
+      return this.#proxy
+    }
   }
 
   get searchParameters() {
@@ -137,12 +140,12 @@ export default class Component extends HTMLElement {
     if (!this.#rendered) this.#prepareRender();
     this.#rendered = true;
 
-    await this.beforeRender.call(this.#proxy);
+    !this.#proxy ? await this.beforeRender() : await this.beforeRender.call(this.#proxy);
     // render every time so template literal expression update
     if (!this.constructor.useTemplate) this.#root.innerHTML = this.template();
     // render from template element
     else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
-    await this.afterRender.call(this.#proxy);
+    !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
   }
 
   #prepareRender() {
@@ -178,7 +181,7 @@ export default class Component extends HTMLElement {
   #variablesRegex = /(?:page|this)((?:\.[a-zA-Z0-9_]+)+)(\(|'|"|\s*=)?/g;
   #attributeMatch = /\s([^\s]+)=\s*?\"\s*?$/;
   #contentMatch = /<\s*?([^\s>]+)[^>]*>([^<>]*)?$/;
-  expressionParse(templateString) {
+  #expressionParse(templateString) {
     if (window.webformulaCoreBinding === false) return templateString;
 
     const variableExpressions = [...templateString.matchAll(this.#expressionsDepth6)].map(expression => {
