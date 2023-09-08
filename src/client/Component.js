@@ -26,7 +26,10 @@ export default class Component extends HTMLElement {
     super();
 
     // convert html string to template literal function
-    if (this.constructor.html) this.template = () => new Function('page', `return \`${this.tagParse(this.constructor.html)}\`;`).call(this, this);
+    let templateString;
+    if (this.constructor.html) templateString = this.constructor.html;
+    else templateString = this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+    this.template = () => new Function('page', `return \`${this.expressionParse(templateString)}\`;`).call(this, this);
     const hasTemplate = !!this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
     // check if html uses template literal expressions. If it does we do not want to globally store a template element
     if (hasTemplate && this.constructor.useTemplate === true) {
@@ -38,9 +41,7 @@ export default class Component extends HTMLElement {
     /** Render as soon as possible while making sure all class variables exist */
     // render non page component
     if (!this.constructor._isPage && hasTemplate) {
-      requestAnimationFrame(() => {
-        this.render();
-      });
+      requestAnimationFrame(() => this.render());
 
     // hook up page-content for render
     } else {
@@ -62,36 +63,34 @@ export default class Component extends HTMLElement {
           if (typeof varValue == 'undefined') return;
           if (!varValue.isProxy && typeof varValue === 'object') {
             const prox = new Proxy(varValue, proxyHandler);
-            const routes = [].concat(proxies.get(receiver) || []);
-            routes.push(key);
+            const routes = [].concat(proxies.get(receiver) || [], key);
             proxies.set(prox, routes);
             target[key] = prox;
           }
         }
 
-        let value = target[key];
+        const value = target[key];
         // bind render to original class object so it has access to private variables;
-        if (key === 'render' && typeof value === 'function') value = value.bind(target);
+        if (key === 'render' && typeof value === 'function') return value.bind(target);
         return value;
       },
 
       set(target, key, value, receiver) {
-        target[key] = value;
         const path = [].concat(proxies.get(receiver) || [], key).join('.');
         const variableReference = that.#variableReferences[path];
-        if (!variableReference) return;
+        if (!variableReference) return Reflect.set(target, key, value, receiver);
+        target[key] = value;
 
         for (const variable of variableReference) {
           const element = that.#root.querySelector(`[wfc-bind="${variable.id}"]`);
           let templateValue;
-          try {
-            templateValue = variable.template();
-          } catch (e) { }
-
+          try { templateValue = variable.template(); } catch (e) { }
           if (variable.type === 'content') element.innerText = templateValue;
-          else if (variable.type === 'attribute') element.setAttribute(variable.attribute, templateValue);
+          else if (variable.type === 'attribute') {
+            if (element.nodeName === 'INPUT' && variable.attribute === 'value') element.value = templateValue;
+            element.setAttribute(variable.attribute, templateValue);
+          }
         }
-
         return true;
       }
     };
@@ -131,21 +130,19 @@ export default class Component extends HTMLElement {
 
   /** Escape html to make safe for injection */
   escape(str) {
-    return str.replace(/[^\w. ]/gi, function (c) {
-      return '&#' + c.charCodeAt(0) + ';';
-    });
+    return str.replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
   };
 
   async render() {
     if (!this.#rendered) this.#prepareRender();
     this.#rendered = true;
 
-    await this.beforeRender.call(this.#proxy); // bind to proxy
+    await this.beforeRender.call(this.#proxy);
     // render every time so template literal expression update
     if (!this.constructor.useTemplate) this.#root.innerHTML = this.template();
     // render from template element
     else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
-    await this.afterRender.call(this.#proxy); // bind to proxy
+    await this.afterRender.call(this.#proxy);
   }
 
   #prepareRender() {
@@ -169,17 +166,31 @@ export default class Component extends HTMLElement {
     }
   }
 
-  tagParse(templateString) {
-    const expressions = [...templateString.matchAll(/\${.*}/g)];
-    const expressionVariables = expressions.map((expression, i) => ({
-      id: i, // each expression correlates to a specific expression
-      expression, // ${this.var}
-      variables: [...expression[0].matchAll(/(?:page|this)((?:\.[a-zA-Z0-9_]+)+)/g)].map(v => v[1].replace(/^\./, '')) // this.var -> var
-    }));
+
+  // replace first '[^}{]*' with '({([^}{]*})|[^}{])*' to add another depth
+  #expressionsDepth6 = /(?<!\\)\${(({({(({(({(({([^}{]*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*}/g;
+  // look for escaped expressions \${} so we do not handle them
+  #invalidExpressionsDepth6 = /\\\${(({({(({(({(({([^}{]*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*}/g;
+  // page.someFunc() - we do not want to handle function calls
+  #variableFunctionDepth6 = /(?:page|this)((?:\.[a-zA-Z0-9_)]+)+)\(((\((\(((\(((\(([^\)\()]*\))|[^\)\()])*\))|[^\)\()])*\))|[^\)\()])*\))|[^\)\()])*\)/g;
+  // variables starting with (page or this)
+  // if contains (\(|'|"|\s*=) then we do not want to handle these
+  #variablesRegex = /(?:page|this)((?:\.[a-zA-Z0-9_]+)+)(\(|'|"|\s*=)?/g;
+  expressionParse(templateString) {
+    const variableExpressions = [...templateString.matchAll(this.#expressionsDepth6)].map(expression => {
+      const subInvalidExpressions = Object.values(expression[0].match(this.#invalidExpressionsDepth6) || {});
+      // strip out invalid expressions and functions so we can capture all valid variables
+      const topLevelString = subInvalidExpressions.reduce((acc, sub) => acc.replace(sub, ''), expression[0]).replace(this.#variableFunctionDepth6, '');
+      const variables = [...topLevelString.matchAll(this.#variablesRegex)].filter(v => !v[2]).map(v => v[1].replace(/^\./, ''));
+      return {
+        expression,
+        variables
+      };
+    }).filter(v => v.variables.length > 0);
     
     // build hash lookup by property for each expression
     // reverse array so the indexes are correct when modifying the templateString
-    this.#variableReferences = expressionVariables.reverse().reduce((acc, { id, expression, variables }) => {
+    this.#variableReferences = variableExpressions.reverse().reduce((acc, { expression, variables }, id) => {
       const previousString = templateString.slice(0, expression.index);
 
       // expression is in the content of an element: <div>${this.var}</div>

@@ -1,0 +1,59 @@
+<h3 class="page-title">Binding variables</h3>
+<div class="page-subheader mdw-font-title-medium">Variables bind automatically and do not need any special code</div>
+
+<div class="mdw-font-headline-small page-secondary-header">Links</div>
+<ul class="links">
+  <li><a href="#basic">Basic example</a></li>
+</ul>
+
+<section style="margin-top: 48px;">
+  <mdw-card id="indexhtml">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Basic binding</div>
+
+      <mdw-textfield class="mdw-raise-label">
+        <label>Type something</label>
+        <input value="${page.basicBind}" oninput="page.basicBind = this.value">
+      </mdw-textfield>
+
+      <div>Value: ${page.basicBind}</div>
+      <mdw-button onclick="page.updateValue()">Set value to Updated</mdw-button>
+    </div>
+    
+    <pre>
+      <code class="language-html">
+  ${page.escape(`<input value="\${page.basicBind}" oninput="page.basicBind = this.value">
+  
+  <div>Value: \${page.basicBind}</div>
+  <mdw-button onclick="page.updateValue()">Set value to Updated</mdw-button>
+  
+  <!--
+    If you do not bind the value attribute,
+    then changing the value outside of the input will not update the input
+  -->
+  <input oninput="page.basicBind = this.value">`)}
+      </code>
+    </pre>
+    <pre>
+      <code class="language-javascript">
+  ${`import { Component } from '@webformula/core';
+  import html from './page.html';
+  
+  export default class extends Component {
+    static title = 'Binding variables';
+    static html = html;
+    
+    basicBind = '';
+    
+    constructor() {
+      super();
+    }
+
+    updateValue() {
+      this.basicBind = 'Updated';
+    }
+  }`}
+      </code>
+    </pre>
+  </mdw-card>
+</section>
