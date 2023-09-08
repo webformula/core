@@ -19,6 +19,7 @@ export default class Component extends HTMLElement {
   #root = this;
   #rendered = false;
   #variableReferences = {};
+  #templateString;
   #proxy;
 
 
@@ -26,10 +27,9 @@ export default class Component extends HTMLElement {
     super();
 
     // convert html string to template literal function
-    let templateString;
-    if (this.constructor.html) templateString = this.constructor.html;
-    else templateString = this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
-    templateString = this.#expressionParse(templateString);
+    if (this.constructor.html) this.#templateString = this.constructor.html;
+    else this.#templateString = this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+    const templateString = this.#expressionParse(this.#templateString);
     this.template = () => new Function('page', `return \`${templateString}\`;`).call(this, this);
     const hasTemplate = !!this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
     // check if html uses template literal expressions. If it does we do not want to globally store a template element
@@ -73,7 +73,7 @@ export default class Component extends HTMLElement {
 
           const value = target[key];
           // bind render to original class object so it has access to private variables;
-          if (key === 'render' && typeof value === 'function') return value.bind(target);
+          if (['render'].includes(key) && typeof value === 'function') return value.bind(target);
           return value;
         },
 

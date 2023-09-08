@@ -12,6 +12,7 @@
   <li><a href="#page">Page</a></li>
   <li><a href="#build">build</a></li>
   <li><a href="#middleware">Server middleware</a></li>
+  <li><a href="#devtools">Devtools</a></li>
 </ul>
 
 <section style="margin-top: 48px;">
@@ -389,6 +390,26 @@
       <code class="language-bash">
   ${`# Simply use node --watch to enable livereload
   node --watch-path=./src --watch-path=./docs server.js`}
+      </code>
+    </pre>
+  </mdw-card>
+
+  <mdw-card id="devtools">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Devtools</div>
+      <div class="mdw-subheader">A small set of helper functions</div>
+    </div>
+  
+    <pre>
+      <code class="language-javascript">
+  ${`// Look at variable binding info for current page
+  window.getBoundVariables();
+  
+  // View current page template string
+  window.getPageTemplate();
+  
+  // Get all pages route details
+  window.getRoutes();`}
       </code>
     </pre>
   </mdw-card>
