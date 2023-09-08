@@ -176,6 +176,8 @@ export default class Component extends HTMLElement {
   // variables starting with (page or this)
   // if contains (\(|'|"|\s*=) then we do not want to handle these
   #variablesRegex = /(?:page|this)((?:\.[a-zA-Z0-9_]+)+)(\(|'|"|\s*=)?/g;
+  #attributeMatch = /\s([^\s]+)=\s*?\"\s*?$/;
+  #contentMatch = /<\s*?([^\s>]+)[^>]*>([^<>]*)?$/;
   expressionParse(templateString) {
     if (window.webformulaCoreBinding === false) return templateString;
 
@@ -196,7 +198,7 @@ export default class Component extends HTMLElement {
       const previousString = templateString.slice(0, expression.index);
 
       // expression is in the content of an element: <div>${this.var}</div>
-      const contentMatch = previousString.match(/<\s*?([^\s>]+)[^>]*>([^<>]*)?$/);
+      const contentMatch = previousString.match(this.#contentMatch);
       if (contentMatch) {
         // add wfc-bind attribute for reference
         const newElement = contentMatch[0].replace(contentMatch[1], `${contentMatch[1]} wfc-bind="${id}" `);
@@ -222,7 +224,7 @@ export default class Component extends HTMLElement {
         });
       } else {
         // expression is in the attribute of an element: <input value="${this.var}">
-        const attrMatch = previousString.match(/<\s?[^>]+\s([^=]+)=\s*?\"\s*?$/);
+        const attrMatch = previousString.match(this.#attributeMatch);
         if (attrMatch) {
           // add wfc-bind attribute for reference
           const newElement = attrMatch[0].replace(attrMatch[1], ` wfc-bind="${id}" ${attrMatch[1]}`);

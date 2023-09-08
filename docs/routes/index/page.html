@@ -7,7 +7,6 @@
   <li>&#9889; <strong>Lightweight</strong> - <strong>2</strong><strong style="font-size: 17px;">KB</strong> compressed (GZIP)</li>
   <li>&#9889; <strong>Fast</strong> - leverages native browser features</li>
   <li>&#9889; <strong>Simple</strong> - No complex concepts</li>
-  <li>&#9889; <strong>0</strong> dependencies in build</li>
   <li>&#9889; Single page app with index HTML for each route</li>
   <li>&#9889; Simple variable binding</li>
   <li>&#9889; Includes bundling. No need for Webpack</li>
@@ -22,7 +21,14 @@
   achieve this in a tiny package. You can create your web application and decide weather to build it as a single page app or server it.
 </div>
 
-<div class="mdw-font-headline-small page-secondary-header">Links</div>
+<div class="mdw-font-headline-small page-secondary-header" style="font-size: 20px;">SEO and SPA</div>
+<div class="mdw-font-body-large">
+  Applications are built with a separate pre-rendered HTML file for each page. This means search engines will be able to catalog your entire application.
+  While there is a separate HTML file for every page the application will still act like a SPA. It will download the entire application code and styles.
+  The application will also build everything so it can be statically loaded from a CDN. Alternatively you can use server middleware to serve the application.
+</div>
+
+<div class="mdw-font-headline-small page-secondary-header" style="font-size: 20px;">Links</div>
 <ul class="page-list">
   <li>
     <a class="github-link" href="https://github.com/webformula/core" target="_blank">
