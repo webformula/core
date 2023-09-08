@@ -74,7 +74,7 @@ async function route(locationObject, back = false, initial = false) {
   });
 }
 
-if (!window._webformulaServer) {
+if (window.webformulaCoreSpa !== false) {
   window.webformulaCoreLinkIntercepts = true;
   document.addEventListener('click', event => {
     if (!event.target.matches('[href]')) return;
@@ -94,6 +94,7 @@ if (!window._webformulaServer) {
     // the prevent default keeps the link from loosing focus
     event.target.blur();
   }, false);
+
   window.addEventListener('popstate', event => {
     route(new URL(event.currentTarget.location), true);
   });

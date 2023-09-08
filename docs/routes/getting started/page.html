@@ -5,6 +5,7 @@
 <ul class="links">
   <li><a href="#install">Install</a></li>
   <li><a href="#routing">Routing</a></li>
+  <li><a href="#config">Config app</a></li>
   <li><a href="#indexhtml">index.html</a></li>
   <li><a href="#appjs">app.js</a></li>
   <li><a href="#appcss">app.css</a></li>
@@ -109,6 +110,41 @@
       <div class="mdw-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
       <div class="mdw-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all route</div>
     </div>
+  </mdw-card>
+
+
+  <mdw-card id="config">
+    <div class="mdw-card-content">
+      <div class="mdw-headline">Config app</div>
+      <div class="mdw-subheader">Change settings for binding and routing</div>
+    </div>
+  
+    <pre>
+        <code class="language-html">
+    ${page.escape(`<!-- Add script tag with configuration to index.html -->
+    <head>
+      ...
+      <script>
+        /* If false then variable binding will be disabled
+         * 
+         * Default: true
+         */
+        window.webformulaCoreBinding = true;
+        
+
+        /* If false then navigation will retrieve pages from the server
+         *   Application code and styles will be cached, only the page html will be retrieved
+         * 
+         * Default: true
+         */
+        window.webformulaCoreSpa = true;
+      </script>
+      ...
+    </head>
+    <body>...</body>
+    `)}
+        </code>
+      </pre>
   </mdw-card>
 
 

@@ -177,6 +177,8 @@ export default class Component extends HTMLElement {
   // if contains (\(|'|"|\s*=) then we do not want to handle these
   #variablesRegex = /(?:page|this)((?:\.[a-zA-Z0-9_]+)+)(\(|'|"|\s*=)?/g;
   expressionParse(templateString) {
+    if (window.webformulaCoreBinding === false) return templateString;
+
     const variableExpressions = [...templateString.matchAll(this.#expressionsDepth6)].map(expression => {
       const subInvalidExpressions = Object.values(expression[0].match(this.#invalidExpressionsDepth6) || {});
       // strip out invalid expressions and functions so we can capture all valid variables
