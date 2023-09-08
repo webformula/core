@@ -31,7 +31,15 @@
     If you do not bind the value attribute,
     then changing the value outside of the input will not update the input
   -->
-  <input oninput="page.basicBind = this.value">`)}
+  <input oninput="page.basicBind = this.value">
+
+
+  <!--
+    Prevent content binding
+    you can disable content binding for individual elements
+    Add the attribute 'wfc-no-binding'
+  -->
+  <div wfc-no-binding>Value: \${page.basicBind}</div>`)}
       </code>
     </pre>
     <pre>

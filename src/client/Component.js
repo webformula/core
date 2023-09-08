@@ -200,6 +200,8 @@ export default class Component extends HTMLElement {
       // expression is in the content of an element: <div>${this.var}</div>
       const contentMatch = previousString.match(this.#contentMatch);
       if (contentMatch) {
+        if (contentMatch[0].includes('wfc-no-binding')) return acc;
+
         // add wfc-bind attribute for reference
         const newElement = contentMatch[0].replace(contentMatch[1], `${contentMatch[1]} wfc-bind="${id}" `);
         const postContentString = templateString.slice(contentMatch.index + contentMatch[0].length - (contentMatch[2] ? contentMatch[2].length : 0));

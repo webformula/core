@@ -217,13 +217,13 @@
     </div>
   
     <pre>
-      <code class="language-javascript">
+      <code class="language-javascript" wfc-no-binding>
   ${`import { Component } from '@webformula/core';
   import html from './page.html'; // automatically bundles
   
   export default class extends Component {
     static title = 'Page'; // html page title
-    static html = html; // hook up imported html. Supports template literals (${this.someVar})
+    static html = html; // hook up imported html. Supports template literals (\${this.someVar})
 
     someVar = 'Some var';
     clickIt_bound = this.clickIt.bind(this);
