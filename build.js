@@ -1,5 +1,7 @@
 import build from '@webformula/core/build';
+import generate from '@webformula/material/themeGenerator';
 
+generate('./node_modules/@webformula/material/src/theme.css', './docs/theme.css');
 build({
   chunks: false,
   basedir: 'docs/',

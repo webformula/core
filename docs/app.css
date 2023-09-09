@@ -1,4 +1,4 @@
-@import url('@webformula/material/theme.css');
+@import url(./theme.css);
 @import url('./dracula.css');
 :root {
   color-scheme: light;
