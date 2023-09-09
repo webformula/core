@@ -145,15 +145,13 @@ page-content > section > .page-content-container > mdw-card {
   display: flex;
   flex-direction: row-reverse;
   justify-content: center;
-  margin-right: 16px;
 }
 body.mdw-window-compact .page-content-section {
   flex-direction: column;
-  margin-right: 0px;
 }
 
 .links-nav {
-  margin-left: 32px;
+  margin-left: 48px;
   box-sizing: border-box;
   min-width: 140px;
 }
