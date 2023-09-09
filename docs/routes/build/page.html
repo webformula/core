@@ -1,35 +1,36 @@
 <h3 class="page-title">Build / Serve</h3>
 <div class="page-subheader mdw-font-title-medium">Serve or build app with bundles optimized based on routes</div>
 
-<section style="margin-top: 48px;">
-  <mdw-card id="build">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Build app</div>
-      <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured. Builds are also optimized based on route entry points.</div>
-      <ul>
-        <li>Minification</li>
-        <li>Sourcemaps</li>
-        <li>Dev server</li>
-        <li>live relaoding</li>
-        <li>Gzip content</li>
-        <li>File copying</li>
-      </ul>
-    </div>
-    
-    <pre>
-      <code class="language-javascript">
+<section class="page-content-section">
+  <div class="page-content-container">
+    <mdw-card id="build">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Build app</div>
+        <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured. Builds are also optimized based on route entry points.</div>
+        <ul>
+          <li>Minification</li>
+          <li>Sourcemaps</li>
+          <li>Dev server</li>
+          <li>live relaoding</li>
+          <li>Gzip content</li>
+          <li>File copying</li>
+        </ul>
+      </div>
+      
+      <pre>
+        <code class="language-javascript">
   ${`import build from '@webformula/core/build';
 
   /**
-   * Basic
-   * If using 'app/' as root folder then no config needed
-   */
+  * Basic
+  * If using 'app/' as root folder then no config needed
+  */
   build();
   
 
   /**
-   * Full config options
-   */
+  * Full config options
+  */
   build({
     // folder that contains 'app.js' : Default 'app.js'
     basedir: 'app/',
@@ -38,46 +39,46 @@
     outdir: 'dist/',
 
     /**
-     * Default true
-     * Split code using routes for optimal loading
-     */
+    * Default true
+    * Split code using routes for optimal loading
+    */
     chunks: true,
 
     /**
-     * Minify code
-     * Set to 'true' when 'NODE_ENV=production'
-     *   otherwise it defaults to 'false'
-     */
+    * Minify code
+    * Set to 'true' when 'NODE_ENV=production'
+    *   otherwise it defaults to 'false'
+    */
     minify: true,
 
     /**
-     * Create source maps
-     * Set to 'false' when 'NODE_ENV=production'
-     *   otherwise it defaults to 'true'
-     */
+    * Create source maps
+    * Set to 'false' when 'NODE_ENV=production'
+    *   otherwise it defaults to 'true'
+    */
     sourcemaps: false,
 
     /**
-     * Compress code
-     * Set to 'true' when 'NODE_ENV=production'
-     *   otherwise it defaults to 'false'
-     */
+    * Compress code
+    * Set to 'true' when 'NODE_ENV=production'
+    *   otherwise it defaults to 'false'
+    */
     gzip: true,
 
     devServer: {
       /**
-       * Run dev server
-       * Set to 'false' when 'NODE_ENV=production'
-       *   otherwise it defaults to 'true'
-       */
+      * Run dev server
+      * Set to 'false' when 'NODE_ENV=production'
+      *   otherwise it defaults to 'true'
+      */
       enabled: true,
 
       /**
-       * Livereload
-       * Simply use watch to enable 'node --watch build.js'
-       * Set to 'false' when 'NODE_ENV=production'
-       *   otherwise it defaults to 'true'
-       */
+      * Livereload
+      * Simply use watch to enable 'node --watch build.js'
+      * Set to 'false' when 'NODE_ENV=production'
+      *   otherwise it defaults to 'true'
+      */
       liveReload: true
 
       port: 3000,
@@ -109,14 +110,14 @@
     // callback after bundle
     onEnd: () => {}
   });`}
-      </code>
-    </pre>
+        </code>
+      </pre>
 
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Native server</div>
-    </div>
-    <pre>
-      <code class="language-javascript">
+      <div class="mdw-card-content" style="margin-top: 12px">
+        <div class="mdw-subheader">Native server</div>
+      </div>
+      <pre>
+        <code class="language-javascript">
   ${`import { createServer } from 'node:http';
   import { middlewareNode } from '@webformula/core/middleware';
   
@@ -135,14 +136,14 @@
     
     // Do other stuff
   }).listen(3000);`}
-      </code>
-    </pre>
-    
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Express server</div>
-    </div>
-    <pre>
-      <code class="language-javascript">
+        </code>
+      </pre>
+      
+      <div class="mdw-card-content" style="margin-top: 12px">
+        <div class="mdw-subheader">Express server</div>
+      </div>
+      <pre>
+        <code class="language-javascript">
   ${`import express from 'express';
   import { middlewareExpress } from '@webformula/core/middleware';
   
@@ -157,14 +158,14 @@
   }));
   app.use(express.static('./docs'));
   app.listen(3000);`}
-      </code>
-    </pre>
+        </code>
+      </pre>
 
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Run commands</div>
-    </div>
-    <pre>
-      <code class="language-bash">
+      <div class="mdw-card-content" style="margin-top: 12px">
+        <div class="mdw-subheader">Run commands</div>
+      </div>
+      <pre>
+        <code class="language-bash">
   ${`# Development run
   node build.js
   
@@ -173,7 +174,8 @@
   
   # Production run. minifies, gzips, and writes files
   NODE_ENV=production node build.js`}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
+  </div>
 </section>

@@ -58,6 +58,19 @@ export default async function build(params = {
   config.hasAppCSS = await access(config.appCSSFilePath).then(e => true).catch(e => false);
   if (config.hasAppCSS) config.appCSSOutputFilePath = path.join(config.outdir, 'app.css');
   if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
+  if (isDev) config.debugScript = `console.warn('Webformula Core: Debug mode');
+
+window.getBoundVariables = () => {
+  console.log(window.page.getVariableReferences());
+}
+
+window.getPageTemplate = () => {
+  console.log(window.page.getTemplate());
+}
+
+window.getRoutes = () => {
+  console.log(window.webformulaRoutes);
+}`;
 
   const data = await run();
   if (!isDev) process.exit();
@@ -90,9 +103,28 @@ const pluginCss = {
     // inject route config to app.js
     build.onLoad({ filter: /app\.js/ }, async args => {
       let contents = await readFile(args.path, 'utf-8');
-      contents = `${contents.match(routesImport) === null ? 'import { routes } from \'@webformula/core\';' : ''}${contents}\n${config.routesCode}`;
+      contents = `${contents.match(routesImport) === null ? 'import { routes } from \'@webformula/core\';' : ''}${contents}\n${config.routesCode}${config.debugScript || ''}`;
       return { contents };
     });
+
+    if (isDev) {
+      build.onLoad({ filter: /Component\.js/ }, async args => {
+        let contents = await readFile(args.path, 'utf-8');
+        contents = contents.replace('#prepareRender() {', `
+    getVariableReferences() {
+      return this.#variableReferences;
+    }
+
+    getTemplate() {
+      return this.#templateString;
+    }
+
+    #prepareRender() {`);
+        contents = contents.replace(`['render','onLoadRender'].includes(key)`, `['render', 'onLoadRender', 'getVariableReferences', 'getTemplate'].includes(key)`)
+        // contents = `${contents.match(routesImport) === null ? 'import { routes } from \'@webformula/core\';' : ''}${contents}\n${config.routesCode}${config.debugScript || ''}`;
+        return { contents };
+      });
+    }
   }
 };
 
@@ -109,7 +141,12 @@ routes([
     component: ${v.routeModuleName}${!v.notFound ? '' : `,
     notFound: true`}
   }`)}
-]);`;
+]);${!isDev ? '' : `\n\nwindow.webformulaRoutes = [${routes.map(v => `{
+  path: '${v.routePath}',
+  regex: ${v.regex},
+  component: ${v.routeModuleName}${!v.notFound ? '' : `,
+  notFound: true`}
+}`)}];`}`;
 
   const { metafile } = await esbuild.build({
     entryPoints: [

@@ -62,14 +62,12 @@ async function route(locationObject, back = false, initial = false) {
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
 
+  nextPage.onLoadRender();
   if (!initial) {
-    if (nextPage.rendered) nextPage.beforeRender();
     nextPage.render();
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     // document.querySelector('page-content').scrollTop = 0;
-  } else {
-    nextPage.afterRender();
   }
   nextPage.connectedCallback();
   requestAnimationFrame(() => {
@@ -77,7 +75,7 @@ async function route(locationObject, back = false, initial = false) {
   });
 }
 
-if (!window._webformulaServer) {
+if (window.webformulaCoreSpa !== false) {
   window.webformulaCoreLinkIntercepts = true;
   document.addEventListener('click', event => {
     if (!event.target.matches('[href]')) return;
@@ -97,6 +95,7 @@ if (!window._webformulaServer) {
     // the prevent default keeps the link from loosing focus
     event.target.blur();
   }, false);
+
   window.addEventListener('popstate', event => {
     route(new URL(event.currentTarget.location), true);
   });
