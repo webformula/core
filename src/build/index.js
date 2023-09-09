@@ -58,7 +58,20 @@ export default async function build(params = {
   config.hasAppCSS = await access(config.appCSSFilePath).then(e => true).catch(e => false);
   if (config.hasAppCSS) config.appCSSOutputFilePath = path.join(config.outdir, 'app.css');
   if ((await access(config.appFilePath).then(() => false).catch(() => true))) throw Error(`app.js required. Expected path: ${config.appFilePath}`);
-  if (isDev) config.debugScript = await readFile(path.resolve('.', 'src/build/devtools.js'), 'utf-8');
+  if (isDev) config.debugScript = `console.warn('Webformula Core: Debug mode');
+
+window.getBoundVariables = () => {
+  console.log(window.page.getVariableReferences());
+}
+
+window.getPageTemplate = () => {
+  console.log(window.page.getTemplate());
+}
+
+window.getRoutes = () => {
+  console.log(window.webformulaRoutes);
+}`;
+
   const data = await run();
   if (!isDev) process.exit();
   return data;
