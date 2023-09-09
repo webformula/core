@@ -1,44 +1,47 @@
 <h3 class="page-title">Getting started</h3>
 <div class="page-subheader mdw-font-title-medium">Build a basic web application</div>
 
-<div class="mdw-font-headline-small page-secondary-header">Links</div>
-<ul class="links">
-  <li><a href="#install">Install</a></li>
-  <li><a href="#routing">Routing</a></li>
-  <li><a href="#config">Config app</a></li>
-  <li><a href="#indexhtml">index.html</a></li>
-  <li><a href="#appjs">app.js</a></li>
-  <li><a href="#appcss">app.css</a></li>
-  <li><a href="#page">Page</a></li>
-  <li><a href="#build">build</a></li>
-  <li><a href="#middleware">Server middleware</a></li>
-  <li><a href="#devtools">Devtools</a></li>
-</ul>
+<section class="page-content-section">
+  <nav class="links-nav" aria-label="page-content">
+    <div class="mdw-font-headline-small page-secondary-header">Links</div>
+    <ul class="links">
+      <li><a href="#install">Install</a></li>
+      <li><a href="#routing">Routing</a></li>
+      <li><a href="#config">Config app</a></li>
+      <li><a href="#indexhtml">index.html</a></li>
+      <li><a href="#appjs">app.js</a></li>
+      <li><a href="#appcss">app.css</a></li>
+      <li><a href="#page">Page</a></li>
+      <li><a href="#build">build</a></li>
+      <li><a href="#middleware">Server middleware</a></li>
+      <li><a href="#devtools">Devtools</a></li>
+    </ul>
+  </nav>
 
-<section style="margin-top: 48px;">
-  <mdw-card id="install">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Install</div>
-    </div>
+  <div class="page-content-container">
+    <mdw-card id="install">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Install</div>
+      </div>
 
-    <div class="mdw-card-content">
-      <div class="mdw-subheader">NPM</div>
-    </div>
-    <pre>
-      <code class="language-bash">
+      <div class="mdw-card-content">
+        <div class="mdw-subheader">NPM</div>
+      </div>
+      <pre>
+        <code class="language-bash">
   ${`npm install @webformula/core`}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
 
 
-  <mdw-card id="indexhtml">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">index.html</div>
-    </div>
-  
-    <pre>
-      <code class="language-html">
+    <mdw-card id="indexhtml">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">index.html</div>
+      </div>
+
+      <pre>
+        <code class="language-html">
   ${page.escape(`<!doctype html>
     <html lang="en">
     
@@ -61,19 +64,19 @@
       <page-content></page-content>
     </body>
   </html>`)}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
 
 
-  <mdw-card id="routing">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Routing</div>
-      <div class="mdw-subheader">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
-    </div>
-  
-    <pre>
-      <code class="language-yaml">
+    <mdw-card id="routing">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Routing</div>
+        <div class="mdw-subheader">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
+      </div>
+
+      <pre>
+        <code class="language-yaml">
   ${page.escape(`app/
   └── routes/
       ├── index/
@@ -90,74 +93,78 @@
       └── four/
           └── [...all]/
               └── index.js # four/* (four/a/b/)`)}
-      </code>
-    </pre>
-
-    <div style="margin: 18px">
-      <div class="mdw-font-body-large route-list">app/routes/index/index.js → <span>/</span></div>
-      <div class="mdw-font-body-large route-list">app/routes/one/index.js → <span>one</span></div>
-      <div class="mdw-font-body-large route-list">app/routes/two[id?]/index.js → <span>two/:id?</span></div>
-      <div class="mdw-font-body-large route-list">app/routes/three/[id]/index.js → <span>three/:id</span></div>
-      <div class="mdw-font-body-large route-list">app/routes/four/[...rest]/index.js →
-        <span>four/*</span></div>
-
-      <div class="mdw-font-title-medium" style="margin-top: 24px; margin-bottom: 8px;">Directory route details</div>
-      <div class="mdw-font-body-large route-list"><span>routes/index/index.js</span> Root page (/)</div>
-      <div class="mdw-font-body-large route-list"><span>routes/404/index.js</span> Not found page. Auto redirect on non matching routes</div>
-      <div class="mdw-font-body-large route-list"><span>index.js</span> Route component file</div>
-      <div class="mdw-font-body-large route-list"><span>[id]</span> Directory that represents a url parameter</div>
-      <div class="mdw-font-body-large route-list"><span>[id?]</span> Directory that represents an options url parameter</div>
-      <div class="mdw-font-body-large route-list"><span>name[id?]</span> Inline url parameter to avoid sub folder</div>
-      <div class="mdw-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
-      <div class="mdw-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all route</div>
-    </div>
-  </mdw-card>
-
-
-  <mdw-card id="config">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Config app</div>
-      <div class="mdw-subheader">Change settings for binding and routing</div>
-    </div>
-  
-    <pre>
-        <code class="language-html">
-    ${page.escape(`<!-- Add script tag with configuration to index.html -->
-    <head>
-      ...
-      <script>
-        /* If false then variable binding will be disabled
-         * 
-         * Default: true
-         */
-        window.webformulaCoreBinding = true;
-        
-
-        /* If false then navigation will retrieve pages from the server
-         *   Application code and styles will be cached, only the page html will be retrieved
-         * 
-         * Default: true
-         */
-        window.webformulaCoreSpa = true;
-      </script>
-      ...
-    </head>
-    <body>...</body>
-    `)}
         </code>
       </pre>
-  </mdw-card>
+
+      <div style="margin: 18px">
+        <div class="mdw-font-body-large route-list">app/routes/index/index.js → <span>/</span></div>
+        <div class="mdw-font-body-large route-list">app/routes/one/index.js → <span>one</span></div>
+        <div class="mdw-font-body-large route-list">app/routes/two[id?]/index.js → <span>two/:id?</span></div>
+        <div class="mdw-font-body-large route-list">app/routes/three/[id]/index.js → <span>three/:id</span></div>
+        <div class="mdw-font-body-large route-list">app/routes/four/[...rest]/index.js →
+          <span>four/*</span>
+        </div>
+
+        <div class="mdw-font-title-medium" style="margin-top: 24px; margin-bottom: 8px;">Directory route details</div>
+        <div class="mdw-font-body-large route-list"><span>routes/index/index.js</span> Root page (/)</div>
+        <div class="mdw-font-body-large route-list"><span>routes/404/index.js</span> Not found page. Auto redirect on non
+          matching routes</div>
+        <div class="mdw-font-body-large route-list"><span>index.js</span> Route component file</div>
+        <div class="mdw-font-body-large route-list"><span>[id]</span> Directory that represents a url parameter</div>
+        <div class="mdw-font-body-large route-list"><span>[id?]</span> Directory that represents an options url parameter
+        </div>
+        <div class="mdw-font-body-large route-list"><span>name[id?]</span> Inline url parameter to avoid sub folder</div>
+        <div class="mdw-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
+        <div class="mdw-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all
+          route</div>
+      </div>
+    </mdw-card>
 
 
-  <mdw-card id="appjs">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Main application file</div>
-      <div class="mdw-subheader">app.js</div>
-      <div class="mdw-supporting-text">Required: Automatically uses app.js as entry file for bundling</div>
-    </div>
+    <mdw-card id="config">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Config app</div>
+        <div class="mdw-subheader">Change settings for binding and routing</div>
+      </div>
 
-    <pre>
-      <code class="language-javascript">
+      <pre>
+        <code class="language-html">
+  ${page.escape(`<!-- Add script tag with configuration to index.html -->
+  <head>
+    ...
+    <script>
+      /* If false then variable binding will be disabled
+      * 
+      * Default: true
+      */
+      window.webformulaCoreBinding = true;
+
+
+      /* If false then navigation will retrieve pages from the server
+      *   Application code and styles will be cached, only the page html will be retrieved
+      * 
+      * Default: true
+      */
+      window.webformulaCoreSpa = true;
+    </script>
+    ...
+  </head>
+  <body>...</body>
+  `)}
+        </code>
+      </pre>
+    </mdw-card>
+
+
+    <mdw-card id="appjs">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Main application file</div>
+        <div class="mdw-subheader">app.js</div>
+        <div class="mdw-supporting-text">Required: Automatically uses app.js as entry file for bundling</div>
+      </div>
+
+      <pre>
+        <code class="language-javascript">
   ${`/* Main app file
   * you can import any code in here
   */
@@ -165,14 +172,14 @@
   import someModule from './someModule.js';
   
   // routes are automatically loaded based on directory routing`}
-      </code>
-    </pre>
+        </code>
+      </pre>
 
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Prevent navigation allows you to lock down the app for uses like authentication</div>
-    </div>
-    <pre>
-      <code class="language-javascript">
+      <div class="mdw-card-content" style="margin-top: 12px">
+        <div class="mdw-subheader">Prevent navigation allows you to lock down the app for uses like authentication</div>
+      </div>
+      <pre>
+        <code class="language-javascript">
   ${`import { routes, preventNavigation } from '@webformula/core';
   import home from './routes/home/index.js';
   import login from './routes/login/index.js';
@@ -188,37 +195,37 @@
     preventNavigation(true);
     // preventNavigation(false);
   }`}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
 
-  <mdw-card id="appcss">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Main application Styles</div>
-      <div class="mdw-subheader">app.css</div>
-      <div class="mdw-supporting-text">Optional: Will bundle and minify into a single file</div>
-    </div>
-  
-    <pre>
-      <code class="language-javascript">
+    <mdw-card id="appcss">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Main application Styles</div>
+        <div class="mdw-subheader">app.css</div>
+        <div class="mdw-supporting-text">Optional: Will bundle and minify into a single file</div>
+      </div>
+
+      <pre>
+        <code class="language-javascript">
   ${`@import url('./other.css');
 
   body {
     background-color: white;
   }`}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
 
 
-  <mdw-card id="page">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Page</div>
-      <div class="mdw-subheader">page.js and page.html</div>
-    </div>
-  
-    <pre>
-      <code class="language-javascript" wfc-no-binding>
+    <mdw-card id="page">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Page</div>
+        <div class="mdw-subheader">page.js and page.html</div>
+      </div>
+
+      <pre>
+        <code class="language-javascript" wfc-no-binding>
   ${`import { Component } from '@webformula/core';
   import html from './page.html'; // automatically bundles
   
@@ -269,9 +276,9 @@
     }
     
     /**
-     * If not importing html you can use this template method.
-     * Imported html also supports template literals (${this.someVar})
-     */
+    * If not importing html you can use this template method.
+    * Imported html also supports template literals (${this.someVar})
+    */
     template() {
       return /*html*/\`${page.escape(`
         <div>Page Content</div>
@@ -287,34 +294,35 @@
       `)}\`;
     }
   }`}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
 
-  <mdw-card id="build">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Build app</div>
-      <div class="mdw-subheader">build.js</div>
-      <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.</div>
-      <a href="/build">Build config</a>
-    </div>
-    
-    <pre>
-      <code class="language-javascript">
+    <mdw-card id="build">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Build app</div>
+        <div class="mdw-subheader">build.js</div>
+        <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.
+        </div>
+        <a href="/build">Build config</a>
+      </div>
+
+      <pre>
+        <code class="language-javascript">
   ${`import build from '@webformula/core/build';
   
   /**
-   * runs dev server by default on port 3000 with livereload
-   * basedir defaults to 'app/'
-   */
+  * runs dev server by default on port 3000 with livereload
+  * basedir defaults to 'app/'
+  */
   build({ basedir: 'app/' });`}
       </code>
     </pre>
 
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Run commands</div>
-    </div>
-    <pre>
+  <div class="mdw-card-content" style="margin-top: 12px">
+    <div class="mdw-subheader">Run commands</div>
+  </div>
+  <pre>
       <code class="language-bash">
   ${`# Development run
   node build.js
@@ -325,23 +333,24 @@
   # Production run. minifies, gzips, and writes files
   NODE_ENV=production node build.js
   `}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
 
-  <mdw-card id="middleware">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Serve app</div>
-      <div class="mdw-subheader">server.js</div>
-      <div class="mdw-supporting-text">Handle routing and file serving with middleware. GZIP compression is automatically handled.</div>
-      <a href="/serve">Serve config</a>
-    </div>
-    
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Native server</div>
-    </div>
-    <pre>
-      <code class="language-javascript">
+    <mdw-card id="middleware">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Serve app</div>
+        <div class="mdw-subheader">server.js</div>
+        <div class="mdw-supporting-text">Handle routing and file serving with middleware. GZIP compression is automatically
+          handled.</div>
+        <a href="/serve">Serve config</a>
+      </div>
+
+      <div class="mdw-card-content" style="margin-top: 12px">
+        <div class="mdw-subheader">Native server</div>
+      </div>
+      <pre>
+        <code class="language-javascript">
   ${`import { createServer } from 'node:http';
   import { middlewareNode } from '@webformula/core/middleware';
   
@@ -359,14 +368,14 @@
     
     // Do other stuff
   }).listen(3000);`}
-      </code>
-    </pre>
+        </code>
+      </pre>
 
-  <div class="mdw-card-content" style="margin-top: 12px">
-    <div class="mdw-subheader">Express server</div>
-  </div>
-  <pre>
-      <code class="language-javascript">
+      <div class="mdw-card-content" style="margin-top: 12px">
+        <div class="mdw-subheader">Express server</div>
+      </div>
+      <pre>
+        <code class="language-javascript">
   ${`import express from 'express';
   import { middlewareExpress } from '@webformula/core/middleware';
   
@@ -380,28 +389,28 @@
   }));
   app.use(express.static('./docs'));
   app.listen(3000);`}
-      </code>
-    </pre>
+        </code>
+      </pre>
 
-    <div class="mdw-card-content" style="margin-top: 12px">
-      <div class="mdw-subheader">Livereload</div>
-    </div>
-    <pre>
-      <code class="language-bash">
+      <div class="mdw-card-content" style="margin-top: 12px">
+        <div class="mdw-subheader">Livereload</div>
+      </div>
+      <pre>
+        <code class="language-bash">
   ${`# Simply use node --watch to enable livereload
   node --watch-path=./src --watch-path=./docs server.js`}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
 
-  <mdw-card id="devtools">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Devtools</div>
-      <div class="mdw-subheader">A small set of helper functions</div>
-    </div>
-  
-    <pre>
-      <code class="language-javascript">
+    <mdw-card id="devtools">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Devtools</div>
+        <div class="mdw-subheader">A small set of helper functions</div>
+      </div>
+
+      <pre>
+        <code class="language-javascript">
   ${`// Look at variable binding info for current page
   window.getBoundVariables();
   
@@ -410,7 +419,8 @@
   
   // Get all pages route details
   window.getRoutes();`}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
+  </div>
 </section>

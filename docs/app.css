@@ -40,14 +40,11 @@ section {
 pre {
   display: contents;
   margin: 0;
+  white-space: pre-wrap;
 }
 
 mdw-card > pre:first-of-type > code {
   margin-top: 8px;
-}
-
-pre > code {
-  width: calc(100% - 16px);
 }
 
 mdw-card > pre:last-of-type > code {
@@ -56,19 +53,6 @@ mdw-card > pre:last-of-type > code {
 
 mdw-card .example {
   margin-top: 18px;
-}
-
-.links {
-  display: flex;
-  flex-direction: column;
-  list-style-type: none;
-  margin-top: -12px;
-  padding-left: 16px;
-}
-
-.links a {
-  width: 0;
-  white-space: nowrap;
 }
 
 mdw-card .mdw-card-content {
@@ -86,7 +70,8 @@ mdw-card > .mdw-card-content > .mdw-headline + .mdw-subheader {
   margin-top: 2px;
 }
 
-page-content > section > mdw-card {
+page-content > section > mdw-card,
+page-content > section > .page-content-container > mdw-card {
   margin-bottom: 36px;
 }
 
@@ -153,4 +138,45 @@ page-content > section > mdw-card {
   background-color: rgba(0, 0, 0, 0.1);
   padding: 2px 8px;
   border-radius: 4px;
+}
+
+
+.page-content-section {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  margin-right: 16px;
+}
+
+.links-nav {
+  margin-left: 32px;
+  box-sizing: border-box;
+  min-width: 140px;
+}
+
+.links-nav .page-secondary-header {
+  padding-top: 16px;
+  position: sticky;
+  top: 0;
+}
+
+.links-nav .links {
+  position: sticky;
+  top: 48px;
+  list-style-type: none;
+  margin-top: -12px;
+  padding-left: 0px;
+}
+
+.links a {
+  width: 0;
+  white-space: nowrap;
+}
+
+.page-content-container {
+  flex: 1;
+}
+
+.page-content-container mdw-card:first-child {
+  margin-top: 48px;
 }

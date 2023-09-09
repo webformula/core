@@ -1,32 +1,29 @@
 <h3 class="page-title">Binding variables</h3>
 <div class="page-subheader mdw-font-title-medium">Variables bind automatically and do not need any special code</div>
 
-<div class="mdw-font-headline-small page-secondary-header">Links</div>
-<ul class="links">
-  <li><a href="#basic">Basic example</a></li>
-</ul>
 
-<section style="margin-top: 48px;">
-  <mdw-card id="indexhtml">
-    <div class="mdw-card-content">
-      <div class="mdw-headline">Basic binding</div>
+<section class="page-content-section">
+  <div class="page-content-container">
+    <mdw-card id="indexhtml">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Basic binding</div>
+        
+        <mdw-textfield class="mdw-raise-label" style="margin-top: 24px;">
+          <label style="animation: none;">Type something</label>
+          <input value="${page.basicBind}" oninput="page.basicBind = this.value">
+        </mdw-textfield>
 
-      <mdw-textfield class="mdw-raise-label">
-        <label style="animation: none;">Type something</label>
-        <input value="${page.basicBind}" oninput="page.basicBind = this.value">
-      </mdw-textfield>
-
-      <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
-      <mdw-button onclick="page.updateValue()">Set value to Updated</mdw-button>
-    </div>
-    
-    <pre>
-      <code class="language-html">
+        <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
+        <mdw-button onclick="page.updateValue()">Set value to Updated</mdw-button>
+      </div>
+      
+      <pre>
+        <code class="language-html">
   ${page.escape(`<input value="\${page.basicBind}" oninput="page.basicBind = this.value">
-  
+
   <div>Value: \${page.basicBind}</div>
   <mdw-button onclick="page.updateValue()">Set value to Updated</mdw-button>
-  
+
   <!--
     If you do not bind the value attribute,
     then changing the value outside of the input will not update the input
@@ -40,13 +37,13 @@
     Add the attribute 'wfc-no-binding'
   -->
   <div wfc-no-binding>Value: \${page.basicBind}</div>`)}
-      </code>
-    </pre>
-    <pre>
-      <code class="language-javascript">
+        </code>
+      </pre>
+      <pre>
+        <code class="language-javascript">
   ${`import { Component } from '@webformula/core';
   import html from './page.html';
-  
+
   export default class extends Component {
     static title = 'Binding variables';
     static html = html;
@@ -61,7 +58,8 @@
       this.basicBind = 'Updated';
     }
   }`}
-      </code>
-    </pre>
-  </mdw-card>
+        </code>
+      </pre>
+    </mdw-card>
+  </div>
 </section>
