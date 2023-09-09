@@ -147,6 +147,10 @@ page-content > section > .page-content-container > mdw-card {
   justify-content: center;
   margin-right: 16px;
 }
+body.mdw-window-compact .page-content-section {
+  flex-direction: column;
+  margin-right: 0px;
+}
 
 .links-nav {
   margin-left: 32px;
