@@ -120,7 +120,7 @@ const pluginCss = {
     }
 
     #prepareRender() {`);
-        contents = contents.replace(`['render'].includes(key)`, `['render', 'getVariableReferences', 'getTemplate'].includes(key)`)
+        contents = contents.replace(`['render','onLoadRender'].includes(key)`, `['render', 'onLoadRender', 'getVariableReferences', 'getTemplate'].includes(key)`)
         // contents = `${contents.match(routesImport) === null ? 'import { routes } from \'@webformula/core\';' : ''}${contents}\n${config.routesCode}${config.debugScript || ''}`;
         return { contents };
       });

@@ -73,7 +73,7 @@ export default class Component extends HTMLElement {
 
           const value = target[key];
           // bind render to original class object so it has access to private variables;
-          if (['render'].includes(key) && typeof value === 'function') return value.bind(target);
+          if (['render','onLoadRender'].includes(key) && typeof value === 'function') return value.bind(target);
           return value;
         },
 
@@ -135,6 +135,14 @@ export default class Component extends HTMLElement {
   escape(str) {
     return str.replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
   };
+
+  async onLoadRender() {
+    if (!this.#rendered) this.#prepareRender();
+    this.#rendered = true;
+
+    !this.#proxy ? await this.beforeRender() : await this.beforeRender.call(this.#proxy);
+    !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
+  }
 
   async render() {
     if (!this.#rendered) this.#prepareRender();
