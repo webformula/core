@@ -309,7 +309,7 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
       )
       .replace('replace:css', !appCSSFile ? '' : `<link href="/${appCSSFile.output.split('/').pop()}" rel="stylesheet">`)}
 </head>`)
-      .replace(pageContentTagRegex, (_, startA, endA, startB, endB) => `${startA || startB}\n${template.split('\n').join('\n')}\n${endA || endB}`);
+      .replace(pageContentTagRegex, (_, startA, endA, startB, endB) => `${startA || startB}\n<template shadowrootmode="open"><slot></slot></template>\n${template.split('\n').join('\n')}\n${endA || endB}`);
 
     return {
       fileName: route.indexHTMLFileName,
