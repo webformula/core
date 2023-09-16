@@ -1,4 +1,4 @@
-const templateElements = [];
+const templateElements = {};
 
 export default class Component extends HTMLElement {
   static title;
@@ -25,7 +25,6 @@ export default class Component extends HTMLElement {
 
   constructor() {
     super();
-
     // convert html string to template literal function
     if (this.constructor.html) this.#templateString = this.constructor.html;
     else this.#templateString = this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
@@ -41,7 +40,7 @@ export default class Component extends HTMLElement {
 
     /** Render as soon as possible while making sure all class variables exist */
     // render non page component
-    if (!this.constructor._isPage && hasTemplate) {
+    if (!this.constructor._isPage && hasTemplate && !this.shadowRoot) {
       requestAnimationFrame(() => this.render());
 
     // hook up page-content for render

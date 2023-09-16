@@ -222,7 +222,7 @@ const pageContentTagRegex = /(<\s?page-content\s?>)[^>]*(<\s?\/\s?page-content\s
 
 async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
   const appScriptPath = `/${appJSFile.output.split('/').pop()}`;
-  const indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+  let indexFile = await readFile(config.indexHTMLPath, 'utf-8');
 
   // find correct positions for modulepreload, links, scripts
   const headTags = indexFile
@@ -251,14 +251,40 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
     }
   }
   addMockDom();
+  await import(path.resolve('dist', `.${appScriptPath}`));
+
+  const customElementKeys = [...window.customElements.registry.keys()].map(key => ([key, new RegExp(`<\s*?${key}[^>]*>`, 'g')]));
+  customElementKeys.forEach(([key, regex]) => {
+    const match = indexFile.match(regex);
+    if (match) {
+      const component = window.customElements.get(key);
+      if (component && component.useShadowRoot) {
+        const replaceTemplate = component.getTemplate();
+        if (replaceTemplate) indexFile = indexFile.replace(regex, str => `${str}${replaceTemplate}`);
+      }
+    }
+  });
 
   const data = await Promise.all(routeConfigs.map(async route => {
     // load page to build template
     const routeModule = await import(path.resolve('.', route.output));
-    customElements.define(`page-${config.pageCounter++}`, routeModule.default);
+    customElements.define(`page-server-${config.pageCounter++}`, routeModule.default);
     routeModule.default._isPage = true;
     routeModule.default.useTemplate = false;
-    const template = new routeModule.default().template();
+    let template = new routeModule.default().template();
+
+    const customElementKeys = [...window.customElements.registry.keys()].map(key => ([key, new RegExp(`<\s*?${key}[^>]*>`, 'g')]));
+    customElementKeys.forEach(([key, regex]) => {
+      const match = template.match(regex);
+      if (match) {
+        const component = window.customElements.get(key);
+        if (component && component.useShadowRoot) {
+          const replaceTemplate = component.getTemplate();
+          if (replaceTemplate) template = template.replace(regex, str => `${str}${replaceTemplate}`);
+        }
+      }
+    });
+
     
     // get imported chunks to preload
     const importChunks = appJSFile.imports.map(v => v.path.split('/').pop()).filter(v => v.startsWith('chunk-'));
@@ -309,7 +335,8 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
       )
       .replace('replace:css', !appCSSFile ? '' : `<link href="/${appCSSFile.output.split('/').pop()}" rel="stylesheet">`)}
 </head>`)
-      .replace(pageContentTagRegex, (_, startA, endA, startB, endB) => `${startA || startB}\n<template shadowrootmode="open"><slot></slot></template>\n${template.split('\n').join('\n')}\n${endA || endB}`);
+      .replace(pageContentTagRegex, (_, startA, endA, startB, endB) => `${startA || startB}\n${template}\n${endA || endB}`);
+
 
     return {
       fileName: route.indexHTMLFileName,
