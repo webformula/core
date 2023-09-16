@@ -250,7 +250,9 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
       headTags.splice(lastLinkIndex + 1, 0, 'replace:css');
     }
   }
+
   addMockDom();
+  window._webformulaBuild = true;
   await import(path.resolve('dist', `.${appScriptPath}`));
 
   const customElementKeys = [...window.customElements.registry.keys()].map(key => ([key, new RegExp(`<\s*?${key}[^>]*>`, 'g')]));
@@ -260,7 +262,7 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
       const component = window.customElements.get(key);
       if (component && component.useShadowRoot) {
         const replaceTemplate = component.getTemplate();
-        if (replaceTemplate) indexFile = indexFile.replace(regex, str => `${str}${replaceTemplate}`);
+        if (replaceTemplate) indexFile = indexFile.replace(regex, str => `${str.replace(/>$/, ' wfc-server-rendered>')}${replaceTemplate}`);
       }
     }
   });
@@ -280,7 +282,7 @@ async function buildIndexHTMLFile(appJSFile, appCSSFile, routeConfigs) {
         const component = window.customElements.get(key);
         if (component && component.useShadowRoot) {
           const replaceTemplate = component.getTemplate();
-          if (replaceTemplate) template = template.replace(regex, str => `${str}${replaceTemplate}`);
+          if (replaceTemplate) template = template.replace(regex, str => `${str.replace(/>$/, ' wfc-server-rendered>')}${replaceTemplate}`);
         }
       }
     });

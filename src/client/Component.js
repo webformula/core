@@ -158,7 +158,7 @@ export default class Component extends HTMLElement {
   #prepareRender() {
     if (this.constructor._isPage) {
       const title = document.querySelector('title');
-      title.innerText = this.constructor.title;
+      if (!window._webformulaBuild) title.innerText = this.constructor.title;
       return;
     }
 
