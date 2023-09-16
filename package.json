@@ -27,7 +27,7 @@
   "homepage": "https://github.com/webformula/core#readme",
   "dependencies": {
     "esbuild": "^0.19.2",
-    "linkedom": "^0.15.1"
+    "linkedom": "^0.15.3"
   },
   "devDependencies": {
     "@webformula/core": "file:./",
