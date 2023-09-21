@@ -21,7 +21,8 @@ export function routes(config = [{
       if (!isCurrent) isCurrent = location.pathname.match(c.regex) !== null;
     }
   }
-  if (isCurrent) route(location, false, true);
+  window.webformulaRoutes = app.paths;
+  if (!window.__isBuilding && isCurrent) route(location, false, true);
 }
 
 export function preventNavigation(value = true) {
@@ -62,13 +63,12 @@ async function route(locationObject, back = false, initial = false) {
   if (currentPage) currentPage.disconnectedCallback();
   window.page = nextPage;
 
-  nextPage.onLoadRender();
   if (!initial) {
     nextPage.render();
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     // document.querySelector('page-content').scrollTop = 0;
-  }
+  } else nextPage.onLoadRender();
   nextPage.connectedCallback();
   requestAnimationFrame(() => {
     if (!initial) window.dispatchEvent(new Event('locationchange'));

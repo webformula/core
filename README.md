@@ -61,13 +61,13 @@ app/
     │       └── index.js  # three/:id
     └── four/
         └── [...rest]/
-            └── index.js  # four/* (four/a/b/)
+            └── index.js  # four/*rest (four/a/b/)
 ```
 - app/routes/index/index.js → **`/`**
 - app/routes/one/index.js → **`one`**
 - app/routes/two[id?]/index.js → **`two/:id?`**
 - app/routes/three/[id]/index.js → **`three/:id`**
-- app/routes/four/[...rest]/index.js → **`four/*`**
+- app/routes/four/[...rest]/index.js → **`four/*rest`**
 
 #### Routing details
 - `routes/index/index.js` Root page (/)
@@ -98,10 +98,7 @@ Check out the [page.js section](#page.js) for details on how to get url paramete
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
     <title></title>
-    <!--
-      load js and css
-      app.js is required and app.css is optional
-    -->
+    <!-- load js and css -->
     <link href="app.css" rel="stylesheet">
     <script src="app.js" type="module"></script>
   </head>

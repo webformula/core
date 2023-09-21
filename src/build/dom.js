@@ -22,7 +22,9 @@ const localStorage = {
   setItem() { }
 };
 function getComputedStyle() {
-  return {};
+  return {
+    getPropertyValue() {}
+  };
 }
 function matchMedia() {
   return { matches: false };
