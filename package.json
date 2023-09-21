@@ -1,6 +1,6 @@
 {
   "name": "@webformula/core",
-  "version": "0.20.0",
+  "version": "0.20.1",
   "description": "Simple no thrills app pages and routing. Super performant and light-weight!",
   "main": "src/index.js",
   "type": "module",
@@ -13,6 +13,7 @@
   "scripts": {
     "start": "node --watch-path=./src --watch-path=./docs build.js",
     "build": "NODE_ENV=production node build.js",
+    "builddev": "node build.js",
     "deploy": "node deploy.js"
   },
   "repository": {
@@ -26,7 +27,7 @@
   },
   "homepage": "https://github.com/webformula/core#readme",
   "dependencies": {
-    "esbuild": "^0.19.2",
+    "esbuild": "^0.19.3",
     "linkedom": "^0.15.3"
   },
   "devDependencies": {
