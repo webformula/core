@@ -3,7 +3,7 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 ### Highlights
-- ⚡ Lightweight - 1.8KB compressed (GZIP)
+- ⚡ Lightweight - 3KB compressed (GZIP)
 - ⚡ Fast - leverages native browser features
 - ⚡ Simple - No complex concepts
 - ⚡ Single page app with index HTML for each route
