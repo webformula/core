@@ -209,6 +209,7 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
 
   // add mock dome so we can load the app script and render templates
   addMockDom();
+  // used to prevent router code from running
   window.__isBuilding = true;
   // load script so we can grab templates
   await import(path.resolve('.', appJSOutput.output));
@@ -222,11 +223,13 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
     routeModule.default.useTemplate = false;
     const template = new routeModule.default().template();
 
+    // prepare module preload links
     const pageScriptPreload = route.routeScriptPath && route.routeScriptPath !== appScriptPath ? `\n  <link rel="modulepreload" href="${route.routeScriptPath}" />` : '';
     const pageImportChunks = [...new Set(appImportChunks.concat(
       route.imports.map(v => v.path.split('/').pop()).filter(v => v.startsWith('chunk-'))
     ))].map(v => `\n  <link rel="modulepreload" href="/${v}" />`).join('');
 
+    // inject preloads, scripts, css, page template
     const content = indexFile
       .replace(titleRegex, `<title>${routeModule.default.title}</title>`)
       .replace('replace:preload', `${appScriptPreload}${pageScriptPreload}${pageImportChunks}\n`)

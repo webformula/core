@@ -19,6 +19,7 @@ export default async function getRoutes(config) {
   
   const routes = routePaths.map(filePath => {
     const relativePath = filePath.replace(routeStripper, '');
+    // convert parameters. [id] -> :id, [...rest] -> *rest
     let routePath = relativePath.replace(routePathParamRegex, (_str, rest, label) => {
       return `/${!!rest ? '*' : ':'}${label}`
     });
@@ -26,6 +27,8 @@ export default async function getRoutes(config) {
       routePath = '/';
       hasIndex = true;
     }
+
+    // convert path to filename for page index html
     const indexHTMLFileName = routePath === '/' ? path.join(config.outdir, 'index.html') : path.join(config.outdir, `${routePath.replace(spaceRegex, '-').replace(routeToNameRegex, '')}.html`);
     return {
       filePath,
@@ -39,12 +42,12 @@ export default async function getRoutes(config) {
   });
   if (!hasIndex) console.warn('Missing index route. `routes/index/index.js`');
   return {
-    routesCode: buildRouteCode(routes, config),
+    routesCode: generateRouteCode(routes, config),
     routesConfig: routes
   };
 }
 
-
+// find all paths to index.js. This is the page class file
 async function getRoutePaths(config, dir = path.join(config.basedir, 'routes'), arr = []) {
   const files = await readdir(dir);
   await Promise.all(files.map(async file => {
@@ -57,10 +60,14 @@ async function getRoutePaths(config, dir = path.join(config.basedir, 'routes'), 
 
 function buildPathRegex(route) {
   let regexString;
+
+  // if no parameters found in path then use standard regex
   if (route.match(containsVariableOrWildcardRegex) === null) {
     // Do not allow hashes on root or and hash links
     if (route.trim() === '/' || route.includes('#')) regexString = `^${route}$`;
     regexString = `^${route}${searchRegexString}${hashRegexString}$`;
+
+  // parse parameters in path
   } else {
     regexString = `^${route.replace(routeRegexReplaceRegex, (_str, prefix, label, optional = '') => {
       if (prefix === '*') return `\/(?<${label}>.+)${optional}`;
@@ -72,7 +79,8 @@ function buildPathRegex(route) {
   return new RegExp(regexString.replace(spaceRegex, '(?:[\\s-]|%20)'));
 }
 
-function buildRouteCode(routes, config) {
+// generate code to inject for routes
+function generateRouteCode(routes, config) {
   return `
 ${routes.map(route => `const ${route.routeModuleName} = import('${route.importPath}');`).join('\n')}
 

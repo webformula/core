@@ -23,7 +23,8 @@ const localStorage = {
 };
 function getComputedStyle() {
   return {
-    getPropertyValue() {}
+    getPropertyValue() {},
+    setPropertyValue() {}
   };
 }
 function matchMedia() {
@@ -32,7 +33,6 @@ function matchMedia() {
 function requestAnimationFrame(cb = () => {}) {
   cb();
 }
-const styleSheets = [];
 const location = {
   href: '',
   pathname: '/'
@@ -52,12 +52,10 @@ const visualViewport = {
   height: 900
 };
 
-dom.document.adoptedStyleSheets = styleSheets;
-dom.document.styleSheets = styleSheets;
+dom.document.adoptedStyleSheets = [];
+dom.document.styleSheets = [];
 dom.document.fonts = { ready: Promise.resolve([]) };
-
 dom.window.scrollTo = () => {};
-dom.setTimeout = () => {};
 
 export default function add() {
   global.window = dom.window
