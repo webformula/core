@@ -1,4 +1,4 @@
-import '@webformula/material/components/navigation';
+import '@webformula/material/components/navigation-drawer';
 import '@webformula/material/components/card';
 import '@webformula/material/components/button';
 
