@@ -9,7 +9,7 @@
     <ul class="links">
       <li><a href="#pagejs">page.js</a></li>
       <li><a href="#componentjs">component.js</a></li>
-      <li><a href="#nteracting">Interacting with class</a></li>
+      <li><a href="#nteracting">Interacting with component elements</a></li>
     </ul>
   </nav>
 
@@ -24,18 +24,21 @@
       <pre>
         <code class="language-javascript">
   ${page.escape(`import { Component } from '@webformula/core';
-  import html from './page.html'; // automatically bundles
+  /* HTML imports will bundle with the build */
+  import html from './page.html';
 
   // imported component
   import './component.js';
   
   export default class extends Component {
     static title = 'Page'; // html page title
+    static html = html; // you can set the html from and import or use the template method (see below)
     
     constructor() {
       super();
     }
 
+    // this can be used in place of import the html file
     template() {
       return /*html*/\`${`
         <div>Page Content</div>
@@ -113,7 +116,7 @@
 
     <mdw-card id="nteracting">
       <div class="mdw-card-content">
-        <div class="mdw-headline">Interacting with class</div>
+        <div class="mdw-headline">Interacting with component elements</div>
       </div>
       
       <pre>

@@ -81,13 +81,7 @@ if (window.webformulaCoreSpa !== false) {
     if (!event.target.matches('[href]')) return;
 
     // allow external links
-    if (event.target.getAttribute('href').includes('://')) {
-      const target = event.target.getAttribute('target');
-      if (['_blank', '_self', '_parent', '_top'].includes(target)) {
-        window.open(event.target.getAttribute('href'), target).focus();
-      }
-      return;
-    }
+    if (event.target.getAttribute('href').includes('://')) return;
 
     event.preventDefault();
     route(new URL(event.target.href));
