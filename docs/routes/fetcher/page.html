@@ -15,18 +15,29 @@
 
   /** Main fetcher */
   
-  // called on 401
+  // interceptors
   fetcher('/get', { interceptors: {
+    // called on 401
     auth(config) {
       config.headers.Authorization = 'Bearer token';
       return config;
     },
     before(config) {
-      config.headers.Authorization = 'Bearer token';
+      // modify config
       return config;
     }
   });
 
+  /** Example: JWT refresh access token on 401 */
+  fetcher('/get', { interceptors: {
+    async auth(config) {
+      const refreshResponse = await fetcher('/refreshToken', {
+        headers: { Authorization: 'Bearer refresh_token' }
+      });
+      config.headers.Authorization = await refreshResponse.text();
+      return config;
+    }
+  });
 
 
   /** Fetcher instance */
@@ -43,7 +54,7 @@
         return config;
       },
       before(config) {
-        config.headers.Authorization = 'Bearer token';
+        // modify config
         return config;
       }
     }
@@ -51,7 +62,7 @@
   
   fetcherInstance('/get');
   
-  // request specific interceptors
+  // request specific interceptors using an instance
   fetcherInstance('/get', {}, interceptors: {
     auth(config) {
       config.headers.Authorization = 'Bearer token';
