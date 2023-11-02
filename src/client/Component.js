@@ -28,50 +28,6 @@ export default class Component extends HTMLElement {
   #translationMatches = [];
   #languageChange_bound = this.#languageChange.bind(this);
 
-  // convert html string to template literal function
-  #buildTemplate() {
-    this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
-    const hasTemplate = !!this.#templateString;
-    if (hasTemplate) {
-      this.#templateString = this.#expressionParse(this.#templateString);
-      this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
-      if (this.constructor.useTemplate === true) {
-        const isDynamic = (this.constructor.html || this.template.toString()).includes('${');
-        if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
-      }
-    }
-
-    if (!this.rendered) {
-      // detect if there are any translation matches
-      if (i18Language.autoTranslate) {
-        let tempTemplate = this.#templateString;
-        this.#translationMatches = i18Language.activeSortedMessageKeys.filter(key => {
-          const included = tempTemplate.includes(key);
-          if (included) tempTemplate.replace(key, '');
-          return included;
-        });
-      }
-      if (this.#translationMatches.length > 0 || this.#templateString.includes('.translate(')) {
-        this.#hasTranslation = true;
-        window.addEventListener('languagechange', this.#languageChange_bound);
-      }
-    }
-  }
-
-  // replace all the translation matches and re create the template method
-  // This will only run if window._webformulaCoreAutoTranslate = true;
-  #buildTemplateFunction() {
-    if (!i18Language.autoTranslate) return;
-    
-    if (this.#hasTranslation) {
-      let translatedTemplate = this.#templateString;
-      this.#translationMatches.forEach(key => {
-        translatedTemplate = translatedTemplate.replace(key, i18Language.translate(key));
-      });
-      this.template = () => new Function('page', `return \`${translatedTemplate}\`;`).call(this, this);
-    }
-  }
-
   constructor() {
     super();
 
@@ -113,7 +69,7 @@ export default class Component extends HTMLElement {
 
           const value = target[key];
           // bind render to original class object so it has access to private variables;
-          if (['render','onLoadRender'].includes(key) && typeof value === 'function') return value.bind(target);
+          if (['render','onLoadRender', 'internalDisconnect'].includes(key) && typeof value === 'function') return value.bind(target);
           return value;
         },
 
@@ -322,6 +278,51 @@ export default class Component extends HTMLElement {
     }, {});
 
     return templateString;
+  }
+
+
+  // convert html string to template literal function
+  #buildTemplate() {
+    this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+    const hasTemplate = !!this.#templateString;
+    if (hasTemplate) {
+      this.#templateString = this.#expressionParse(this.#templateString);
+      this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
+      if (this.constructor.useTemplate === true) {
+        const isDynamic = (this.constructor.html || this.template.toString()).includes('${');
+        if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
+      }
+    }
+
+    if (!this.rendered) {
+      // detect if there are any translation matches
+      if (i18Language.autoTranslate) {
+        let tempTemplate = this.#templateString;
+        this.#translationMatches = i18Language.activeSortedMessageKeys.filter(key => {
+          const included = tempTemplate.includes(key);
+          if (included) tempTemplate.replace(key, '');
+          return included;
+        });
+      }
+      if (this.#translationMatches.length > 0 || this.#templateString.includes('.translate(')) {
+        this.#hasTranslation = true;
+        window.addEventListener('languagechange', this.#languageChange_bound);
+      }
+    }
+  }
+
+  // replace all the translation matches and re create the template method
+  // This will only run if window._webformulaCoreAutoTranslate = true;
+  #buildTemplateFunction() {
+    if (!i18Language.autoTranslate) return;
+
+    if (this.#hasTranslation) {
+      let translatedTemplate = this.#templateString;
+      this.#translationMatches.forEach(key => {
+        translatedTemplate = translatedTemplate.replace(key, i18Language.translate(key));
+      });
+      this.template = () => new Function('page', `return \`${translatedTemplate}\`;`).call(this, this);
+    }
   }
 
   #languageChange() {
