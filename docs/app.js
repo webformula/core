@@ -7,7 +7,7 @@ window.addEventListener('load', () => {
   hljs.highlightAll();
   if (location.hash) handleHashAnchor(location.hash, false);
 });
-window.addEventListener('webformulapagerender', () => {
+window.addEventListener('webformulacorepagerender', () => {
   hljs.highlightAll();
 });
 

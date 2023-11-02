@@ -162,7 +162,7 @@ export default class Component extends HTMLElement {
     else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
     !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
 
-    window.dispatchEvent(new Event('webformulapagerender'));
+    window.dispatchEvent(new Event('webformulacorepagerender'));
   }
 
   #prepareRender() {
