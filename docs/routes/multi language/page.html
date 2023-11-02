@@ -9,6 +9,7 @@
       <li><a href="#config">Language configuration</a></li>
       <li><a href="#auto">Auto translate</a></li>
       <li><a href="#method">Translate method</a></li>
+      <li><a href="#template">Template translations</a></li>
     </ul>
   </nav>
 
@@ -19,6 +20,7 @@
         <div class="mdw-subheader">Languages are configured based on the values of the default language</div>
         <div class="mdw-subheader">The active language is pulled from the browser 'navigation.language'</div>
         <div class="mdw-subheader">Pages will automatically update if browser language changes</div>
+        <div class="mdw-subheader">If no key exists in the config then the key will be used</div>
       </div>
 
       <div class="mdw-card-content">
@@ -95,6 +97,37 @@
   // directly interact with the module
   import { i18nLanguage } from '@webformula/core';
   console.log(i18nLanguage.translate('key'));`)}
+        </code>
+      </pre>
+    </mdw-card>
+
+    <mdw-card id="template">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Template translations</div>
+        <div class="mdw-subheader">You can specify templates to enable dynamic translations</div>
+        <div class="mdw-subheader">This can provide a way to translate messages sent from your api</div>
+      </div>
+
+      <div class="mdw-card-content">
+        <div style="display: flex; flex-direction: column; width: 120px; margin-bottom: 12px;">
+          <mdw-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en /
+            es</mdw-switch>
+        </div>
+        <div>${page.translate('keep this section of text in place and this value')}</div>
+      </div>
+    
+      <pre>
+        <code class="language-javascript">
+  ${page.escape(`// templated value: "keep this section of text in place and this value"
+  import { i18nLanguage } from '@webformula/core';
+  i18nLanguage.messages = {
+    en: {
+      'keep this $var in place and this $var': 'keep this $var in place and this $var'
+    },
+    es: {
+      'keep this $var in place and this $var': 'mantenga este $var en su lugar y este $var'
+    }
+  };`)}
         </code>
       </pre>
     </mdw-card>

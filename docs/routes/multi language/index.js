@@ -14,11 +14,13 @@ export default class extends Component {
     i18nLanguage.messages = {
       en: {
         'About': 'About',
-        'Some other text': 'Some other text'
+        'Some other text': 'Some other text',
+        'keep this $var in place and this $var': 'keep this $var in place and this $var'
       },
       es: {
         'About': 'Acerca de',
-        'Some other text': 'algún otro texto'
+        'Some other text': 'algún otro texto',
+        'keep this $var in place and this $var': 'mantenga este $var en su lugar y este $var'
       }
     };
   }
@@ -27,5 +29,9 @@ export default class extends Component {
     this.languagesChecked = checked;
     i18nLanguage.language = checked ? 'es' : 'en';
     this.render();
+  }
+
+  disconnectedCallback() {
+    i18nLanguage.language = navigator.language;
   }
 }

@@ -1,6 +1,7 @@
 export default new class I18nLanguage {
   #language = navigator.language.split('-')[0];
   #messages = {};
+  #templateMessages = {};
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
@@ -21,6 +22,18 @@ export default new class I18nLanguage {
   set messages(value) {
     if (!value || typeof value !== 'object') throw Error('messages must be an object');
     this.#messages = value;
+    // build template replaces
+    Object.entries(value).forEach(([language, keys]) => {
+      this.#templateMessages[language] = [];
+      Object.entries(keys).forEach(([key, value]) => {
+        if (value.includes('$var')) {
+          this.#templateMessages[language].push([
+            new RegExp(key.replace(/\$var/g, '([^]+)')),
+            value
+          ]);
+        }
+      });
+    })
   }
 
   get activeSortedMessageKeys() {
@@ -33,7 +46,19 @@ export default new class I18nLanguage {
 
   translate(key) {
     const messages = this.#messages[this.language] || {};
-    return messages[key] || key;
+    let message = messages[key];
+
+    // check for template replaces
+    if (!message) {
+      const found = this.#templateMessages[this.language].find(([matcher]) => key.match(matcher));
+      if (found) {
+        const replacements = key.match(found[0]);
+        let index = 1;
+        message = found[1].replace(/\$var/g, () => replacements[index++]);
+      }
+    }
+
+    return message || key;
   }
 
   #languageChange() {
