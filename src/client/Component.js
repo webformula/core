@@ -1,3 +1,6 @@
+import { i18nLanguage } from '../index.js';
+import i18Language from './i18n.js';
+
 const templateElements = [];
 
 export default class Component extends HTMLElement {
@@ -21,22 +24,59 @@ export default class Component extends HTMLElement {
   #variableReferences = {};
   #templateString;
   #proxy;
+  #hasTranslation = false;
+  #translationMatches = [];
+  #languageChange_bound = this.#languageChange.bind(this);
 
+  // convert html string to template literal function
+  #buildTemplate() {
+    this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+    const hasTemplate = !!this.#templateString;
+    if (hasTemplate) {
+      this.#templateString = this.#expressionParse(this.#templateString);
+      this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
+      if (this.constructor.useTemplate === true) {
+        const isDynamic = (this.constructor.html || this.template.toString()).includes('${');
+        if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
+      }
+    }
+
+    if (!this.rendered) {
+      // detect if there are any translation matches
+      if (i18Language.autoTranslate) {
+        let tempTemplate = this.#templateString;
+        this.#translationMatches = i18Language.activeSortedMessageKeys.filter(key => {
+          const included = tempTemplate.includes(key);
+          if (included) tempTemplate.replace(key, '');
+          return included;
+        });
+      }
+      if (this.#translationMatches.length > 0 || this.#templateString.includes('.translate(')) {
+        this.#hasTranslation = true;
+        window.addEventListener('languagechange', this.#languageChange_bound);
+      }
+    }
+  }
+
+  // replace all the translation matches and re create the template method
+  // This will only run if window._webformulaCoreAutoTranslate = true;
+  #buildTemplateFunction() {
+    if (!i18Language.autoTranslate) return;
+    
+    if (this.#hasTranslation) {
+      let translatedTemplate = this.#templateString;
+      this.#translationMatches.forEach(key => {
+        translatedTemplate = translatedTemplate.replace(key, i18Language.translate(key));
+      });
+      this.template = () => new Function('page', `return \`${translatedTemplate}\`;`).call(this, this);
+    }
+  }
 
   constructor() {
     super();
 
-    // convert html string to template literal function
-    if (this.constructor.html) this.#templateString = this.constructor.html;
-    else this.#templateString = this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
-    const templateString = this.#expressionParse(this.#templateString);
-    this.template = () => new Function('page', `return \`${templateString}\`;`).call(this, this);
-    const hasTemplate = !!this.constructor.html || !this.template.toString().replace(/\n|\s|\;/g, '').includes('template(){return""}');
-    // check if html uses template literal expressions. If it does we do not want to globally store a template element
-    if (hasTemplate && this.constructor.useTemplate === true) {
-      const isDynamic = this.constructor.html || this.template.toString().includes('${');
-      if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
-    }
+    this.#buildTemplate();
+    this.#buildTemplateFunction();
 
 
     /** Render as soon as possible while making sure all class variables exist */
@@ -113,6 +153,10 @@ export default class Component extends HTMLElement {
     return this.#rendered;
   }
 
+  internalDisconnect() {
+    if (this.#hasTranslation) window.removeEventListener('languagechange', this.#languageChange_bound);
+  }
+
   // override
   connectedCallback() { }
   disconnectedCallback() { }
@@ -136,7 +180,14 @@ export default class Component extends HTMLElement {
     return str.replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
   };
 
+  translate(key) {
+    return i18Language.translate(key);
+  }
+
   async onLoadRender() {
+    // the pre rendered page uses en for its language. We need to re render if the browser language is not end
+    if (this.#hasTranslation && i18Language.language !== 'en') return this.render();
+
     if (!this.#rendered) this.#prepareRender();
     this.#rendered = true;
 
@@ -154,6 +205,8 @@ export default class Component extends HTMLElement {
     // render from template element
     else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
     !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
+
+    window.dispatchEvent(new Event('webformulapagerender'));
   }
 
   #prepareRender() {
@@ -269,5 +322,10 @@ export default class Component extends HTMLElement {
     }, {});
 
     return templateString;
+  }
+
+  #languageChange() {
+    this.#buildTemplateFunction();
+    this.render();
   }
 }

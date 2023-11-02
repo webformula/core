@@ -60,7 +60,10 @@ async function route(locationObject, back = false, initial = false) {
   }
   const nextPage = new match.component();
   if (!back) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
-  if (currentPage) currentPage.disconnectedCallback();
+  if (currentPage) {
+    currentPage.internalDisconnect();
+    currentPage.disconnectedCallback();
+  }
   window.page = nextPage;
 
   if (!initial) {

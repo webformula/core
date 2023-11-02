@@ -66,7 +66,11 @@ export default function add() {
   global.getComputedStyle = getComputedStyle;
   global.localStorage = localStorage;
   global.matchMedia = matchMedia;
-  global.navigator = dom.navigator;
+  global.navigator = {
+    ...dom.navigator,
+    language: 'en-US',
+    languages: ['en', 'en-US']
+  };
   global.customElements = dom.customElements;
   global.location = location;
   global.EventSource = EventSource;

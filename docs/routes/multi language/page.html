@@ -1,0 +1,102 @@
+<h3 class="page-title">Multiple languages</h3>
+<div class="page-subheader mdw-font-title-medium">You can add a language configuration to support multiple languages</div>
+
+
+<section class="page-content-section">
+  <nav class="links-nav" aria-label="page-content">
+    <div class="mdw-font-headline-small page-secondary-header">Links</div>
+    <ul class="links">
+      <li><a href="#config">Language configuration</a></li>
+      <li><a href="#auto">Auto translate</a></li>
+      <li><a href="#method">Translate method</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-content-container">
+    <mdw-card id="config">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Language configuration</div>
+        <div class="mdw-subheader">Languages are configured based on the values of the default language</div>
+        <div class="mdw-subheader">The active language is pulled from the browser 'navigation.language'</div>
+        <div class="mdw-subheader">Pages will automatically update if browser language changes</div>
+      </div>
+
+      <div class="mdw-card-content">
+        <div style="display: flex; flex-direction: column; width: 120px; margin-bottom: 12px;">
+          <mdw-switch ${page.languagesChecked ? 'checked' : ''} onchange="page.changeLanguage(this.checked)">en / es</mdw-switch>
+        </div>
+        <div>${page.translate('Some other text')}</div>
+      </div>
+
+      <pre>
+        <code class="language-html">
+  ${page.escape(`<!-- example html from above -->
+  <div>\${page.translate('Some other text')}</div>`)}
+        </code>
+      </pre>
+      
+      <pre>
+        <code class="language-javascript">
+  ${page.escape(`import { i18nLanguage } from '@webformula/core';
+  i18nLanguage.messages = {
+    en: {
+      'About': 'About',
+      'Some other text': 'Some other text'
+    },
+    es: {
+      'About': 'Acerca de',
+      'Some other text': 'algún otro texto'
+    }
+  };
+  
+  // get translation
+  console.log(i18nLanguage.translate('key'));
+
+  // en-US will show as es
+  console.log(i18nLanguage.language); // en, es
+  
+  // get messages config
+  console.log(i18nLanguage.messages);`)}
+        </code>
+      </pre>
+    </mdw-card>
+
+
+    <mdw-card id="auto">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Auto translate</div>
+        <div class="mdw-subheader">If auto translate is turned on pages will automatically have keys replaced without any additional code</div>
+        <div class="mdw-subheader">Pages will automatically update if browser language changes</div>
+      </div>
+    
+      <pre>
+        <code class="language-javascript">
+  ${page.escape(`// Enable auto translation for pages
+  window._webformulaCoreAutoTranslate = true;`)}
+        </code>
+      </pre>
+    </mdw-card>
+
+
+    <mdw-card id="method">
+      <div class="mdw-card-content">
+        <div class="mdw-headline">Translate method</div>
+        <div class="mdw-subheader">You can use the built in translate method to handle translations on pages</div>
+        <div class="mdw-subheader">You can also import the i18nLanguage module to interact with translate outside of pages</div>
+        <div class="mdw-subheader">Pages will automatically update if browser language changes</div>
+      </div>
+    
+      <pre>
+        <code class="language-javascript">
+  ${page.escape(`// use the built in translate method on pages
+  <div>\${page.translate('Some other text')}</div>
+
+  
+  // directly interact with the module
+  import { i18nLanguage } from '@webformula/core';
+  console.log(i18nLanguage.translate('key'));`)}
+        </code>
+      </pre>
+    </mdw-card>
+  </div>
+</section>
