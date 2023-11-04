@@ -59,7 +59,7 @@ async function route(locationObject, back = false, initial = false) {
     return;
   }
   const nextPage = new match.component();
-  if (!back) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
+  if (!back && !initial) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
   if (currentPage) {
     currentPage.internalDisconnect();
     currentPage.disconnectedCallback();
@@ -87,13 +87,27 @@ if (window.webformulaCoreSpa !== false) {
     if (event.target.getAttribute('href').includes('://')) return;
 
     event.preventDefault();
+
     route(new URL(event.target.href));
 
     // the prevent default keeps the link from loosing focus
     event.target.blur();
   }, false);
 
+  let popPrevented = false;
   window.addEventListener('popstate', event => {
-    route(new URL(event.currentTarget.location), true);
+    if (popPrevented) return popPrevented = false; // used in preventing back navigation
+
+    // simulate before unload for spa
+    if (window.webformulaCoreSpa !== false) {
+      const beforeUnloadEvent = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(beforeUnloadEvent);
+      if (beforeUnloadEvent.defaultPrevented && !confirm('Changes you made may not be saved.')) {
+        popPrevented = true;
+        history.go(1);
+      } else route(new URL(event.currentTarget.location), true);
+    } else {
+      route(new URL(event.currentTarget.location), true);
+    }
   });
 }
