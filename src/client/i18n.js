@@ -22,7 +22,9 @@ export default new class I18nLanguage {
   set messages(value) {
     if (!value || typeof value !== 'object') throw Error('messages must be an object');
     this.#messages = value;
-    // build template replaces
+
+    // build template string replaces
+    // Example: 'keep this $var in place and this $var': 'keep this $var in place and this $var'
     Object.entries(value).forEach(([language, keys]) => {
       this.#templateMessages[language] = [];
       Object.entries(keys).forEach(([key, value]) => {
@@ -33,7 +35,7 @@ export default new class I18nLanguage {
           ]);
         }
       });
-    })
+    });
   }
 
   get activeSortedMessageKeys() {
@@ -48,7 +50,8 @@ export default new class I18nLanguage {
     const messages = this.#messages[this.language] || {};
     let message = messages[key];
 
-    // check for template replaces
+    // check for template string replaces.
+    // Example: 'keep this $var in place and this $var': 'keep this $var in place and this $var'
     if (!message) {
       const found = this.#templateMessages[this.language].find(([matcher]) => key.match(matcher));
       if (found) {
