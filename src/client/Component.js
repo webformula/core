@@ -40,7 +40,7 @@ export default class Component extends HTMLElement {
     if (!this.constructor._isPage && hasTemplate) {
       requestAnimationFrame(() => this.render());
 
-    // hook up page-content for render
+      // hook up page-content for render
     } else {
       const pageContent = document.querySelector('page-content') || document.querySelector('#page-content');
       if (!pageContent) throw Error('Could not find page-content');
@@ -69,7 +69,7 @@ export default class Component extends HTMLElement {
 
           const value = target[key];
           // bind render to original class object so it has access to private variables;
-          if (['render','onLoadRender', 'internalDisconnect'].includes(key) && typeof value === 'function') return value.bind(target);
+          if (['render', 'onLoadRender', 'internalDisconnect'].includes(key) && typeof value === 'function') return value.bind(target);
           return value;
         },
 
@@ -80,13 +80,33 @@ export default class Component extends HTMLElement {
           target[key] = value;
 
           for (const variable of variableReference) {
-            const element = that.#root.querySelector(`[wfc-bind="${variable.id}"]`);
+            const rootElement = that.#root.querySelector(`[wfc-bind*="'${variable.id}'"]`);
             let templateValue;
             try { templateValue = variable.template(); } catch (e) { }
-            if (variable.type === 'content') element.innerText = templateValue;
-            else if (variable.type === 'attribute') {
-              if (element.nodeName === 'INPUT' && variable.attribute === 'value') element.value = templateValue;
-              element.setAttribute(variable.attribute, templateValue);
+            if (variable.type === 'content') {
+              // remove all nodes between the start and and comments and replace with new render
+              const replaceNodes = [];
+              let currentNode = rootElement.childNodes[0];
+              let startNode;
+              let endNode;
+              while ((!startNode || !endNode) && currentNode) {
+                if (!startNode && currentNode.nodeType === 8 && currentNode.data.includes('expression-block-start')) {
+                  startNode = currentNode;
+                } else if (currentNode.nodeType === 8 && currentNode.data.includes('expression-block-end')) {
+                  endNode = currentNode;
+                } else if (startNode) {
+                  replaceNodes.push(currentNode);
+                }
+
+                currentNode = currentNode.nextSibling;
+              }
+              replaceNodes.forEach(n => n.remove());
+              const template = document.createElement('template');
+              template.innerHTML = templateValue;
+              rootElement.insertBefore(template.content, endNode);
+            } else if (variable.type === 'attribute') {
+              if (rootElement.nodeName === 'INPUT' && variable.attribute === 'value') rootElement.value = templateValue;
+              rootElement.setAttribute(variable.attribute, templateValue);
             }
           }
           return true;
@@ -129,7 +149,7 @@ export default class Component extends HTMLElement {
    *    }
    *  }
    */
-  template(){return""}
+  template() { return "" }
 
   /** Escape html to make safe for injection */
   escape(str) {
@@ -141,13 +161,23 @@ export default class Component extends HTMLElement {
   }
 
   async onLoadRender() {
-    // the pre rendered page uses en for its language. We need to re render if the browser language is not end
-    if (this.#hasTranslation && i18Language.language !== 'en') return this.render();
+    // // the pre rendered page uses en for its language. We need to re render if the browser language is not end
+    // if (this.#hasTranslation && i18Language.language !== 'en') return this.render();
+
+    // if (!this.#rendered) this.#prepareRender();
+    // this.#rendered = true;
+
+    // !this.#proxy ? await this.beforeRender() : await this.beforeRender.call(this.#proxy);
+    // !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
 
     if (!this.#rendered) this.#prepareRender();
     this.#rendered = true;
 
     !this.#proxy ? await this.beforeRender() : await this.beforeRender.call(this.#proxy);
+    // render every time so template literal expression update
+    if (!this.constructor.useTemplate) this.#root.innerHTML = this.template();
+    // render from template element
+    else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
     !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
   }
 
@@ -187,99 +217,128 @@ export default class Component extends HTMLElement {
   }
 
 
-  // replace first '[^}{]*' with '({([^}{]*})|[^}{])*' to add another depth
-  #expressionsDepth6 = /(?<!\\)\${(({({(({(({(({([^}{]*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*}/g;
-  // look for escaped expressions \${} so we do not handle them
-  #invalidExpressionsDepth6 = /\\\${(({({(({(({(({([^}{]*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*}/g;
-  // page.someFunc() - we do not want to handle function calls
-  #variableFunctionDepth6 = /(?:page|this)((?:\.[a-zA-Z0-9_)]+)+)\(((\((\(((\(((\(([^\)\()]*\))|[^\)\()])*\))|[^\)\()])*\))|[^\)\()])*\))|[^\)\()])*\)/g;
-  // variables starting with (page or this)
-  // if contains (\(|'|"|\s*=) then we do not want to handle these
-  #variablesRegex = /(?:page|this)((?:\.[a-zA-Z0-9_]+)+)(\(|'|"|\s*=)?/g;
-  #attributeMatch = /\s([^\s]+)=\s*?\"\s*?$/;
-  #contentMatch = /<\s*?([^\s>]+)[^>]*>([^<>]*)?$/;
+  // // replace first '[^}{]*' with '({([^}{]*})|[^}{])*' to add another depth
+  // #expressionsDepth6 = /(?<!\\)\${(({({(({(({(({([^}{]*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*}/g;
+  // // look for escaped expressions \${} so we do not handle them
+  // #invalidExpressionsDepth6 = /\\\${(({({(({(({(({([^}{]*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*}/g;
+  // // page.someFunc() - we do not want to handle function calls
+  // #variableFunctionDepth6 = /(?:page|this)((?:\.[a-zA-Z0-9_)]+)+)\(((\((\(((\(((\(([^\)\()]*\))|[^\)\()])*\))|[^\)\()])*\))|[^\)\()])*\))|[^\)\()])*\)/g;
+  // // variables starting with (page or this)
+  // // if contains (\(|'|"|\s*=) then we do not want to handle these
+  // #variablesRegex = /(?:page|this)((?:\.[a-zA-Z0-9_]+)+)(\(|'|"|\s*={1,3})?/g;
+  // #attributeMatch = /\s([^\s]+)=\s*?\"\s*?$/;
+  // #contentMatch = /<\s*?([^\s>]+)[^>]*>([^<>]*)?$/;
   #expressionParse(templateString) {
     if (window.webformulaCoreBinding === false) return templateString;
 
-    const variableExpressions = [...templateString.matchAll(this.#expressionsDepth6)].map(expression => {
-      const subInvalidExpressions = Object.values(expression[0].match(this.#invalidExpressionsDepth6) || {});
-      // strip out invalid expressions and functions so we can capture all valid variables
-      const topLevelString = subInvalidExpressions.reduce((acc, sub) => acc.replace(sub, ''), expression[0]).replace(this.#variableFunctionDepth6, '');
-      const variables = [...topLevelString.matchAll(this.#variablesRegex)].filter(v => !v[2]).map(v => v[1].replace(/^\./, ''));
-      return {
-        expression,
-        variables
-      };
-    }).filter(v => v.variables.length > 0);
-    
-    // build hash lookup by property for each expression
-    // reverse array so the indexes are correct when modifying the templateString
-    this.#variableReferences = variableExpressions.reverse().reduce((acc, { expression, variables }, id) => {
-      const previousString = templateString.slice(0, expression.index);
+    const variables = [...new Set([...templateString.matchAll(/(?<!\\\${|\/)(?:page\.|this\.)((?:[a-zA-Z0-9_]+)+)(\(|'|"|\s*={1,3})?/g)]
+      .filter(v => !v[2] || v[2].trim() === '==' || v[2].trim() === '===')
+      .map(v => v[0]))];
 
-      // expression is in the content of an element: <div>${this.var}</div>
-      const contentMatch = previousString.match(this.#contentMatch);
-      if (contentMatch) {
-        if (contentMatch[0].includes('wfc-no-binding')) return acc;
+    if (variables.length === 0) return templateString;
 
-        // add wfc-bind attribute for reference
-        const newElement = contentMatch[0].replace(contentMatch[1], `${contentMatch[1]} wfc-bind="${id}" `);
-        const postContentString = templateString.slice(contentMatch.index + contentMatch[0].length - (contentMatch[2] ? contentMatch[2].length : 0));
-        const postContentMatch = postContentString.match(/([^<]*)/);
-        templateString = templateString.substring(0, contentMatch.index) + newElement + templateString.substring(expression.index);
+    if (typeof DOMParser !== 'undefined') {
+      const escaped = templateString.replace(/(?<!=\s*"|=\s*"\s*)(\$\{(?:(\{(?:(\{(?:(\{(?:(\{(?:(\{(?:(\{(?:(\{(?:(\{[^}{]*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})/g, function (a) {
+        return `<!-- expression-block-start -->${a}<!-- expression-block-end -->`;
+      });
 
-        const variableConfig = {
-          id,
-          type: 'content',
-          // sub template method for specific expression
-          template: () => new Function('page', `return \`${postContentMatch[0]}\`;`).call(this, this)
-        };
+      const parser = new DOMParser();
+      const htmlDoc = parser.parseFromString(escaped, 'text/html');
+      let counter = 0;
 
-        // build object for each level of path: this.one.two -> [one.two, two]
-        // This is needed because proxies only provide the property being changed
-        variables.forEach(variable => {
-          const properties = variable.split('.').slice(1).map(prop => variable.slice(0, variable.indexOf(prop) - 1)).concat(variable);
-          properties.forEach(parentProperty => {
-            if (!acc[parentProperty]) acc[parentProperty] = [];
-            acc[parentProperty].push(variableConfig);
-          });
-        });
-      } else {
-        // expression is in the attribute of an element: <input value="${this.var}">
-        const attrMatch = previousString.match(this.#attributeMatch);
-        if (attrMatch) {
-          // add wfc-bind attribute for reference
-          const newElement = attrMatch[0].replace(attrMatch[1], ` wfc-bind="${id}" ${attrMatch[1]}`);
-          const postAttrString = templateString.slice(attrMatch.index + attrMatch[0].length - (attrMatch[2] ? attrMatch[2].length : 0));
-          const postAttrMatch = postAttrString.match(/([^"]*)/);
-          templateString = templateString.substring(0, attrMatch.index) + newElement + templateString.substring(expression.index);
+      // build hash lookup by property for each expression
+      // reverse array so the indexes are correct when modifying the templateString
+      this.#variableReferences = variables.reverse().reduce((acc, variable) => {
+        variable = variable.replace(/=/g, '').trim();
+        const variableConfigs = [];
 
-          const variableConfig = {
-            id,
-            type: 'attribute',
-            attribute: attrMatch[1],
-            // sub template method for specific expression
-            template: () => new Function('page', `return \`${postAttrMatch[0]}\`;`).call(this, this)
-          };
-
-          // build object for each level of path: this.one.two -> [one.two, two]
-          // This is needed because proxies only provide the property being changed
-          variables.forEach(variable => {
-            const properties = variable.split('.').slice(1).map(prop => variable.slice(0, variable.indexOf(prop) - 1)).concat(variable);
-            properties.forEach(parentProperty => {
-              if (!acc[parentProperty]) acc[parentProperty] = [];
-              acc[parentProperty].push(variableConfig);
+        // const expStr = expression[0].replace(/[.*+?^${}()|[\]\\\`]/g, '\\$&').replace(/<([^>]+)>/g, '@$1@');
+        const iterator = htmlDoc.evaluate(`//*[@*[contains(., '${variable}')]]`, htmlDoc, null, XPathResult.ANY_TYPE, null);
+        let node;
+        let nodes = [];
+        const validRegex = new RegExp(`(\\\\)?(\\\${[^\\\${]*[^}]*${variable}[^}]*)+`);
+        while (node = iterator.iterateNext()) {
+          [...node.attributes].filter(attr => {
+            const match = attr.nodeValue.match(validRegex);
+            if (match && !match[1]) nodes.push({
+              node,
+              attr
             });
           });
         }
-      }
+        nodes.forEach(item => {
+          if (!item.node.hasAttribute('wfc-bind')) item.node.setAttribute('wfc-bind', `'${counter}'`);
+          else item.node.setAttribute('wfc-bind', `${item.node.getAttribute('wfc-bind')} '${counter}'`);
 
-      return acc;
-    }, {});
+          variableConfigs.push({
+            id: counter,
+            type: 'attribute',
+            attribute: item.attr.name,
+            template: () => new Function('page', `return \`${item.attr.textContent}\`;`).call(this, this)
+          });
+
+          counter += 1;
+        });
+
+        const iterator2 = htmlDoc.evaluate(`//text()[contains(., "${variable}")]`, htmlDoc, null, XPathResult.ANY_TYPE, null);
+        nodes = [];
+        while (node = iterator2.iterateNext()) {
+          const match = node.wholeText.match(validRegex);
+          if (match && !match[1]) nodes.push(node);
+        }
+
+        nodes.forEach(n => {
+          const parentElement = n.parentElement;
+          if (!parentElement.hasAttribute('wfc-bind')) parentElement.setAttribute('wfc-bind', `'${counter}'`);
+          else parentElement.setAttribute('wfc-bind', `${parentElement.getAttribute('wfc-bind')} '${counter}'`);
+
+          // TODO get start and end comment blocks then get full replace text
+          let startBlock = n.previousSibling;
+          while (startBlock && startBlock.nodeType !== 8 && startBlock.data !== 'expression-block-start') {
+            startBlock = startBlock.previousSibling;
+          }
+
+          let endBlock = n.nextSibling;
+          while (endBlock && endBlock.nodeType !== 8 && endBlock.data !== 'expression-block-end') {
+            endBlock = endBlock.nextSibling;
+          }
+
+          let txt = '';
+          let txtBlock = startBlock.nextSibling;
+          while (txtBlock !== endBlock) {
+            txt += txtBlock.wholeText || txtBlock.outerHTML;
+            txtBlock = txtBlock.nextSibling;
+          }
+
+          parentElement.replaceChild(document.createComment(`${startBlock.data} wfc-bind-${counter}`), startBlock);
+          parentElement.replaceChild(document.createComment(`${endBlock.data} wfc-bind-${counter}`), endBlock);
+          variableConfigs.push({
+            id: counter,
+            type: 'content',
+            template: () => new Function('page', `return \`${txt}\`;`).call(this, this)
+          });
+
+          counter += 1;
+        });
+
+        const modifiedVariable = variable.split('.').slice(1).join('.');
+        const properties = modifiedVariable
+          .split('.')
+          .slice(1)
+          .map(prop => modifiedVariable.slice(0, modifiedVariable.indexOf(prop) - 1)).concat(modifiedVariable);
+        properties.forEach(parentProperty => {
+          if (!acc[parentProperty]) acc[parentProperty] = [];
+          acc[parentProperty].push(...variableConfigs);
+        });
+
+        return acc;
+      }, {});
+
+      templateString = htmlDoc.body.innerHTML;
+    }
 
     return templateString;
   }
-
 
   // convert html string to template literal function
   #buildTemplate() {

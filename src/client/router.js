@@ -71,7 +71,10 @@ async function route(locationObject, back = false, initial = false) {
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     // document.querySelector('page-content').scrollTop = 0;
-  } else nextPage.onLoadRender();
+  } else {
+    // nextPage.render();
+    nextPage.onLoadRender();
+  }
   nextPage.connectedCallback();
   requestAnimationFrame(() => {
     if (!initial) window.dispatchEvent(new Event('locationchange'));
