@@ -26,6 +26,7 @@ export default class Component extends HTMLElement {
   #proxy;
   #hasTranslation = false;
   #translationMatches = [];
+  #expressionBlocks = [];
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
@@ -80,35 +81,33 @@ export default class Component extends HTMLElement {
           target[key] = value;
 
           for (const variable of variableReference) {
-            const rootElement = that.#root.querySelector(`[wfc-bind*="'${variable.id}'"]`);
             let templateValue;
             try { templateValue = variable.template(); } catch (e) { }
-            if (variable.type === 'content') {
-              // remove all nodes between the start and and comments and replace with new render
-              const replaceNodes = [];
-              let currentNode = rootElement.childNodes[0];
-              let startNode;
-              let endNode;
-              while ((!startNode || !endNode) && currentNode) {
-                if (!startNode && currentNode.nodeType === 8 && currentNode.data.includes('expression-block-start')) {
-                  startNode = currentNode;
-                } else if (currentNode.nodeType === 8 && currentNode.data.includes('expression-block-end')) {
-                  endNode = currentNode;
-                } else if (startNode) {
-                  replaceNodes.push(currentNode);
-                }
 
+            if (variable.type === 'content') {
+              const startBlock = that.#expressionBlocks.find(n => n.data.includes('expression-block-start') && n.data.includes(`wfc-bind-${variable.id}`));
+              if (startBlock.parentElement.hasAttribute('wfc-no-binding')) return true;
+
+              const endBlock = that.#expressionBlocks.find(n => n.data.includes('expression-block-end') && n.data.includes(`wfc-bind-${variable.id}`));
+
+              const replaceNodes = [];
+              let currentNode = startBlock.nextSibling;
+              while (currentNode !== endBlock) {
+                replaceNodes.push(currentNode);
                 currentNode = currentNode.nextSibling;
               }
               replaceNodes.forEach(n => n.remove());
               const template = document.createElement('template');
               template.innerHTML = templateValue;
-              rootElement.insertBefore(template.content, endNode);
+              startBlock.parentElement.insertBefore(template.content, endBlock);
             } else if (variable.type === 'attribute') {
+              const rootElement = that.#root.querySelector(`[wfc-bind-${variable.id}]`);
+              if (rootElement.hasAttribute('wfc-no-binding')) return true;
               if (rootElement.nodeName === 'INPUT' && variable.attribute === 'value') rootElement.value = templateValue;
               rootElement.setAttribute(variable.attribute, templateValue);
             }
           }
+
           return true;
         }
       };
@@ -171,7 +170,6 @@ export default class Component extends HTMLElement {
     // !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
 
     if (!this.#rendered) this.#prepareRender();
-    this.#rendered = true;
 
     !this.#proxy ? await this.beforeRender() : await this.beforeRender.call(this.#proxy);
     // render every time so template literal expression update
@@ -179,11 +177,13 @@ export default class Component extends HTMLElement {
     // render from template element
     else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
     !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
+
+    if (!this.rendered) this.#postRender();
+    this.#rendered = true;
   }
 
   async render() {
     if (!this.#rendered) this.#prepareRender();
-    this.#rendered = true;
 
     !this.#proxy ? await this.beforeRender() : await this.beforeRender.call(this.#proxy);
     // render every time so template literal expression update
@@ -192,7 +192,23 @@ export default class Component extends HTMLElement {
     else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
     !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
 
+    if (!this.rendered) this.#postRender();
+    this.#rendered = true;
+
     window.dispatchEvent(new Event('webformulacorepagerender'));
+  }
+
+  #postRender() {
+    const nodeIterator = document.createNodeIterator(
+      document.body,
+      NodeFilter.SHOW_COMMENT,
+      (node) => node.data.includes('expression-block')
+    );
+
+    let currentNode;
+    while ((currentNode = nodeIterator.nextNode())) {
+      this.#expressionBlocks.push(currentNode);
+    }
   }
 
   #prepareRender() {
@@ -216,136 +232,14 @@ export default class Component extends HTMLElement {
     }
   }
 
-
-  // // replace first '[^}{]*' with '({([^}{]*})|[^}{])*' to add another depth
-  // #expressionsDepth6 = /(?<!\\)\${(({({(({(({(({([^}{]*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*}/g;
-  // // look for escaped expressions \${} so we do not handle them
-  // #invalidExpressionsDepth6 = /\\\${(({({(({(({(({([^}{]*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*})|[^}{])*}/g;
-  // // page.someFunc() - we do not want to handle function calls
-  // #variableFunctionDepth6 = /(?:page|this)((?:\.[a-zA-Z0-9_)]+)+)\(((\((\(((\(((\(([^\)\()]*\))|[^\)\()])*\))|[^\)\()])*\))|[^\)\()])*\))|[^\)\()])*\)/g;
-  // // variables starting with (page or this)
-  // // if contains (\(|'|"|\s*=) then we do not want to handle these
-  // #variablesRegex = /(?:page|this)((?:\.[a-zA-Z0-9_]+)+)(\(|'|"|\s*={1,3})?/g;
-  // #attributeMatch = /\s([^\s]+)=\s*?\"\s*?$/;
-  // #contentMatch = /<\s*?([^\s>]+)[^>]*>([^<>]*)?$/;
-  #expressionParse(templateString) {
-    if (window.webformulaCoreBinding === false) return templateString;
-
-    const variables = [...new Set([...templateString.matchAll(/(?<!\\\${|\/)(?:page\.|this\.)((?:[a-zA-Z0-9_]+)+)(\(|'|"|\s*={1,3})?/g)]
-      .filter(v => !v[2] || v[2].trim() === '==' || v[2].trim() === '===')
-      .map(v => v[0]))];
-
-    if (variables.length === 0) return templateString;
-
-    if (typeof DOMParser !== 'undefined') {
-      const escaped = templateString.replace(/(?<!=\s*"|=\s*"\s*)(\$\{(?:(\{(?:(\{(?:(\{(?:(\{(?:(\{(?:(\{(?:(\{(?:(\{[^}{]*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})|[^}{])*\})/g, function (a) {
-        return `<!-- expression-block-start -->${a}<!-- expression-block-end -->`;
-      });
-
-      const parser = new DOMParser();
-      const htmlDoc = parser.parseFromString(escaped, 'text/html');
-      let counter = 0;
-
-      // build hash lookup by property for each expression
-      // reverse array so the indexes are correct when modifying the templateString
-      this.#variableReferences = variables.reverse().reduce((acc, variable) => {
-        variable = variable.replace(/=/g, '').trim();
-        const variableConfigs = [];
-
-        // const expStr = expression[0].replace(/[.*+?^${}()|[\]\\\`]/g, '\\$&').replace(/<([^>]+)>/g, '@$1@');
-        const iterator = htmlDoc.evaluate(`//*[@*[contains(., '${variable}')]]`, htmlDoc, null, XPathResult.ANY_TYPE, null);
-        let node;
-        let nodes = [];
-        const validRegex = new RegExp(`(\\\\)?(\\\${[^\\\${]*[^}]*${variable}[^}]*)+`);
-        while (node = iterator.iterateNext()) {
-          [...node.attributes].filter(attr => {
-            const match = attr.nodeValue.match(validRegex);
-            if (match && !match[1]) nodes.push({
-              node,
-              attr
-            });
-          });
-        }
-        nodes.forEach(item => {
-          if (!item.node.hasAttribute('wfc-bind')) item.node.setAttribute('wfc-bind', `'${counter}'`);
-          else item.node.setAttribute('wfc-bind', `${item.node.getAttribute('wfc-bind')} '${counter}'`);
-
-          variableConfigs.push({
-            id: counter,
-            type: 'attribute',
-            attribute: item.attr.name,
-            template: () => new Function('page', `return \`${item.attr.textContent}\`;`).call(this, this)
-          });
-
-          counter += 1;
-        });
-
-        const iterator2 = htmlDoc.evaluate(`//text()[contains(., "${variable}")]`, htmlDoc, null, XPathResult.ANY_TYPE, null);
-        nodes = [];
-        while (node = iterator2.iterateNext()) {
-          const match = node.wholeText.match(validRegex);
-          if (match && !match[1]) nodes.push(node);
-        }
-
-        nodes.forEach(n => {
-          const parentElement = n.parentElement;
-          if (!parentElement.hasAttribute('wfc-bind')) parentElement.setAttribute('wfc-bind', `'${counter}'`);
-          else parentElement.setAttribute('wfc-bind', `${parentElement.getAttribute('wfc-bind')} '${counter}'`);
-
-          // TODO get start and end comment blocks then get full replace text
-          let startBlock = n.previousSibling;
-          while (startBlock && startBlock.nodeType !== 8 && startBlock.data !== 'expression-block-start') {
-            startBlock = startBlock.previousSibling;
-          }
-
-          let endBlock = n.nextSibling;
-          while (endBlock && endBlock.nodeType !== 8 && endBlock.data !== 'expression-block-end') {
-            endBlock = endBlock.nextSibling;
-          }
-
-          let txt = '';
-          let txtBlock = startBlock.nextSibling;
-          while (txtBlock !== endBlock) {
-            txt += txtBlock.wholeText || txtBlock.outerHTML;
-            txtBlock = txtBlock.nextSibling;
-          }
-
-          parentElement.replaceChild(document.createComment(`${startBlock.data} wfc-bind-${counter}`), startBlock);
-          parentElement.replaceChild(document.createComment(`${endBlock.data} wfc-bind-${counter}`), endBlock);
-          variableConfigs.push({
-            id: counter,
-            type: 'content',
-            template: () => new Function('page', `return \`${txt}\`;`).call(this, this)
-          });
-
-          counter += 1;
-        });
-
-        const modifiedVariable = variable.split('.').slice(1).join('.');
-        const properties = modifiedVariable
-          .split('.')
-          .slice(1)
-          .map(prop => modifiedVariable.slice(0, modifiedVariable.indexOf(prop) - 1)).concat(modifiedVariable);
-        properties.forEach(parentProperty => {
-          if (!acc[parentProperty]) acc[parentProperty] = [];
-          acc[parentProperty].push(...variableConfigs);
-        });
-
-        return acc;
-      }, {});
-
-      templateString = htmlDoc.body.innerHTML;
-    }
-
-    return templateString;
-  }
-
   // convert html string to template literal function
   #buildTemplate() {
     this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
     const hasTemplate = !!this.#templateString;
     if (hasTemplate) {
-      this.#templateString = this.#expressionParse(this.#templateString);
+      const parsed = this.#expressionParse(this.#templateString);
+      this.#templateString = parsed.templateString;
+      this.#variableReferences = parsed.variableReferences;
       this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
       if (this.constructor.useTemplate === true) {
         const isDynamic = (this.constructor.html || this.template.toString()).includes('${');
@@ -387,5 +281,124 @@ export default class Component extends HTMLElement {
   #languageChange() {
     this.#buildTemplateFunction();
     this.render();
+  }
+
+  #expressionParse(templateString) {
+    if (window.webformulaCoreBinding === false) return templateString;
+
+    const expressionOpens = [...templateString.matchAll(/(?<!\\)\${/g)].map(v => ['open', v.index]);
+    const expressionClose = [...templateString.matchAll(/(?<!\\)}/g)].map(v => ['close', v.index]);
+    const expressionTick = [...templateString.matchAll(/(?<!\\)`/g)].map(v => ['tick', v.index]);
+    const combined = [...expressionOpens, ...expressionClose, ...expressionTick].sort((a, b) => a[1] - b[1]);
+    let opened = false;
+    let opens = 0;
+    let closes = 0;
+    let inTick = false;
+    let ticks = 0;
+
+    const expressionIndexes = combined.map(([type, index]) => {
+      switch (type) {
+        case 'open':
+          opens += 1;
+          inTick = false;
+          if (!opened) {
+            opened = true;
+            return [type, index];
+          }
+          return ['open-sub', index];
+
+        case 'close':
+          if (!inTick) {
+            closes += 1;
+            if (closes >= opens) {
+              opened = false;
+              opens = 0;
+              closes = 0;
+              ticks = 0;
+              return ['close', index];
+            } else if (ticks > 0) {
+              inTick = true;
+              return ['close-sub', index];
+            }
+            return ['close-tick', index];
+          }
+          return ['close-tick', index];
+
+        case 'tick':
+          if (!inTick) {
+            inTick = true;
+            ticks += 1;
+            return ['tick-open', index];
+          } else {
+            ticks -= 1;
+            inTick = false;
+            return ['tick-close', index];
+          }
+      }
+    });
+
+    const grouped = [];
+    let last;
+    for (let i = 0; i < expressionIndexes.length; i += 1) {
+      const type = expressionIndexes[i][0];
+      if (type === 'open') {
+        grouped.push({
+          open: expressionIndexes[i][1],
+          variables: []
+        });
+        last = undefined;
+      } else if (type === 'close') {
+        grouped[grouped.length - 1].close = expressionIndexes[i][1];
+      }
+
+      if (last && ['open', 'open-sub', 'close-sub'].includes(last[0])) {
+        [...templateString.substring(last[1], expressionIndexes[i][1]).matchAll(/(?:page\.|this\.)((?:[a-zA-Z0-9_.]+)+)(\(|'|"|\s*={1,3})?/g)]
+          .filter(v => !v[2] || v[2].trim() === '==' || v[2].trim() === '===')
+          .forEach(v => {
+            if (!grouped[grouped.length - 1].variables.includes(v[1])) grouped[grouped.length - 1].variables.push(v[1]);
+          });
+      }
+
+      last = expressionIndexes[i];
+    }
+
+    const variableReferences = {};
+    grouped.reverse()
+      .filter(({ variables }) => variables.length > 0)
+      .forEach(({ open, close, variables }, i) => {
+        const templateStr = templateString.slice(open, close + 1);
+        const attrMatch = templateString.slice(0, open).match(/\s+(\S+)=\s*\"\s*$/);
+        if (!!attrMatch) {
+          templateString = `${templateString.slice(0, attrMatch.index)} wfc-bind-${i}${attrMatch[0]}${templateString.slice(open)}`;
+        } else {
+          templateString = `${templateString.slice(0, close + 1)}<!-- expression-block-end wfc-bind-${i} -->${templateString.slice(close + 1)}`;
+          templateString = `${templateString.slice(0, open)}<!-- expression-block-start wfc-bind-${i} -->${templateString.slice(open)}`;
+        }
+
+        const variableConfig = {
+          id: i,
+          type: attrMatch !== null ? 'attribute' : 'content',
+          attribute: attrMatch !== null ? attrMatch[1] : undefined,
+          template: () => new Function('page', `return \`${templateStr}\`;`).call(this, this)
+        };
+
+        // split variable into sub paths for easy lookup
+        // one.two = ['one', 'one.two']
+        variables.forEach(variable => {
+          const modifiedVariable = variable.split('.').join('.');
+          const properties = modifiedVariable
+            .split('.').slice(1)
+            .map(prop => modifiedVariable.slice(0, modifiedVariable.indexOf(prop) - 1)).concat(modifiedVariable);
+          properties.forEach(parentProperty => {
+            if (!variableReferences[parentProperty]) variableReferences[parentProperty] = [];
+            variableReferences[parentProperty].push(variableConfig);
+          });
+        });
+      });
+
+    return {
+      variableReferences,
+      templateString
+    };
   }
 }
