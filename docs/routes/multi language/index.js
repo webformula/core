@@ -1,6 +1,7 @@
 import { Component } from '@webformula/core';
 import html from './page.html';
 import { i18nLanguage } from '@webformula/core';
+i18nLanguage.cacheType = 'none';
 
 export default class extends Component {
   static title = 'Multiple languages';
@@ -28,7 +29,6 @@ export default class extends Component {
   changeLanguage(checked) {
     this.languagesChecked = checked;
     i18nLanguage.language = checked ? 'es' : 'en';
-    this.render();
   }
 
   disconnectedCallback() {

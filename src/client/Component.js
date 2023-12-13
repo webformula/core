@@ -74,7 +74,9 @@ export default class Component extends HTMLElement {
   }
 
   internalDisconnect() {
-    if (this.#hasTranslation) window.removeEventListener('languagechange', this.#languageChange_bound);
+    if (this.#hasTranslation) {
+      window.removeEventListener('wfclanguagechange', this.#languageChange_bound);
+    }
   }
 
   // override
@@ -106,7 +108,8 @@ export default class Component extends HTMLElement {
 
   async onLoadRender() {
     // the pre rendered page uses en for its language. We need to re render if the browser language is not end
-    if (this.#hasTranslation && i18Language.language !== 'en') return this.render();
+    if (this.#hasTranslation && i18Language.language !== i18Language.browserLanguage) return this.render();
+    else this.#captureVariableReferenceAttributes();
 
     if (!this.#rendered) this.#prepareRender();
 
@@ -129,7 +132,7 @@ export default class Component extends HTMLElement {
 
     if (!this.rendered) this.#postRender();
     this.#rendered = true;
-
+    
     window.dispatchEvent(new Event('webformulacorepagerender'));
   }
 
@@ -137,7 +140,7 @@ export default class Component extends HTMLElement {
     const nodeIterator = document.createNodeIterator(
       document.body,
       NodeFilter.SHOW_COMMENT,
-      (node) => node.data.includes('expression-block')
+      (node) => node.data.includes('wfc-exp')
     );
 
     let currentNode;
@@ -176,6 +179,7 @@ export default class Component extends HTMLElement {
       const parsed = expressionParse(this, this.#templateString);
       this.#templateString = parsed.templateString;
       this.#variableReferences = parsed.variableReferences;
+      this.#variableReferences._idRefValue = {};
       this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
       if (this.constructor.useTemplate === true) {
         const isDynamic = (this.constructor.html || this.template.toString()).includes('${');
@@ -195,7 +199,7 @@ export default class Component extends HTMLElement {
       }
       if (this.#translationMatches.length > 0 || this.#templateString.includes('.translate(')) {
         this.#hasTranslation = true;
-        window.addEventListener('languagechange', this.#languageChange_bound);
+        window.addEventListener('wfclanguagechange', this.#languageChange_bound);
       }
     }
   }
@@ -217,5 +221,20 @@ export default class Component extends HTMLElement {
   #languageChange() {
     this.#buildTemplateFunction();
     this.render();
+  }
+
+  #captureVariableReferenceAttributes() {
+    Object.values(this.#variableReferences).forEach(items => {
+      Array.isArray(items) && items
+        .filter(v => v.type === 'attr')
+        .forEach(item => item.template());
+    });
+  }
+
+  bindAttrVal(str, id) {
+    if (!this.#variableReferences._idRefValue[id]) this.#variableReferences._idRefValue[id] = {};
+    this.#variableReferences._idRefValue[id].lastValue = this.#variableReferences._idRefValue[id].value;
+    this.#variableReferences._idRefValue[id].value = str;
+    return str;
   }
 }

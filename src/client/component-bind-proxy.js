@@ -1,3 +1,5 @@
+const attrRegex = /([^\s=]*)?(?:="([^"]*)")?\s*/g;
+
 export default function bindProxy(instance, variableReferences) {
   if (!variableReferences || Object.keys(variableReferences).length === 0) return;
 
@@ -29,7 +31,7 @@ export default function bindProxy(instance, variableReferences) {
       if (!variableReference) return Reflect.set(target, key, value, receiver);
       target[key] = value;
 
-      handleBindings(instance.rootElement, instance.expressionBlocks, variableReference);
+      handleBindings(instance.rootElement, instance.expressionBlocks, variableReference, variableReferences._idRefValue);
       return true;
     }
   };
@@ -37,16 +39,16 @@ export default function bindProxy(instance, variableReferences) {
   return new Proxy(instance, handler);
 }
 
-function handleBindings(rootElement, expressionBlocks, variableReference) {
+function handleBindings(rootElement, expressionBlocks, variableReference, refValues) {
   for (const variable of variableReference) {
     let templateValue;
     try { templateValue = variable.template(); } catch (e) { }
 
     if (variable.type === 'content') {
       // remove all nodes between expression blocks and re render template
-      const startBlock = expressionBlocks.find(n => n.data.includes('expression-block-start') && n.data.includes(`wfc-bind-${variable.id}`));
+      const startBlock = expressionBlocks.find(n => n.data.includes('wfc-exp-start') && n.data.includes(`wfc-bind-${variable.id}`));
       if (startBlock.parentElement.hasAttribute('wfc-no-binding')) return;
-      const endBlock = expressionBlocks.find(n => n.data.includes('expression-block-end') && n.data.includes(`wfc-bind-${variable.id}`));
+      const endBlock = expressionBlocks.find(n => n.data.includes('wfc-exp-end') && n.data.includes(`wfc-bind-${variable.id}`));
       const replaceNodes = [];
       let currentNode = startBlock.nextSibling;
       while (currentNode !== endBlock) {
@@ -58,16 +60,23 @@ function handleBindings(rootElement, expressionBlocks, variableReference) {
       template.innerHTML = templateValue;
       startBlock.parentElement.insertBefore(template.content, endBlock);
 
-    } else if (variable.type === 'attribute-value') {
+    } else if (variable.type === 'attr-value') {
       const boundElement = rootElement.querySelector(`[wfc-bind-${variable.id}]`);
       if (boundElement.hasAttribute('wfc-no-binding')) return;
-      if (boundElement.nodeName === 'INPUT' && variable.attribute === 'value') boundElement.value = templateValue;
-      boundElement.setAttribute(variable.attribute, templateValue);
+      if (boundElement.nodeName === 'INPUT' && variable.attr === 'value') boundElement.value = templateValue;
+      boundElement.setAttribute(variable.attr, templateValue);
 
-    } else if (variable.type === 'attribute') {
-      // TODO figure ou this binding
-      // const boundElement = rootElement.querySelector(`[wfc-bind-${variable.id}]`);
-      // if (boundElement.hasAttribute('wfc-no-binding')) return;
+    } else if (variable.type === 'attr') {
+      const attributeBlock = expressionBlocks.find(n => n.data.includes('wfc-exp-attr') && n.data.includes(`wfc-bind-${variable.id}`));
+      const currentElement = attributeBlock.nextSibling;
+      const oldAttrs = [...refValues[variable.id].lastValue.matchAll(attrRegex)].filter(v => !!v[1]).map(v => v[1]);
+      const newAttrs = [...refValues[variable.id].value.matchAll(attrRegex)].filter(v => !!v[1]).map(v => ({ name: v[1], value: v[2] }));
+
+      oldAttrs.forEach(name => currentElement.removeAttribute(name));
+      newAttrs.forEach(({ name, value }) => {
+        if (value === undefined) value = '';
+        currentElement.setAttribute(name, value);
+      });
     }
   }
 }

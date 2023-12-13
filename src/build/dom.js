@@ -19,7 +19,13 @@ class CSSStyleSheet {
 class EventSource { }
 const localStorage = {
   getItem() { },
-  setItem() { }
+  setItem() { },
+  removeItem() { }
+};
+const sessionStorage = {
+  getItem() { },
+  setItem() { },
+  removeItem() { }
 };
 function getComputedStyle() {
   return {
@@ -65,6 +71,7 @@ export default function add() {
   global.MutationObserver = dom.MutationObserver;
   global.getComputedStyle = getComputedStyle;
   global.localStorage = localStorage;
+  global.sessionStorage = sessionStorage;
   global.matchMedia = matchMedia;
   global.navigator = {
     ...dom.navigator,

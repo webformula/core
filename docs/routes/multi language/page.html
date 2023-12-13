@@ -54,8 +54,11 @@
   // get translation
   console.log(i18nLanguage.translate('key'));
 
-  // en-US will show as es
-  console.log(i18nLanguage.language); // en, es
+  // en-US will match to en messages
+  console.log(i18nLanguage.language); // en, en-US, es
+
+  // Set cache strategy: localStorage (default), sessionStorage, none
+  i18nLanguage.cacheType = 'sessionStorage';
   
   // get messages config
   console.log(i18nLanguage.messages);`)}

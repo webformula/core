@@ -3,7 +3,7 @@ const expressionCloseRegex = /(?<!\\)}/g;
 const expressionTickRegex = /(?<!\\)`/g;
 const variableRegex = /(?:page\.|this\.)((?:[a-zA-Z0-9_.]+)+)(\(|'|"|\s*={1,3})?/g;
 const attributeValueMatchRegex = /\s+(\S+)=\s*\"\s*$/;
-const attributeMatchRegex = /<(\S+)([^<>]*)$/;
+const attributeMatchRegex = /<(\S+[^<>]*)$/;
 
 // modify template and create expression variable reference
 export default function expressionParse(instance, templateString) {
@@ -98,29 +98,30 @@ export default function expressionParse(instance, templateString) {
 
   // Modify template and build variable reference
   // Attributes: add 'wfc-bind-${id}' attribute to element
-  // Element content: wrap in comments <!-- expression-block-end wfc-bind-${id} -->${}<!-- expression-block-start wfc-bind-${id} -->
+  // Element content: wrap in comments <!-- wfc-exp-end wfc-bind-${id} -->${}<!-- wfc-exp-start wfc-bind-${id} -->
   //   comments are used to replace content
   const variableReferences = {};
   grouped.reverse()
     .filter(({ variables }) => variables.length > 0)
     .forEach(({ open, close, variables }, i) => {
-      const templateStr = templateString.slice(open, close + 1);
+      let templateStr = templateString.slice(open, close + 1);
       const attrValueMatch = templateString.slice(0, open).match(attributeValueMatchRegex);
       const attrMatch = attrValueMatch === null && templateString.slice(0, open).match(attributeMatchRegex);
       
       if (attrValueMatch !== null) {
         templateString = `${templateString.slice(0, attrValueMatch.index)} wfc-bind-${i}${attrValueMatch[0]}${templateString.slice(open)}`;
       } else if (attrMatch !== null) {
-        templateString = `${templateString.slice(0, open).replace(attributeMatchRegex, `<$1 wfc-bind-${i} $2`)}${templateString.slice(open)}`;
+        templateStr = `${templateString.slice(attrMatch.index, open)}\${page.bindAttrVal(\`${templateString.slice(open, close + 1)}\`, ${i})}${templateString.slice(close + 1)}`;
+        templateString = `${templateString.slice(0, attrMatch.index)}<!-- wfc-exp-attr wfc-bind-${i} -->${templateStr}`;
       } else {
-        templateString = `${templateString.slice(0, close + 1)}<!-- expression-block-end wfc-bind-${i} -->${templateString.slice(close + 1)}`;
-        templateString = `${templateString.slice(0, open)}<!-- expression-block-start wfc-bind-${i} -->${templateString.slice(open)}`;
+        templateString = `${templateString.slice(0, close + 1)}<!-- wfc-exp-end wfc-bind-${i} -->${templateString.slice(close + 1)}`;
+        templateString = `${templateString.slice(0, open)}<!-- wfc-exp-start wfc-bind-${i} -->${templateString.slice(open)}`;
       }
 
       const variableConfig = {
         id: i,
-        type: attrValueMatch !== null ? 'attribute-value' : attrMatch !== null ? 'attribute' : 'content',
-        attribute: attrValueMatch !== null ? attrValueMatch[1] : undefined,
+        type: attrValueMatch !== null ? 'attr-value' : attrMatch !== null ? 'attr' : 'content',
+        attr: attrValueMatch !== null ? attrValueMatch[1] : undefined,
         template: () => new Function('page', `return \`${templateStr}\`;`).call(instance, instance)
       };
 
