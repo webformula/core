@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@webformula/core": "file:./",
-    "@webformula/material": "^0.22.1",
+    "@webformula/material": "^0.23.0",
     "aws-sdk": "^2.1407.0"
   }
 }
