@@ -1,18 +1,21 @@
+const expressionCommentBlockRegex = /<!--(?:(?!-->)[\S\s])*-->/g;
 const expressionOpenRegex = /(?<!\\)\${/g;
 const expressionCloseRegex = /(?<!\\)}/g;
 const expressionTickRegex = /(?<!\\)`/g;
 const variableRegex = /(?:page\.|this\.)((?:[a-zA-Z0-9_.]+)+)(\(|'|"|\s*={1,3})?/g;
 const attributeValueMatchRegex = /\s+(\S+)=\s*\"\s*$/;
-const attributeMatchRegex = /<(\S+[^<>]*)$/;
+const attributeMatchRegex = /<([^<>]*)$/;
 
 // modify template and create expression variable reference
 export default function expressionParse(instance, templateString) {
   if (window.webformulaCoreBinding === false) return templateString;
 
+  const htmlCommentBlocks = [...templateString.matchAll(expressionCommentBlockRegex)].map(v => [v.index, v.index + v[0].length]);
   const expressionOpens = [...templateString.matchAll(expressionOpenRegex)].map(v => ['open', v.index]);
   const expressionClose = [...templateString.matchAll(expressionCloseRegex)].map(v => ['close', v.index]);
   const expressionTick = [...templateString.matchAll(expressionTickRegex)].map(v => ['tick', v.index]);
   const combined = [...expressionOpens, ...expressionClose, ...expressionTick].sort((a, b) => a[1] - b[1]);
+  let wrapOpened = false;
   let opened = false;
   let opens = 0;
   let closes = 0;
@@ -28,20 +31,23 @@ export default function expressionParse(instance, templateString) {
   // close-sub = '}' inner close before final
   // close-tick = '}' inside of ticks (not a real close)
   const expressionIndexes = combined.map(([type, index]) => {
+    if (htmlCommentBlocks.find(([start, end]) => index > start && index < end)) return;
     switch (type) {
       case 'open':
         opens += 1;
         inTick = false;
         if (!opened) {
           opened = true;
+          wrapOpened = true;
           return [type, index];
-        }
-        return ['open-sub', index];
+        } if (wrapOpened) return ['open-sub', index];
 
       case 'close':
+        if (!wrapOpened) return;
         if (!inTick) {
           closes += 1;
           if (closes >= opens) {
+            wrapOpened = false;
             opened = false;
             opens = 0;
             closes = 0;
@@ -56,6 +62,7 @@ export default function expressionParse(instance, templateString) {
         return ['close-tick', index];
 
       case 'tick':
+        if (!wrapOpened) return;
         if (!inTick) {
           inTick = true;
           ticks += 1;
@@ -66,7 +73,7 @@ export default function expressionParse(instance, templateString) {
           return ['tick-close', index];
         }
     }
-  });
+  }).filter(v => !!v);
 
   // group based on 'open' and 'close' chars
   const grouped = [];
