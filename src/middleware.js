@@ -177,5 +177,7 @@ function getMimeType(url) {
       return 'font/woff';
     case 'otf':
       return 'font/otf';
+    case 'map':
+      return 'application/json';
   }
 }

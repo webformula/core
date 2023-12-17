@@ -55,8 +55,8 @@ export default async function copyFiles(config, outputFileNames) {
       // just copy
       if (typeof transform !== 'function') {
         return Promise.all(filtered.map(async filePath => {
-          const witePath = path.join(to, filePath.split(globBase).pop());
-          await mkdir(witePath.split('/').slice(0, -1).join('/'), { recursive: true });
+          const writePath = path.join(to, filePath.split(globBase).pop());
+          await mkdir(writePath.split('/').slice(0, -1).join('/'), { recursive: true });
           await cp(filePath, writePath);
           if (gzip) await gzipFile(writePath);
           return {

@@ -1,7 +1,13 @@
 import build from '@webformula/core/build';
 import generate from '@webformula/material/themeGenerator';
 
-generate('./node_modules/@webformula/material/src/theme.css', './docs/theme.css');
+
+if (process.env.NODE_ENV === 'production') generate({
+  coreColors: {
+    primary: '#6750A4'
+  }
+}, './docs/colorTokens.css');
+
 build({
   chunks: false,
   basedir: 'docs/',
