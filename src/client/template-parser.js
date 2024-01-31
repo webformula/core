@@ -2,12 +2,16 @@ const expressionCommentBlockRegex = /<!--(?:(?!-->)[\S\s])*-->/g;
 const expressionOpenRegex = /(?<!\\)\${/g;
 const expressionCloseRegex = /(?<!\\)}/g;
 const expressionTickRegex = /(?<!\\)`/g;
-const variableRegex = /(?:page\.|this\.)((?:[a-zA-Z0-9_.]+)+)(\(|'|"|\s*={1,3})?/g;
+const variableRegex = /(?:\$page\.|this\.)((?:[a-zA-Z0-9_.]+)+)(\(|'|"|\s*={1,3})?/g;
 const attributeValueMatchRegex = /\s+(\S+)=\s*\"\s*$/;
 const attributeMatchRegex = /<([^<>]*)$/;
+const idPageRegex = /id\s*=\s*"\$page"/g;
+const pageRefReplaceRegex = /(?<!\$|\.|\])page([.[])/g;
 
 // modify template and create expression variable reference
 export default function expressionParse(instance, templateString) {
+  if (templateString.match(idPageRegex)) throw Error('An element contains id="page". This is not allowed');
+  templateString = templateString.replace(pageRefReplaceRegex, '$page$1');
   if (window.webformulaCoreBinding === false) return templateString;
 
   const htmlCommentBlocks = [...templateString.matchAll(expressionCommentBlockRegex)].map(v => [v.index, v.index + v[0].length]);
@@ -108,6 +112,7 @@ export default function expressionParse(instance, templateString) {
   // Element content: wrap in comments <!-- wfc-exp-end wfc-bind-${id} -->${}<!-- wfc-exp-start wfc-bind-${id} -->
   //   comments are used to replace content
   const variableReferences = {};
+  // const attrValueReferences = [];
   grouped.reverse()
     .filter(({ variables }) => variables.length > 0)
     .forEach(({ open, close, variables }, i) => {
@@ -118,7 +123,7 @@ export default function expressionParse(instance, templateString) {
       if (attrValueMatch !== null) {
         templateString = `${templateString.slice(0, attrValueMatch.index)} wfc-bind-${i}${attrValueMatch[0]}${templateString.slice(open)}`;
       } else if (attrMatch !== null) {
-        templateStr = `${templateString.slice(attrMatch.index, open)}\${page.bindAttrVal(\`${templateString.slice(open, close + 1)}\`, ${i})}${templateString.slice(close + 1)}`;
+        templateStr = `${templateString.slice(attrMatch.index, open)}\${$page.bindAttrVal(\`${templateString.slice(open, close + 1)}\`, ${i})}${templateString.slice(close + 1)}`;
         templateString = `${templateString.slice(0, attrMatch.index)}<!-- wfc-exp-attr wfc-bind-${i} -->${templateStr}`;
       } else {
         templateString = `${templateString.slice(0, close + 1)}<!-- wfc-exp-end wfc-bind-${i} -->${templateString.slice(close + 1)}`;
@@ -129,8 +134,11 @@ export default function expressionParse(instance, templateString) {
         id: i,
         type: attrValueMatch !== null ? 'attr-value' : attrMatch !== null ? 'attr' : 'content',
         attr: attrValueMatch !== null ? attrValueMatch[1] : undefined,
-        template: () => new Function('page', `return \`${templateStr}\`;`).call(instance, instance)
+        template: () => new Function('$page', `return \`${templateStr}\`;`).call(instance, instance)
+        // variables
       };
+
+      // if (variableConfig.type === 'attr-value' && variables.length === 1) attrValueReferences.push(variableConfig);
 
       // split variable into sub paths for easy lookup
       // one.two = ['one', 'one.two']
@@ -148,6 +156,7 @@ export default function expressionParse(instance, templateString) {
 
   return {
     variableReferences,
+    // attrValueReferences,
     templateString
   };
 }

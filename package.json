@@ -27,12 +27,12 @@
   },
   "homepage": "https://github.com/webformula/core#readme",
   "dependencies": {
-    "esbuild": "^0.19.9",
-    "linkedom": "^0.16.4"
+    "esbuild": "^0.19.11",
+    "linkedom": "^0.16.6"
   },
   "devDependencies": {
     "@webformula/core": "file:./",
-    "@webformula/material": "^0.23.0",
+    "@webformula/material": "^0.25.0",
     "aws-sdk": "^2.1407.0"
   }
 }

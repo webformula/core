@@ -14,11 +14,11 @@ const debugScript = `
 console.warn('Webformula Core: Debug mode');
 
 window.getBoundVariables = () => {
-  console.log(window.page.getVariableReferences());
+  console.log(window.$page.getVariableReferences());
 }
 
 window.getPageTemplate = () => {
-  console.log(window.page.getTemplate());
+  console.log(window.$page.getTemplate());
 }
 
 window.getRoutes = () => {
@@ -77,6 +77,7 @@ export default async function build(params = {
   const basedir = params.basedir || 'app/';
   const outdir = params.outdir || 'dist/';
   const appCSSPath = path.join(basedir, '/app.css');
+  const isDevServerEnableSet = params?.devServer?.enabled;
   const config = {
     pageCounter: 0,
     isDev: isDev,
@@ -105,7 +106,7 @@ export default async function build(params = {
   if (config.devServer.liveReload) config.liveReloadScript = liveReloadScript;
 
   const data = await run(config);
-  if (!isDev) process.exit();
+  if (!isDev && !isDevServerEnableSet) process.exit();
   return data;
 }
 
@@ -194,8 +195,8 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
 
   const appScriptPreload = `<link rel="modulepreload" href="${appScriptPath}" />`;
   const appImportChunks = appJSOutput.imports.map(v => v.path.split('/').pop()).filter(v => v.startsWith('chunk-'));
-  const appScriptTag = `<script src="${appScriptPath}" type="module" defer></script>`;
-  const appCssTag = `<link href="${appCssPath}" rel="stylesheet">`;
+  const appScriptTag = `<script src="${appScriptPath}" type="module" async></script>`;
+  const appCssTag = `<link rel="preload" href="${appCssPath}" as="style" onload="this.onload=null;this.rel='stylesheet'">`
 
   // prepare template file
   indexFile = indexFile
@@ -357,7 +358,12 @@ function injectCode(config) {
   }
 
   #prepareRender() {`);
-          contents = contents.replace(`['render','onLoadRender'].includes(key)`, `['render', 'onLoadRender', 'getVariableReferences', 'getTemplate'].includes(key)`)
+          return { contents };
+        });
+
+        build.onLoad({ filter: /component-bind-proxy\.js/ }, async args => {
+          let contents = await readFile(args.path, 'utf-8');
+          contents = contents.replace(`['render', 'onLoadRender', 'internalDisconnect']`, `['render', 'onLoadRender', 'internalDisconnect', 'getVariableReferences', 'getTemplate']`);
           return { contents };
         });
       }

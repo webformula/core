@@ -28,6 +28,8 @@ export default class Component extends HTMLElement {
   #hasTranslation = false;
   #translationMatches = [];
   #expressionBlocks = [];
+  // #attrValueReferences = [];
+  #attrObserver;
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
@@ -35,7 +37,6 @@ export default class Component extends HTMLElement {
 
     this.#buildTemplate();
     this.#buildTemplateFunction();
-
 
     /** Render as soon as possible while making sure all class variables exist */
     // render non page component
@@ -74,6 +75,10 @@ export default class Component extends HTMLElement {
   }
 
   internalDisconnect() {
+    if (this.#attrObserver) {
+      this.#attrObserver.disconnect();
+      this.#attrObserver = undefined;
+    }
     if (this.#hasTranslation) {
       window.removeEventListener('wfclanguagechange', this.#languageChange_bound);
     }
@@ -108,7 +113,7 @@ export default class Component extends HTMLElement {
 
   async onLoadRender() {
     // the pre rendered page uses en for its language. We need to re render if the browser language is not end
-    if (this.#hasTranslation && i18Language.language !== i18Language.browserLanguage) return this.render();
+    if (this.#hasTranslation && i18Language.shouldTranslate()) return this.render();
     else this.#captureVariableReferenceAttributes();
 
     if (!this.#rendered) this.#prepareRender();
@@ -137,6 +142,61 @@ export default class Component extends HTMLElement {
   }
 
   #postRender() {
+    // if (this.#attrValueReferences.length > 0) {
+    //   let attrVariablesReference = {};
+    //   let byElement = [];
+    //   this.#attrValueReferences = this.#attrValueReferences.reduce((obj, attr) => {
+    //     const element = document.querySelector(`[wfc-bind-${attr.id}]`);
+    //     let elementItem = byElement.find(v => v[0] === element);
+    //     if (!elementItem) {
+    //       elementItem = [element, []];
+    //       byElement.push(elementItem);
+    //     }
+    //     elementItem[1].push(attr.attr);
+
+    //     if (!attrVariablesReference[attr.attr]) attrVariablesReference[attr.attr] = [];
+    //     attr.variables.forEach(v => !attrVariablesReference[attr.attr].includes(v) && attrVariablesReference[attr.attr].push(v));
+    //     attr.variables.forEach(v => {
+    //       if (!obj[v]) obj[v] = [];
+    //       if (!obj[v]) obj[v] = [];
+    //       obj[v].push([element, attr]);
+    //     });
+
+    //     return obj;
+    //   }, {});
+
+    //   this.#attrObserver = new MutationObserver(mutations => {
+    //     const variables = {};
+    //     mutations.forEach(mutation => {
+    //       let value = mutation.target.getAttribute(mutation.attributeName);
+    //       if (value === 'false') value = false;
+    //       if (value === 'true') value = true;
+          
+    //       attrVariablesReference[mutation.attributeName].forEach(v => {
+    //         if (!variables[v]) {
+    //           const pageValue = this[v];
+    //           if (value === pageValue) return;
+    //           if (value === null && pageValue === false) return;
+    //           if (parseFloat(value) === pageValue) return;
+    //           if (parseInt(value) === pageValue) return;
+    //           if (value === null && pageValue === true) value = false;
+    //           if (typeof pageValue === 'number' && !isNaN(parseFloat(value))) value = parseFloat(value);
+    //           variables[v] = value;
+    //         }
+    //       });
+    //     });
+
+    //     Object.entries(variables).forEach(([variable, value]) => {
+    //       this.#proxy[variable] = value;
+    //     });
+    //   });
+
+    //   byElement
+    //     .filter(v => !v[0].hasAttribute('wfc-no-binding'))
+    //     .forEach(v => this.#attrObserver.observe(v[0], { attributeFilter: [...v[1]] }));
+    //   byElement = [];
+    // }
+
     const nodeIterator = document.createNodeIterator(
       document.body,
       NodeFilter.SHOW_COMMENT,
@@ -180,7 +240,8 @@ export default class Component extends HTMLElement {
       this.#templateString = parsed.templateString;
       this.#variableReferences = parsed.variableReferences;
       this.#variableReferences._idRefValue = {};
-      this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
+      // this.#attrValueReferences = parsed.attrValueReferences;
+      this.template = () => new Function('$page', `return \`${this.#templateString}\`;`).call(this, this);
       if (this.constructor.useTemplate === true) {
         const isDynamic = (this.constructor.html || this.template.toString()).includes('${');
         if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
@@ -214,7 +275,7 @@ export default class Component extends HTMLElement {
       this.#translationMatches.forEach(key => {
         translatedTemplate = translatedTemplate.replace(key, i18Language.translate(key));
       });
-      this.template = () => new Function('page', `return \`${translatedTemplate}\`;`).call(this, this);
+      this.template = () => new Function('$page', `return \`${translatedTemplate}\`;`).call(this, this);
     }
   }
 

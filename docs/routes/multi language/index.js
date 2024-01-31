@@ -1,7 +1,6 @@
 import { Component } from '@webformula/core';
 import html from './page.html';
 import { i18nLanguage } from '@webformula/core';
-i18nLanguage.cacheType = 'none';
 
 export default class extends Component {
   static title = 'Multiple languages';
@@ -12,6 +11,7 @@ export default class extends Component {
   constructor() {
     super();
 
+    i18nLanguage.cacheType = 'none';
     i18nLanguage.messages = {
       en: {
         'About': 'About',

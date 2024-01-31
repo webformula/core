@@ -5,6 +5,10 @@ const app = {
   preventNavigation: false
 };
 
+// prevent html code from throwing an error before route hookup
+//  onchage="page.var = 'value'"
+window.$page = { __initial__: true };
+
 
 export function routes(config = [{
   component,
@@ -48,7 +52,7 @@ async function route(locationObject, back = false, initial = false) {
     match.component._defined = true;
   }
 
-  const currentPage = window.page;
+  const currentPage = window.$page;
   const samePage = currentPage?.constructor === match.component;
   if (samePage) {
     const hashMatches = locationObject.hash === location.hash;
@@ -60,11 +64,11 @@ async function route(locationObject, back = false, initial = false) {
   }
   const nextPage = new match.component();
   if (!back && !initial) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
-  if (currentPage) {
+  if (!currentPage.__initial__) {
     currentPage.internalDisconnect();
     currentPage.disconnectedCallback();
   }
-  window.page = nextPage;
+  window.$page = nextPage;
 
   if (!initial) {
     nextPage.render();
@@ -78,6 +82,7 @@ async function route(locationObject, back = false, initial = false) {
   nextPage.connectedCallback();
   requestAnimationFrame(() => {
     if (!initial) window.dispatchEvent(new Event('locationchange'));
+    else window.dispatchEvent(new Event('locationchangeinitial'));
   });
 }
 

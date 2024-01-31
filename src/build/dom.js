@@ -58,17 +58,40 @@ const visualViewport = {
   height: 900
 };
 
+class ResizeObserver {
+  observe() {}
+  disconnect() {}
+}
+
+class IntersectionObserver {
+  observe() { }
+  disconnect() { }
+}
+
 dom.document.adoptedStyleSheets = [];
 dom.document.styleSheets = [];
 dom.document.fonts = { ready: Promise.resolve([]) };
 dom.window.scrollTo = () => {};
 
+// Fix broken linkedom Customevent
+class CustomEvent extends dom.Event {
+  constructor(type, eventInitDict = {}) {
+    super(type, eventInitDict);
+    this.detail = eventInitDict.detail;
+  }
+}
+
 export default function add() {
+  global.CustomEvent = CustomEvent;
+  global.dispatchEvent = () => { };
   global.window = dom.window
   global.HTMLElement = dom.HTMLElement;
+  global.HTMLInputElement = dom.HTMLInputElement;
   global.document = dom.document;
   global.CSSStyleSheet = CSSStyleSheet;
   global.MutationObserver = dom.MutationObserver;
+  global.IntersectionObserver = IntersectionObserver;
+  global.ResizeObserver = ResizeObserver;
   global.getComputedStyle = getComputedStyle;
   global.localStorage = localStorage;
   global.sessionStorage = sessionStorage;

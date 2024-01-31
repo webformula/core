@@ -62,8 +62,8 @@ function handleBindings(rootElement, expressionBlocks, variableReference, refVal
     } else if (variable.type === 'attr-value') {
       const boundElement = rootElement.querySelector(`[wfc-bind-${variable.id}]`);
       if (boundElement.hasAttribute('wfc-no-binding')) return;
-      if (boundElement.nodeName === 'INPUT' && variable.attr === 'value') boundElement.value = templateValue;
-      boundElement.setAttribute(variable.attr, templateValue);
+      if (boundElement.nodeName === 'INPUT' && variable.attr === 'value' && boundElement.value !== templateValue) boundElement.value = templateValue;
+      if (boundElement.getAttribute(variable.attr)!== templateValue) boundElement.setAttribute(variable.attr, templateValue);
 
     } else if (variable.type === 'attr') {
       const attributeBlock = expressionBlocks.find(n => n.data.trim().startsWith('wfc-exp-attr') && n.data.trim().endsWith(`wfc-bind-${variable.id}`));

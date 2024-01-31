@@ -1,11 +1,12 @@
 export default new class I18nLanguage {
-  #language = localStorage.getItem('wfc-user-language') || navigator.language;
+  #language;
   #messages = {};
   #templateMessages = {};
   #cacheType = 'localStorage';
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
+    this.#language = this.browserLanguage;
     window.addEventListener('languagechange', this.#languageChange_bound);
   }
 
@@ -23,7 +24,7 @@ export default new class I18nLanguage {
       sessionStorage.removeItem('wfc-user-language');
       localStorage.removeItem('wfc-user-language');
     }
-
+    window.wfcLanguage = this.#language;
     window.dispatchEvent(new Event('wfclanguagechange'));
   }
 
@@ -75,6 +76,12 @@ export default new class I18nLanguage {
       sessionStorage.removeItem('wfc-user-language');
       localStorage.removeItem('wfc-user-language');
     }
+  }
+
+  shouldTranslate() {
+    if (!this.#messages) return false;
+    if (this.#language === this.browserLanguage) return false;
+    return true;
   }
 
   translate(key) {
