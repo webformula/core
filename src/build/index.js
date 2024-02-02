@@ -1,11 +1,14 @@
 import esbuild from 'esbuild';
 import path from 'node:path';
 import { access, readFile, readdir, stat, rm, writeFile } from 'node:fs/promises';
+import { gzip } from 'node:zlib';
+import { promisify } from 'node:util';
 import devServer from './dev-server.js';
 import routeParser from './route-parser.js';
 import addMockDom from './dom.js';
 import copyFiles from './copy-files.js';
 
+const asyncGzip = promisify(gzip);
 const isDev = process.env.NODE_ENV !== 'production';
 
 /**
@@ -52,7 +55,12 @@ export default async function build(config = {
 }) {
   if (isDev) {
     config.debugScript = debugScript;
+    if (config.sourcemaps === undefined) config.sourcemaps = true;
     if (config.devServer !== false && config.devServerLivereload !== false) config.liveReloadScript = liveReloadScript;
+  } else {
+    if (config.gzip === undefined) config.gzip = true;
+    if (config.minify === undefined) config.minify = true;
+    if (config.gzip === undefined) config.gzip = true;
   }
 
   if (config.onStart) await config.onStart();
@@ -235,6 +243,22 @@ async function cleanOutdir(dir) {
     const filePath = path.join(dir, file);
     if ((await stat(filePath)).isDirectory()) return cleanOutdir(filePath);
     await rm(filePath);
+  }));
+}
+
+async function gzipFiles(outputFiles) {
+  await Promise.all(outputFiles.map(async item => {
+    // some files are only temporarily used to build then deleted
+    const exists = await access(item.output).then(() => true).catch(() => false);
+    if (!exists) return;
+
+    try {
+      let content = await readFile(item.output);
+      const result = await asyncGzip(content);
+      await writeFile(item.output, result);
+    } catch (e) {
+      console.log('error', item, e)
+    }
   }));
 }
 
