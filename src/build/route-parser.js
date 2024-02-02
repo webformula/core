@@ -7,22 +7,22 @@ const searchRegexString = '(\\?([^#]*))?';
 const hashRegexString = '(#(.*))?';
 const followedBySlashRegexString = '(?:\/$|$)';
 const routeToNameRegex = /\/|\.|\s|\[|\]|\?/g;
-
-
 const routePathParamRegex = /\/?\[(\.{3})?([^\[]+)\]/g;
 const routeRegexReplaceRegex = /\/(\*|:)?([^\/\?]+)(\?)?/g;
 
 export default async function getRoutes(config) {
-  const routePaths = await getRoutePaths(config);
   const routeStripper = new RegExp(`${config.basedir}routes|\/index\.js$`, 'g');
-  let hasIndex = false;
+  const routePaths = await getRoutePaths(config.basedir, path.join(config.basedir, 'routes'));
   
+  let hasIndex = false;
   const routes = routePaths.map(filePath => {
     const relativePath = filePath.replace(routeStripper, '');
+
     // convert parameters. [id] -> :id, [...rest] -> *rest
     let routePath = relativePath.replace(routePathParamRegex, (_str, rest, label) => {
       return `/${!!rest ? '*' : ':'}${label}`
     });
+
     if (routePath === '/index') {
       routePath = '/';
       hasIndex = true;
@@ -40,6 +40,7 @@ export default async function getRoutes(config) {
       notFound: relativePath === '/404'
     };
   });
+
   if (!hasIndex) console.warn('Missing index route. `routes/index/index.js`');
   return {
     routesCode: generateRouteCode(routes, config),
@@ -47,12 +48,13 @@ export default async function getRoutes(config) {
   };
 }
 
+
 // find all paths to index.js. This is the page class file
-async function getRoutePaths(config, dir = path.join(config.basedir, 'routes'), arr = []) {
+async function getRoutePaths(basedir, dir, arr = []) {
   const files = await readdir(dir);
   await Promise.all(files.map(async file => {
     const filePath = path.join(dir, file);
-    if ((await stat(filePath)).isDirectory()) return getRoutePaths(config, filePath, arr);
+    if ((await stat(filePath)).isDirectory()) return getRoutePaths(basedir, filePath, arr);
     if (filePath.endsWith('index.js')) arr.push(filePath);
   }));
   return arr;
@@ -67,7 +69,7 @@ function buildPathRegex(route) {
     if (route.trim() === '/' || route.includes('#')) regexString = `^${route}$`;
     regexString = `^${route}${searchRegexString}${hashRegexString}$`;
 
-  // parse parameters in path
+    // parse parameters in path
   } else {
     regexString = `^${route.replace(routeRegexReplaceRegex, (_str, prefix, label, optional = '') => {
       if (prefix === '*') return `\/(?<${label}>.+)${optional}`;
@@ -91,7 +93,7 @@ routes([
     component: ${route.routeModuleName}${!route.notFound ? '' : `,
     notFound: true`}
   }`)}
-]);${!config.isDev ? '' : `\n\nwindow.webformulaRoutes = [${routes.map(route => `{
+]);${!config.isDev ? '' : `\n\nwindow.wfcRoutes = [${routes.map(route => `{
   path: '${route.routePath}',
   regex: ${route.regex},
   component: ${route.routeModuleName}${!route.notFound ? '' : `,

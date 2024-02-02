@@ -1,13 +1,13 @@
 @import url(./colorTokens.css);
 @import url('./dracula.css');
 
-html:not(.mdw-initiated) {
-  opacity: 0;
-  pointer-events: none;
+:root {
+  font-family: system-ui, Arial;
 }
 
-:root {
-  color-scheme: light;
+html {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .page-title {
@@ -52,7 +52,6 @@ pre {
 pre > code {
   max-width: 100%;
   overflow-x: auto;
-  margin: 0 12px;
 }
 
 mdw-card > pre:first-of-type > code {

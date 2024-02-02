@@ -1,301 +1,271 @@
+import BindPage from './page-binding.js';
 import i18Language from './i18n.js';
-import expressionParse from './template-parser.js';
-import bindProxy from './component-bind-proxy.js';
+
 
 const templateElements = [];
 
+/**
+ * Component class used for pages and web components
+ * @extends HTMLElement
+ */
 export default class Component extends HTMLElement {
-  static title;
   /**
-   * Used for imported html
-   *   Can use template literals: <div>${this.var}</div>
-   */
+    * Page title
+    * @type {String}
+    */
+  static pageTitle;
+
+  /**
+    * Pass in HTML string. Use for imported .HTML
+    *   Supports template literals: <div>${this.var}</div>
+    * @type {String}
+    */
   static html = '';
 
-  /** if not using shadowRoot templates and rendering still work */
+  /**
+    * Pass in styles for shadow root.
+    *   Can use imported stylesheets: import styles from '../styles.css' assert { type: 'css' };
+    * @type {CSSStyleSheet}
+    */
+  static shadowRootStyleSheets;
+
+  /**
+    * Hook up shadow root
+    * @type {Boolean}
+    */
   static useShadowRoot = false;
 
-  /** Use template element to clone from
-   *   If your template uses dynamic variables you do not want to use this */
+  /**
+    * @type {Boolean}
+    */
+  static shadowRootDelegateFocus = false;
+
+  /**
+    * Store template string in template element
+    *   Using this will break dynamic rendering from values that change: <div>${this.var}</div>
+    * @type {Boolean}
+    */
   static useTemplate = true;
 
-  #id;
+  /**
+  * @typedef {String} AttributeType
+  * @value '' default handling
+  * @value 'string' Convert to a string. null = ''
+  * @value 'number' Convert to a number. isNaN = ''
+  * @value 'int' Convert to a int. isNaN = ''
+  * @value 'boolean' Convert to a boolean. null = false
+  * @value 'event' Allows code to be executed. Similar to onchange="console.log('test')"
+  */
+  /**
+  * Enhances observedAttributes, allowing you to specify types
+  * @type {Array.<[name:String, AttributeType]>}
+  */
+  static get observedAttributesExtended() { return []; };
+  static get observedAttributes() { return this.observedAttributesExtended.map(a => a[0]); }
+
+  /**
+    * Use with observedAttributesExtended
+    *   This automatically handles type conversions and duplicate calls from setting attributes
+    * @name observedAttributesExtended
+    * @function
+    */
+  // static get observedAttributesExtended() { }
+
+  
+  #classId;
+  #pageBinding;
   #root = this;
-  #rendered = false;
-  #variableReferences = {};
+  #attributeEvents = {};
+  #attributesLookup;
+  #prepared;
+  #templateElement;
+  #translationMatches;
   #templateString;
-  #proxy;
-  #hasTranslation = false;
-  #translationMatches = [];
-  #expressionBlocks = [];
-  // #attrValueReferences = [];
-  #attrObserver;
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
     super();
 
-    this.#buildTemplate();
-    this.#buildTemplateFunction();
+    this.#attributesLookup = Object.fromEntries(this.constructor.observedAttributesExtended);
 
-    /** Render as soon as possible while making sure all class variables exist */
-    // render non page component
-    if (!this.constructor._isPage && hasTemplate) {
-      requestAnimationFrame(() => this.render());
-
-      // hook up page-content for render
-    } else {
+    if (this.constructor._isPage) {
       const pageContent = document.querySelector('page-content') || document.querySelector('#page-content');
       if (!pageContent) throw Error('Could not find page-content');
       this.#root = pageContent;
-    }
 
-    this.#proxy = bindProxy(this, this.#variableReferences);
-    if (this.#proxy) return this.#proxy;
-  }
-
-  get searchParameters() {
-    return Object.fromEntries([...new URLSearchParams(location.search).entries()]);
-  }
-
-  get urlParameters() {
-    return location.pathname.match(this.constructor._pagePathRegex)?.groups;
-  }
-
-  get rendered() {
-    return this.#rendered;
-  }
-
-  get rootElement() {
-    return this.#root;
-  }
-
-  get expressionBlocks() {
-    return this.#expressionBlocks;
-  }
-
-  internalDisconnect() {
-    if (this.#attrObserver) {
-      this.#attrObserver.disconnect();
-      this.#attrObserver = undefined;
-    }
-    if (this.#hasTranslation) {
-      window.removeEventListener('wfclanguagechange', this.#languageChange_bound);
+      this.#pageBinding = new BindPage(this);
+      if (this.#pageBinding) {
+        return this.#pageBinding.proxy;
+      }
     }
   }
 
-  // override
-  connectedCallback() { }
-  disconnectedCallback() { }
+  get rootElement() { return this.#root; }
 
-  /** beforeRender not called on initial render */
-  async beforeRender() { }
-  async afterRender() { }
 
-  /** Return HTML template string.
-   *  ./index.js
-   *  new class one extends Page {
+  /**
+   * Method that returns a html template string. This is an alternative to use static html
    *    template() {
    *       return `<div>${this.var}</div>`;
    *    }
-   *  }
+   * @name template
+   * @function
+   * @return {String}
    */
-  template() { return "" }
+  template() {
+    return this.constructor.html;
+  }
 
-  /** Escape html to make safe for injection */
-  escape(str) {
-    return str.replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
-  };
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (oldValue === newValue) return;
+    const type = this.#attributesLookup[name];
+    name = name.replace(dashCaseRegex, (_, s) => s.toUpperCase());
+    if (type === 'event') {
+      if (this.#attributeEvents[name]) {
+        this.removeEventListener(name.replace(/^on/, ''), this.#attributeEvents[name]);
+        this.#attributeEvents[name] = undefined;
+      }
+      if (newValue) {
+        this.#attributeEvents[name] = this.#attributeDescriptorTypeConverter(newValue, type);
+        this.addEventListener(name.replace(/^on/, ''), this.#attributeEvents[name]);
+      }
+    } else {
+      this.attributeChangedCallbackExtended(
+        name,
+        this.#attributeDescriptorTypeConverter(oldValue, type),
+        this.#attributeDescriptorTypeConverter(newValue, type)
+      );
+    }
+  }
 
+  /**
+   * Use with observedAttributesExtended
+   * @function
+   * @param {String} name - Attribute name
+   * @param {String} oldValue - Old attribute value
+   * @param {String} newValue - New attribute value
+   */
+  attributeChangedCallbackExtended(name, oldValue, newValue) { }
+
+
+  connectedCallback() {}
+  disconnectedCallback() {}
+
+  /** Called before render */
+  beforeRender() {}
+
+  /** Called after render */
+  afterRender() {}
+
+  internalDisconnect() {
+    window.removeEventListener('wfclanguagechange', this.#languageChange_bound);
+  }
+
+  /** Render Component. This is automatically called for pages */
+  render() {
+    if (!this.#prepared) this.#prepareRender();
+    !this.#pageBinding ? this.beforeRender() : this.beforeRender.call(this.#pageBinding.proxy);
+    if (!this.constructor.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
+    this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
+    if (this.#pageBinding) this.#pageBinding.postRender();
+    !this.#pageBinding ? this.afterRender() : this.afterRender.call(this.#pageBinding.proxy);
+    if (this.constructor._isPage) window.dispatchEvent(new Event('webformulacorepagerender'));
+  }
+
+  /** Translate string. <div>${page.translate('some key string')}</div> */
   translate(key) {
     return i18Language.translate(key);
   }
 
-  async onLoadRender() {
-    // the pre rendered page uses en for its language. We need to re render if the browser language is not end
-    if (this.#hasTranslation && i18Language.shouldTranslate()) return this.render();
-    else this.#captureVariableReferenceAttributes();
+  /** Escape html. <div>${page.escape('some string')}</div> */
+  escape(str) {
+    return str.replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
+  };
 
-    if (!this.#rendered) this.#prepareRender();
-
-    !this.#proxy ? await this.beforeRender() : await this.beforeRender.call(this.#proxy);
-    !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
-
-    if (!this.rendered) this.#postRender();
-    this.#rendered = true;
-  }
-
-  async render() {
-    if (!this.#rendered) this.#prepareRender();
-
-    !this.#proxy ? await this.beforeRender() : await this.beforeRender.call(this.#proxy);
-    // render every time so template literal expression update
-    if (!this.constructor.useTemplate) this.#root.innerHTML = this.template();
-    // render from template element
-    else this.#root.replaceChildren(templateElements[this.#id].content.cloneNode(true));
-    !this.#proxy ? await this.afterRender() : await this.afterRender.call(this.#proxy);
-
-    if (!this.rendered) this.#postRender();
-    this.#rendered = true;
-    
-    window.dispatchEvent(new Event('webformulacorepagerender'));
-  }
-
-  #postRender() {
-    // if (this.#attrValueReferences.length > 0) {
-    //   let attrVariablesReference = {};
-    //   let byElement = [];
-    //   this.#attrValueReferences = this.#attrValueReferences.reduce((obj, attr) => {
-    //     const element = document.querySelector(`[wfc-bind-${attr.id}]`);
-    //     let elementItem = byElement.find(v => v[0] === element);
-    //     if (!elementItem) {
-    //       elementItem = [element, []];
-    //       byElement.push(elementItem);
-    //     }
-    //     elementItem[1].push(attr.attr);
-
-    //     if (!attrVariablesReference[attr.attr]) attrVariablesReference[attr.attr] = [];
-    //     attr.variables.forEach(v => !attrVariablesReference[attr.attr].includes(v) && attrVariablesReference[attr.attr].push(v));
-    //     attr.variables.forEach(v => {
-    //       if (!obj[v]) obj[v] = [];
-    //       if (!obj[v]) obj[v] = [];
-    //       obj[v].push([element, attr]);
-    //     });
-
-    //     return obj;
-    //   }, {});
-
-    //   this.#attrObserver = new MutationObserver(mutations => {
-    //     const variables = {};
-    //     mutations.forEach(mutation => {
-    //       let value = mutation.target.getAttribute(mutation.attributeName);
-    //       if (value === 'false') value = false;
-    //       if (value === 'true') value = true;
-          
-    //       attrVariablesReference[mutation.attributeName].forEach(v => {
-    //         if (!variables[v]) {
-    //           const pageValue = this[v];
-    //           if (value === pageValue) return;
-    //           if (value === null && pageValue === false) return;
-    //           if (parseFloat(value) === pageValue) return;
-    //           if (parseInt(value) === pageValue) return;
-    //           if (value === null && pageValue === true) value = false;
-    //           if (typeof pageValue === 'number' && !isNaN(parseFloat(value))) value = parseFloat(value);
-    //           variables[v] = value;
-    //         }
-    //       });
-    //     });
-
-    //     Object.entries(variables).forEach(([variable, value]) => {
-    //       this.#proxy[variable] = value;
-    //     });
-    //   });
-
-    //   byElement
-    //     .filter(v => !v[0].hasAttribute('wfc-no-binding'))
-    //     .forEach(v => this.#attrObserver.observe(v[0], { attributeFilter: [...v[1]] }));
-    //   byElement = [];
-    // }
-
-    const nodeIterator = document.createNodeIterator(
-      document.body,
-      NodeFilter.SHOW_COMMENT,
-      (node) => node.data.includes('wfc-exp')
-    );
-
-    let currentNode;
-    this.#expressionBlocks = [];
-    while ((currentNode = nodeIterator.nextNode())) {
-      this.#expressionBlocks.push(currentNode);
+  /** @private */
+  bindAttrVal(str, id) {
+    if (this.#pageBinding) {
+      if (!this.#pageBinding.refValues[id]) this.#pageBinding.refValues[id] = {};
+      this.#pageBinding.refValues[id].lastValue = this.#pageBinding.refValues[id].value;
+      this.#pageBinding.refValues[id].value = str;
+      return str;
     }
   }
 
   #prepareRender() {
+    // set on constructor?
+    this.#prepared = true;
+    
+    if (this.#pageBinding?.enabled && !this.#pageBinding?.parsed) {
+      this.template = this.#pageBinding.parseTemplate();
+      this.#templateString = this.#pageBinding.templateString;
+    } else {
+      this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+      this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
+    }
+
+    this.#translationMatches = i18Language.activeSortedMessageKeys.filter(key => {
+      const included = this.#templateString.includes(key);
+      if (included) this.#templateString.replace(key, '');
+      return included;
+    });
+    if (this.#translationMatches.length > 0) window.addEventListener('wfclanguagechange', this.#languageChange_bound);
+
     if (this.constructor._isPage) {
       const title = document.querySelector('title');
-      title.innerText = this.constructor.title;
+      title.innerText = this.constructor.pageTitle;
+      this.#templateElement = document.createElement('template');
       return;
     }
 
     if (this.constructor.useTemplate) {
-      if (!this.#id) this.#id = Array.from(this.constructor.toString()).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
-      if (!templateElements[this.#id]) {
-        templateElements[this.#id] = document.createElement('template');
-        templateElements[this.#id].innerHTML = this.template();
+      if (!this.#classId) this.#classId = btoa(this.constructor.toString().replace(/\s/g, ''));
+      if (!templateElements[this.#classId]) {
+        templateElements[this.#classId] = document.createElement('template');
+        templateElements[this.#classId].innerHTML = this.template();
       }
+      this.#templateElement = templateElements[this.#classId];
+    } else {
+      this.#templateElement = document.createElement('template');
     }
 
     if (this.constructor.useShadowRoot) {
-      this.attachShadow({ mode: 'open' });
+      this.attachShadow({ mode: 'open', delegatesFocus: this.constructor.shadowRootDelegateFocus });
       this.#root = this.shadowRoot;
-    }
-  }
 
-  // convert html string to template literal function
-  #buildTemplate() {
-    this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
-    const hasTemplate = !!this.#templateString;
-    if (hasTemplate) {
-      const parsed = expressionParse(this, this.#templateString);
-      this.#templateString = parsed.templateString;
-      this.#variableReferences = parsed.variableReferences;
-      this.#variableReferences._idRefValue = {};
-      // this.#attrValueReferences = parsed.attrValueReferences;
-      this.template = () => new Function('$page', `return \`${this.#templateString}\`;`).call(this, this);
-      if (this.constructor.useTemplate === true) {
-        const isDynamic = (this.constructor.html || this.template.toString()).includes('${');
-        if (isDynamic) console.warn('Component template contains dynamic variables. You should set \`static useTemplate = false;\` or the templates may not have correct values');
+      if ((Array.isArray(this.constructor.shadowRootStyleSheets) && this.constructor.shadowRootStyleSheets.length > 0) || this.constructor.shadowRootStyleSheets instanceof CSSStyleSheet) {
+        this.#root.adoptedStyleSheets = [].concat(this.constructor.shadowRootStyleSheets);
       }
-    }
-
-    if (!this.rendered) {
-      // detect if there are any translation matches
-      if (i18Language.autoTranslate) {
-        let tempTemplate = this.#templateString;
-        this.#translationMatches = i18Language.activeSortedMessageKeys.filter(key => {
-          const included = tempTemplate.includes(key);
-          if (included) tempTemplate.replace(key, '');
-          return included;
-        });
-      }
-      if (this.#translationMatches.length > 0 || this.#templateString.includes('.translate(')) {
-        this.#hasTranslation = true;
-        window.addEventListener('wfclanguagechange', this.#languageChange_bound);
-      }
-    }
-  }
-
-  // replace all the translation matches and re create the template method
-  // This will only run if window._webformulaCoreAutoTranslate = true;
-  #buildTemplateFunction() {
-    if (!i18Language.autoTranslate) return;
-
-    if (this.#hasTranslation) {
-      let translatedTemplate = this.#templateString;
-      this.#translationMatches.forEach(key => {
-        translatedTemplate = translatedTemplate.replace(key, i18Language.translate(key));
-      });
-      this.template = () => new Function('$page', `return \`${translatedTemplate}\`;`).call(this, this);
     }
   }
 
   #languageChange() {
-    this.#buildTemplateFunction();
+    let translatedTemplate = this.#templateString;
+    this.#translationMatches.forEach(key => {
+      translatedTemplate = translatedTemplate.replace(key, i18Language.translate(key));
+    });
+    this.template = () => new Function('$page', `return \`${translatedTemplate}\`;`).call(this, this);
     this.render();
   }
 
-  #captureVariableReferenceAttributes() {
-    Object.values(this.#variableReferences).forEach(items => {
-      Array.isArray(items) && items
-        .filter(v => v.type === 'attr')
-        .forEach(item => item.template());
-    });
-  }
 
-  bindAttrVal(str, id) {
-    if (!this.#variableReferences._idRefValue[id]) this.#variableReferences._idRefValue[id] = {};
-    this.#variableReferences._idRefValue[id].lastValue = this.#variableReferences._idRefValue[id].value;
-    this.#variableReferences._idRefValue[id].value = str;
-    return str;
+  #attributeDescriptorTypeConverter(value, type) {
+    switch (type) {
+      case 'boolean':
+        return value !== null && `${value}` !== 'false';
+      case 'int':
+        const int = parseInt(value);
+        return isNaN(int) ? '' : int;
+      case 'number':
+        const num = parseFloat(value);
+        return isNaN(num) ? '' : num;
+      case 'string':
+        return value || '';
+      case 'event':
+        return !value ? null : () => new Function('page', value).call(this, window.page);
+        break;
+      default:
+        return value;
+    }
   }
 }

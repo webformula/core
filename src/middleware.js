@@ -24,7 +24,20 @@ const exampleParams = {
   onEnd: () => { }
 }
 
-
+/**
+ * Middleware to auto build and server application
+ * @param {any} config={basedir:'app/'
+ * @param {any} outdir:'dist/'
+ * @param {any} chunks:true
+ * @param {any} minify:true
+ * @param {any} sourcemaps:false
+ * @param {any} gzip:true
+ * @param {any} copyFiles:[{from:''
+ * @param {any} to:''
+ * @param {any} transform:({content
+ * @param {any} outputFileNames}
+ * @returns {any}
+ */
 export function middlewareExpress(params = exampleParams) {
   init(params);
 
@@ -135,7 +148,7 @@ export async function handleFiles(url, app) {
 
 async function init(params) {
   params.isMiddleware = true;
-  params.devServer = { enabled: false };
+  params.devServerEnabled = false
   const { routes, files, gzip } = await build(params);
   app.gzip = gzip;
   app.routes = routes;

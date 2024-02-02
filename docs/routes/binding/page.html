@@ -8,9 +8,7 @@
       <div class="mdw-card-content">
         <div class="mdw-headline">Basic binding</div>
         
-        <mdw-textfield class="mdw-raise-label" style="margin-top: 24px;">
-          <label style="animation: none;">Type something</label>
-          <input value="${page.basicBind}" oninput="page.basicBind = this.value">
+        <mdw-textfield class="mdw-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}" oninput="page.basicBind = this.value">
         </mdw-textfield>
 
         <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>

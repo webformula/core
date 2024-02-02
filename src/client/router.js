@@ -6,10 +6,20 @@ const app = {
 };
 
 // prevent html code from throwing an error before route hookup
-//  onchage="page.var = 'value'"
-window.$page = { __initial__: true };
+//  onchange="page.var = 'value'"
+window.page = { __initial__: true };
 
 
+/**
+* @typedef {Object} config
+* @property {Component} component Component class
+* @property {string} path Route path
+* @property {boolean} [notFound] Mark as not found page
+*/
+/**
+ * Register routes. This is called automatically
+ * @param {config[]} config route configuration
+ */
 export function routes(config = [{
   component,
   path,
@@ -25,69 +35,24 @@ export function routes(config = [{
       if (!isCurrent) isCurrent = location.pathname.match(c.regex) !== null;
     }
   }
-  window.webformulaRoutes = app.paths;
+
+  window.wfcRoutes = app.paths;
   if (!window.__isBuilding && isCurrent) route(location, false, true);
 }
 
-export function preventNavigation(value = true) {
-  app.preventNavigation = !!value;
+
+/**
+ * Prevents all navigation. Good for auth flow
+ * @param {boolean} enabled Enable for SPA
+ */
+export function preventNavigation(enabled = true) {
+  app.preventNavigation = !!enabled;
 }
 
 
-async function route(locationObject, back = false, initial = false) {
-  if (!initial && app.preventNavigation) return;
-
-  let match = app.paths.find(v => locationObject.pathname.match(v.regex) !== null);
-  if (!match) match = app.paths.find(v => v.notFound);
-  if (!match) console.warn(`No page found for path: ${locationObject.pathname}`);
-
-  // using web components for pages so we need to define it
-  if (!match.component._defined) {
-    match.component = await Promise.resolve(match.component);
-    if (typeof match.component !== 'function') match.component = match.component.default;
-    match.component.useTemplate = false;
-    match.component._isPage = true;
-    match.component._pagePathRegex = match.regex;
-    customElements.define(`page-${app.pageCounter++}`, match.component);
-    match.component._defined = true;
-  }
-
-  const currentPage = window.$page;
-  const samePage = currentPage?.constructor === match.component;
-  if (samePage) {
-    const hashMatches = locationObject.hash === location.hash;
-    const searchMatches = locationObject.search === location.search;
-    if (hashMatches && searchMatches) return;
-    if (!back) window.history.pushState({}, currentPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
-    if (!hashMatches) window.dispatchEvent(new Event('hashchange'));
-    return;
-  }
-  const nextPage = new match.component();
-  if (!back && !initial) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
-  if (!currentPage.__initial__) {
-    currentPage.internalDisconnect();
-    currentPage.disconnectedCallback();
-  }
-  window.$page = nextPage;
-
-  if (!initial) {
-    nextPage.render();
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-    // document.querySelector('page-content').scrollTop = 0;
-  } else {
-    // nextPage.render();
-    nextPage.onLoadRender();
-  }
-  nextPage.connectedCallback();
-  requestAnimationFrame(() => {
-    if (!initial) window.dispatchEvent(new Event('locationchange'));
-    else window.dispatchEvent(new Event('locationchangeinitial'));
-  });
-}
-
-if (window.webformulaCoreSpa !== false) {
-  window.webformulaCoreLinkIntercepts = true;
+/** Makes navigation localized for SPA */
+export function enableSPA() {
+  window.wfcSPA = true;
   document.addEventListener('click', event => {
     if (!event.target.matches('[href]')) return;
 
@@ -106,8 +71,9 @@ if (window.webformulaCoreSpa !== false) {
   window.addEventListener('popstate', event => {
     if (popPrevented) return popPrevented = false; // used in preventing back navigation
 
+    // TODO
     // simulate before unload for spa
-    if (window.webformulaCoreSpa !== false) {
+    if (window.wfcSPA !== false) {
       const beforeUnloadEvent = new Event('beforeunload', { cancelable: true });
       window.dispatchEvent(beforeUnloadEvent);
       if (beforeUnloadEvent.defaultPrevented && !confirm('Changes you made may not be saved.')) {
@@ -117,5 +83,64 @@ if (window.webformulaCoreSpa !== false) {
     } else {
       route(new URL(event.currentTarget.location), true);
     }
+  });
+}
+
+/**
+ * Change route. This is automatically called by href links
+ * @param {Object} locationObject route configuration
+ * @param {Boolean} [back] Declare back navigation
+ * @param {Boolean} [initial] Declare initial navigation
+ */
+async function route(locationObject, back = false, initial = false) {
+  if (!initial && app.preventNavigation) return;
+  
+  let match = app.paths.find(v => locationObject.pathname.match(v.regex) !== null);
+  if (!match) match = app.paths.find(v => v.notFound);
+  if (!match) console.warn(`No page found for path: ${locationObject.pathname}`);
+
+  // using web components for pages so we need to define it
+  if (!match.component._defined) {
+    match.component = await Promise.resolve(match.component);
+    if (typeof match.component !== 'function') match.component = match.component.default;
+    match.component.useTemplate = false;
+    match.component._isPage = true;
+    match.component._pagePathRegex = match.regex;
+    customElements.define(`page-${app.pageCounter++}`, match.component);
+    match.component._defined = true;
+  }
+
+  const currentPage = window.page;
+  const samePage = currentPage?.constructor === match.component;
+
+  if (samePage) {
+    const hashMatches = locationObject.hash === location.hash;
+    const searchMatches = locationObject.search === location.search;
+    if (hashMatches && searchMatches) return;
+    if (!back) window.history.pushState({}, currentPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
+    if (!hashMatches) window.dispatchEvent(new Event('hashchange'));
+    return;
+  }
+
+  if (!currentPage.__initial__) {
+    currentPage.internalDisconnect();
+    currentPage.disconnectedCallback();
+  }
+  const nextPage = new match.component();
+  if (!back && !initial) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
+  window.page = nextPage;
+
+  if (!initial) {
+    nextPage.render();
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  } else {
+    nextPage.render();
+    // nextPage.onLoadRender();
+  }
+  nextPage.connectedCallback();
+  requestAnimationFrame(() => {
+    if (!initial) window.dispatchEvent(new Event('locationchange'));
+    else window.dispatchEvent(new Event('locationchangeinitial'));
   });
 }

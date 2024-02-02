@@ -4,13 +4,13 @@ import { handleRoute, handleFiles } from '../middleware.js';
 
 const clients = new Map();
 
-export default function runServer(app) {
+export default function runServer(app, port = 3000) {
   createServer(async (req, res) => {
     if (req.url === '/devserver-ping') {
       res.end();
       return true;
     }
-    
+
     let requestId;
     if (!req.headers.cookie?.includes('devserver=')) {
       requestId = performance.now();
@@ -54,5 +54,5 @@ export default function runServer(app) {
         stream.pipe(res);
       });
     }
-  }).listen(app.devServer.port);
+  }).listen(port);
 }

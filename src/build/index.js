@@ -1,67 +1,40 @@
+import esbuild from 'esbuild';
 import path from 'node:path';
 import { access, readFile, readdir, stat, rm, writeFile } from 'node:fs/promises';
-import { gzip } from 'node:zlib';
-import { promisify } from 'node:util';
-import esbuild from 'esbuild';
-import getRoutes from './routeParser.js';
+import devServer from './dev-server.js';
+import routeParser from './route-parser.js';
 import addMockDom from './dom.js';
-import copyFiles from './copyFiles.js';
-import devServer from './devServer.js';
+import copyFiles from './copy-files.js';
 
-const asyncGzip = promisify(gzip);
 const isDev = process.env.NODE_ENV !== 'production';
-const debugScript = `
-console.warn('Webformula Core: Debug mode');
 
-window.getBoundVariables = () => {
-  console.log(window.$page.getVariableReferences());
-}
-
-window.getPageTemplate = () => {
-  console.log(window.$page.getTemplate());
-}
-
-window.getRoutes = () => {
-  console.log(window.webformulaRoutes);
-}`;
-const liveReloadScript = `
-  <script>
-    let isReloading = false;
-    new EventSource("/livereload").onerror = async () => {
-      if (isReloading) return;
-      isReloading = true;
-      await pingServer();
-      location.reload();
-    };
-
-    async function pingServer(wait = 20) {
-      return new Promise(resolve => {
-        setTimeout(async () => {
-          try {
-            await fetch('/devserver-ping');
-            resolve();
-          } catch (e) {
-            await pingServer(Math.min(15000, wait + (wait * 0.5)));
-            resolve();
-          }
-        }, wait);
-      });
-    }
-  </script>`;
-
-
-export default async function build(params = {
+/**
+ * Build application
+ * @param {any} config={basedir:'app/'
+ * @param {any} outdir:'dist/'
+ * @param {any} chunks:true
+ * @param {any} minify:true
+ * @param {any} sourcemaps:false
+ * @param {any} gzip:true
+ * @param {any} devServer:true
+ * @param {any} devServerPort:3000
+ * @param {any} devServerLivereload:true
+ * @param {any} copyFiles:[{from:''
+ * @param {any} to:''
+ * @param {any} transform:({content
+ * @param {any} outputFileNames}
+ * @returns {any}
+ */
+export default async function build(config = {
   basedir: 'app/',
   outdir: 'dist/',
   chunks: true,
   minify: true,
   sourcemaps: false,
   gzip: true,
-  devServer: {
-    enabled: true,
-    port: 3000,
-    liveReload: true
-  },
+  devServer: true,
+  devServerPort: 3000,
+  devServerLivereload: true,
   copyFiles: [{
     from: '',
     to: '',
@@ -74,48 +47,20 @@ export default async function build(params = {
   onStart: () => { },
   onEnd: () => { }
 }) {
-  const basedir = params.basedir || 'app/';
-  const outdir = params.outdir || 'dist/';
-  const appCSSPath = path.join(basedir, '/app.css');
-  const isDevServerEnableSet = params?.devServer?.enabled;
-  const config = {
-    pageCounter: 0,
-    isDev: isDev,
-    basedir,
-    outdir,
-    appJsPath: path.join(basedir, '/app.js'),
-    indexHTMLPath: path.join(basedir, '/index.html'),
-    appCSSPath,
-    hasAppCSS: await access(appCSSPath).then(e => true).catch(e => false),
-    chunks: params.chunks === false ? false : true,
-    minify: params.minify === false ? false : params.minify === true ? true : !isDev,
-    gzip: params.gzip === false ? false : params.gzip === true ? true : !isDev,
-    sourcemaps: params.sourcemaps === false ? false : params.sourcemaps === true ? true : isDev,
-    indexHTMLPath: path.join(basedir, '/index.html'),
-    devServer: {
-      enabled: params?.devServer?.enabled === false ? false : true,
-      port: params?.devServer?.port || 3000,
-      liveReload: params?.devServer?.liveReload === false ? false : params?.devServer?.liveReload === true ? true : isDev
-    },
-    copyFiles: (params.copyFiles || []).filter(({ from }) => !!from),
-    onStart: params.onStart,
-    onEnd: params.onEnd,
-    isMiddleware: params.isMiddleware
-  };
-  if (isDev) config.debugScript = debugScript;
-  if (config.devServer.liveReload) config.liveReloadScript = liveReloadScript;
+  if (isDev) {
+    config.debugScript = debugScript;
+    if (config.devServer !== false && config.devServerLivereload !== false) config.liveReloadScript = liveReloadScript;
+  }
 
-  const data = await run(config);
-  if (!isDev && !isDevServerEnableSet) process.exit();
-  return data;
-}
-
-async function run(config) {
   if (config.onStart) await config.onStart();
   await cleanOutdir(config.outdir);
-  const routes = await getRoutes(config);
-  config.routes = routes;
-  
+  config.isDev = isDev;
+  config.appJsPath = path.join(config.basedir, '/app.js');
+  config.indexHTMLPath = path.join(config.basedir, '/index.html');
+  const appCSSPath = path.join(config.basedir, '/app.css');
+  const hasAppCSS = await access(appCSSPath).then(e => true).catch(e => false);
+  config.routes = await routeParser(config);
+
   const entryPoints = [config.appJsPath];
   // add entry points for each page
   if (config.chunks) entryPoints.concat(routes.routesConfig.map(v => v.filePath));
@@ -133,8 +78,8 @@ async function run(config) {
     sourcemap: config.sourcemap
   });
 
-  const appCSSContext = !config.hasAppCSS ? undefined : await esbuild.build({
-    entryPoints: [config.appCSSPath],
+  const appCSSContext = !hasAppCSS ? undefined : await esbuild.build({
+    entryPoints: [appCSSPath],
     bundle: true,
     outdir: config.outdir,
     metafile: true,
@@ -142,16 +87,15 @@ async function run(config) {
     minify: config.minify,
     loader: { '.css': 'css' }
   });
-
+  
   const {
     routeConfigs,
     outputs,
     appJSOutput,
     appCSSOutput
   } = buildOutputs(metafile.outputs, appCSSContext?.metafile.outputs, config);
-
   const indexHTMLFiles = await buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config);
-  const copiedFiles = await copyFiles(config, outputs);
+  const copiedFiles = await copyFiles(config.copyFiles, outputs);
   if (config.gzip) await gzipFiles(outputs.concat(indexHTMLFiles));
   if (config.onEnd) await config.onEnd();
 
@@ -172,10 +116,7 @@ async function run(config) {
     gzip: config.gzip
   };
 
-  if (config.devServer.enabled) devServer({
-    ...returnData,
-    devServer: config.devServer
-  });
+  if (isDev && config.devServer !== false) devServer(returnData, config.devServerPort);
   return returnData;
 }
 
@@ -187,27 +128,26 @@ const headRegex = /<head>/;
 const headEndRegex = /<\/head>/;
 const pageContentTagRegex = /(<\s?page-content\s?>)[^>]*(<\s?\/\s?page-content\s?>)|(<[^>]*id="page-content"[^>]*>)[^>]*(<\/[^>]*>)/;
 
-// build index html file for every page with template pre rendered
 async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
   const appScriptPath = `/${appJSOutput.output.split('/').pop()}`;
-  const appCssPath = `/${appCSSOutput.output.split('/').pop()}`;
+  const appCssPath = appCSSOutput && `/${appCSSOutput.output.split('/').pop()}`;
   let indexFile = await readFile(config.indexHTMLPath, 'utf-8');
 
-  const appScriptPreload = `<link rel="modulepreload" href="${appScriptPath}" />`;
+  const appScriptPreload = `<link rel="modulepreload" href="${appScriptPath}"/>`;
   const appImportChunks = appJSOutput.imports.map(v => v.path.split('/').pop()).filter(v => v.startsWith('chunk-'));
   const appScriptTag = `<script src="${appScriptPath}" type="module" async></script>`;
-  const appCssTag = `<link rel="preload" href="${appCssPath}" as="style" onload="this.onload=null;this.rel='stylesheet'">`
+  const appCssTag = !appCssPath ? '' : `<link rel="preload" href="${appCssPath}" as="style" onload="this.onload=null;this.rel='stylesheet'">`;
 
   // prepare template file
   indexFile = indexFile
     .replace(headRegex, `<head>\n  replace:preload`)
-    .replace(scripRegex, `replace:script\n${config.liveReloadScript || ''}`)
+    .replace(scripRegex, `replace:script\n${config.liveReloadScript || ''}${isDev ? `\n${debugScript}` : ''}`)
     .replace(stylesheetRegex, `replace:css`);
-  
+
   // if use did not add script or css tags then default to adding them to bottom of head
   if (!indexFile.includes('replace:css')) indexFile = indexFile.replace(headEndRegex, '  replace:css\n</head>');
-  if (!indexFile.includes('replace:script')) indexFile = indexFile.replace(headEndRegex, `  replace:script\n${config.liveReloadScript || ''}\n</head>`);
-
+  if (!indexFile.includes('replace:script')) indexFile = indexFile.replace(headEndRegex, `  replace:script\n${config.liveReloadScript || ''}${isDev ? `\n${debugScript}` : ''}\n</head>`);
+  
   // add mock dome so we can load the app script and render templates
   addMockDom();
   // used to prevent router code from running
@@ -216,10 +156,10 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
   await import(path.resolve('.', appJSOutput.output));
 
   // render template and build index html file for each page
-  const data = await Promise.all(routeConfigs.map(async route => {
+  const data = await Promise.all(routeConfigs.map(async (route, i) => {
     // load page to build template
-    const routeModule = await window.webformulaRoutes.find(v => v.path === route.routePath).component;
-    customElements.define(`page-${config.pageCounter++}`, routeModule.default);
+    const routeModule = await window.wfcRoutes.find(v => v.path === route.routePath).component;
+    customElements.define(`page-${i}`, routeModule.default);
     routeModule.default._isPage = true;
     routeModule.default.useTemplate = false;
     const template = new routeModule.default().template();
@@ -232,12 +172,12 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
 
     // inject preloads, scripts, css, page template
     const content = indexFile
-      .replace(titleRegex, `<title>${routeModule.default.title}</title>`)
+      .replace(titleRegex, `<title>${routeModule.default.pageTitle}</title>`)
       .replace('replace:preload', `${appScriptPreload}${pageScriptPreload}${pageImportChunks}\n`)
       .replace('replace:script', `${appScriptTag}\n`)
       .replace('replace:css', appCssTag)
-      .replace(pageContentTagRegex, (_, startA, endA, startB, endB) => `${startA || startB}\n${template.split('\n').join('\n')}\n${endA || endB}`);
-    
+      .replace(pageContentTagRegex, (_, startA, endA, startB, endB) => `${startA || startB}\n    ${template.split('\n').join('\n    ')}\n  ${endA || endB}`);
+
     return {
       fileName: route.indexHTMLFileName,
       content
@@ -247,6 +187,7 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
   await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
   return data.map(v => ({ output: v.fileName }));
 }
+
 
 // build information for writing outputs and building page index html files
 function buildOutputs(appOutputs, appCSSOutputs, config) {
@@ -284,6 +225,7 @@ function buildOutputs(appOutputs, appCSSOutputs, config) {
 }
 
 
+
 async function cleanOutdir(dir) {
   const files = await readdir(dir);
   await Promise.all(files.map(async file => {
@@ -293,24 +235,46 @@ async function cleanOutdir(dir) {
   }));
 }
 
-async function gzipFiles(outputFiles) {
-  await Promise.all(outputFiles.map(async item => {
-    // some files are only temporarily used to build then deleted
-    const exists = await access(item.output).then(() => true).catch(() => false);
-    if (!exists) return;
+const routesImportRegex = /routes[^@]+@webformula\/core(?:'|");/;
+function injectCode(config) {
+  return {
+    name: 'injectCode',
+    setup(build) {
+      // inject route config to app.js
+      build.onLoad({ filter: /app\.js/ }, async args => {
+        let contents = await readFile(args.path, 'utf-8');
+        if (contents.match(routesImportRegex) === null) {
+          contents = `import { routes } from \'@webformula/core\';\n${config.routes.routesCode}\n${contents}`;
+        }
+        return { contents };
+      });
 
-    try {
-      let content = await readFile(item.output);
-      const result = await asyncGzip(content);
-      await writeFile(item.output, result);
-    } catch (e) {
-      console.log('error', item, e)
+      if (isDev) {
+        // inject deb functions to component files
+        build.onLoad({ filter: /Component\.js/ }, async args => {
+          let contents = await readFile(args.path, 'utf-8');
+          contents = contents.replace('#prepareRender() {', `
+  getVariableReferences() {
+    return this.#pageBinding.variableReferences;
+  }
+
+  getTemplate() {
+    return this.#templateString;
+  }
+
+  #prepareRender() {`);
+          return { contents };
+        });
+
+        build.onLoad({ filter: /page-binding\.js/ }, async args => {
+          let contents = await readFile(args.path, 'utf-8');
+          contents = contents.replace(`['render', 'internalDisconnect', 'bindAttrVal']`, `['render', 'internalDisconnect', 'bindAttrVal', 'getVariableReferences', 'getTemplate']`);
+          return { contents };
+        });
+      }
     }
-  }));
-}
-
-
-
+  }
+};
 
 const pluginCss = {
   name: 'css',
@@ -333,40 +297,44 @@ const pluginCss = {
   }
 };
 
-function injectCode(config) {
-  return {
-    name: 'injectCode',
-    setup(build) {
-      // inject route config to app.js
-      build.onLoad({ filter: /app\.js/ }, async args => {
-        let contents = await readFile(args.path, 'utf-8');
-        contents = `import { routes } from \'@webformula/core\';\n${config.routes.routesCode}\n${contents}\n${config.debugScript || ''}`;
-        return { contents };
+
+const debugScript = `
+<script>
+  console.warn('Webformula Core: Debug mode');
+
+  window.getBoundVariables = () => {
+    console.log(window.page.getVariableReferences());
+  }
+
+  window.getPageTemplate = () => {
+    console.log(window.page.getTemplate());
+  }
+
+  window.getRoutes = () => {
+    console.log(window.wfcRoutes);
+  }
+</script>`;
+const liveReloadScript = `
+  <script>
+    let isReloading = false;
+    new EventSource("/livereload").onerror = async () => {
+      if (isReloading) return;
+      isReloading = true;
+      await pingServer();
+      location.reload();
+    };
+
+    async function pingServer(wait = 20) {
+      return new Promise(resolve => {
+        setTimeout(async () => {
+          try {
+            await fetch('/devserver-ping');
+            resolve();
+          } catch (e) {
+            await pingServer(Math.min(15000, wait + (wait * 0.5)));
+            resolve();
+          }
+        }, wait);
       });
-
-      if (config.isDev) {
-        // inject deb functions to component files
-        build.onLoad({ filter: /Component\.js/ }, async args => {
-          let contents = await readFile(args.path, 'utf-8');
-          contents = contents.replace('#prepareRender() {', `
-  getVariableReferences() {
-    return this.#variableReferences;
-  }
-
-  getTemplate() {
-    return this.#templateString;
-  }
-
-  #prepareRender() {`);
-          return { contents };
-        });
-
-        build.onLoad({ filter: /component-bind-proxy\.js/ }, async args => {
-          let contents = await readFile(args.path, 'utf-8');
-          contents = contents.replace(`['render', 'onLoadRender', 'internalDisconnect']`, `['render', 'onLoadRender', 'internalDisconnect', 'getVariableReferences', 'getTemplate']`);
-          return { contents };
-        });
-      }
     }
-  }
-};
+  </script>`;
