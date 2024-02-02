@@ -1,4 +1,5 @@
 import '@webformula/material/components/navigation-drawer';
+import '@webformula/material/components/navigation-bar';
 import '@webformula/material/components/anchor';
 import '@webformula/material/components/card';
 import '@webformula/material/components/button';
