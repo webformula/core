@@ -1,8 +1,9 @@
+/** Ia8n language class */
 export default new class I18nLanguage {
   #language;
+  #cache = false;
   #messages = {};
   #templateMessages = {};
-  #cacheType = 'localStorage';
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
@@ -10,31 +11,42 @@ export default new class I18nLanguage {
     window.addEventListener('languagechange', this.#languageChange_bound);
   }
 
-  get language() {
-    return this.#language;
-  }
+
+  /**
+   * Get the language locale
+   * @returns {String} Language locale
+   */
+  get language() { return this.#language; }
+  /**
+   * Set the language locale. Example: en-US
+   * @param {String} value locale
+   */
   set language(value) {
-    // if (!navigator.languages.includes(value)) throw Error(`Invalid language. Valid languages (${navigator.languages.join(', ')})`);
     if (value === this.#language) return;
 
     this.#language = value;
-    if (this.#cacheType === 'localStorage') localStorage.setItem('wfc-user-language', this.#language);
-    else if (this.#cacheType === 'sessionStorage') sessionStorage.setItem('wfc-user-language', this.#language);
-    else if (this.#cacheType === 'none') {
-      sessionStorage.removeItem('wfc-user-language');
-      localStorage.removeItem('wfc-user-language');
-    }
+    if (this.cache) localStorage.setItem('wfc-user-language', this.#language);
+    else localStorage.removeItem('wfc-user-language');
+
     window.wfcLanguage = this.#language;
     window.dispatchEvent(new Event('wfclanguagechange'));
   }
 
-  get browserLanguage() {
-    return navigator.language;
-  }
+  /**
+   * Get browser language locale
+   * @returns {String} Language locale
+   */
+  get browserLanguage() { return navigator.language; }
 
-  get messages() {
-    return this.#messages;
-  }
+  /**
+   * Get translation messages
+   * @returns {Object[]} Translation messages
+   */
+  get messages() { return this.#messages; }
+  /**
+   * Set translation messages
+   * @param {Object[]} value Translation messages
+   */
   set messages(value) {
     if (!value || typeof value !== 'object') throw Error('messages must be an object');
     this.#messages = value;
@@ -54,36 +66,45 @@ export default new class I18nLanguage {
     });
   }
 
+  /**
+   * Get sorted translation messages
+   * @returns {Object[]} Sorted translation messages
+   */
   get activeSortedMessageKeys() {
-    return Object.keys(this.messages[this.language]).sort((a, b) => b[0].length - a[0].length);
+    return Object.keys(this.#messages[this.language] || []).sort((a, b) => b[0].length - a[0].length);
   }
 
-  get autoTranslate() {
-    return window._webformulaCoreAutoTranslate === true;
+  /**
+   * Get is auto translated
+   * @returns {Boolean} Is auto translated
+   */
+  get autoTranslate() { return window._webformulaCoreAutoTranslate === true; }
+
+  /**
+   * Get is cache enabled
+   * @returns {Boolean} Is cache enabled
+   */
+  get cache() { return this.#cache; }
+  set cache(value) {
+    this.#cache = !!value;
+    if (this.#cache && localStorage.getItem('wfc-user-language')) this.#language = localStorage.getItem('wfc-user-language');
+    else localStorage.removeItem('wfc-user-language');
   }
 
-  get cacheType() {
-    return this.#cacheType;
-  }
-
-  set cacheType(value) {
-    if (value && !['localStorage', 'sessionStorage', 'none'].includes(value)) throw Error('cacheType must be one of these values: localStorage, sessionStorage, none');
-    this.#cacheType = value;
-
-    if (value === 'sessionStorage' && sessionStorage.getItem('wfc-user-language')) this.#language = sessionStorage.getItem('wfc-user-language');
-    else if (value === 'localStorage' && localStorage.getItem('wfc-user-language')) this.#language = localStorage.getItem('wfc-user-language');
-    else if (value === 'none') {
-      sessionStorage.removeItem('wfc-user-language');
-      localStorage.removeItem('wfc-user-language');
-    }
-  }
-
+  /**
+   * Boolean stating if translations are needed based on messages existing
+   * @returns {Boolean} Is translation needed
+   */
   shouldTranslate() {
     if (!this.#messages) return false;
     if (this.#language === this.browserLanguage) return false;
     return true;
   }
 
+  /**
+   * TRanslate string
+   * @param {String} key Translation key
+   */
   translate(key) {
     const messages = this.#messages[this.language] || this.#messages[this.language.split('-')[0]] || {};
     let message = messages[key];

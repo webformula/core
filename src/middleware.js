@@ -24,7 +24,21 @@ const exampleParams = {
   onEnd: () => { }
 }
 
-
+/**
+ * Middleware to auto build and server application
+ * @param {Object} config
+ * @param {String} config.basedir App root directory. Default: 'app/'
+ * @param {String} config.outdir App bundle directory. Default: 'dist/'
+ * @param {Boolean} config.chunks Chunk app per page. Default: true
+ * @param {Boolean} config.minify Minify bundle. Default: true
+ * @param {Boolean} config.sourcemaps Include sourcemaps. Default: false
+ * @param {Boolean} config.gzip Compress bundle. Default: true
+ * @param {Object[]} config.copyFiles Copy file config
+ * @param {String} config.copyFiles[].from Location of file
+ * @param {String} config.copyFiles[].to Destination for file
+ * @param {Function} config.copyFiles[].transform Transform function
+ * @returns {Object} Build data
+ */
 export function middlewareExpress(params = exampleParams) {
   init(params);
 
@@ -134,8 +148,9 @@ export async function handleFiles(url, app) {
 }
 
 async function init(params) {
+  params.spa = false;
   params.isMiddleware = true;
-  params.devServer = { enabled: false };
+  params.devServer = false
   const { routes, files, gzip } = await build(params);
   app.gzip = gzip;
   app.routes = routes;

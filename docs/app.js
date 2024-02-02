@@ -1,20 +1,23 @@
 import '@webformula/material/components/navigation-drawer';
+import '@webformula/material/components/anchor';
 import '@webformula/material/components/card';
 import '@webformula/material/components/button';
 import '@webformula/material/components/switch';
+import '@webformula/material/components/textfield';
 
+
+if (typeof hljs !== 'undefined') hljs.highlightAll();
 window.addEventListener('load', () => {
   hljs.highlightAll();
   if (location.hash) handleHashAnchor(location.hash, false);
 });
-window.addEventListener('webformulacorepagerender', () => {
-  hljs.highlightAll();
-});
 
 window.addEventListener('locationchange', () => {
-  hljs.highlightAll();
-  if (!location.hash) return;
-  handleHashAnchor(location.hash, false);
+  setTimeout(() => {
+    hljs.highlightAll();
+    if (!location.hash) return;
+    handleHashAnchor(location.hash, false);
+  });
 });
 
 window.addEventListener('hashchange', () => {

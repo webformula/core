@@ -32,6 +32,9 @@
   * Full config options
   */
   build({
+    // Enable spa routing : Default true
+    spa: true,
+
     // folder that contains 'app.js' : Default 'app.js'
     basedir: 'app/',
 
@@ -65,24 +68,22 @@
     */
     gzip: true,
 
-    devServer: {
-      /**
-      * Run dev server
-      * Set to 'false' when 'NODE_ENV=production'
-      *   otherwise it defaults to 'true'
-      */
-      enabled: true,
+    /**
+    * Run dev server
+    * Set to 'false' when 'NODE_ENV=production'
+    * otherwise it defaults to 'true'
+    */
+    devServer: true,
 
-      /**
-      * Livereload
-      * Simply use watch to enable 'node --watch build.js'
-      * Set to 'false' when 'NODE_ENV=production'
-      *   otherwise it defaults to 'true'
-      */
-      liveReload: true
-
-      port: 3000,
-    },
+    /**
+    * Livereload
+    * Simply use watch to enable 'node --watch build.js'
+    * Set to 'false' when 'NODE_ENV=production'
+    * otherwise it defaults to 'true'
+    */
+    devServerLiveReload: true,
+    
+    devServerPort: 3000,
 
     // supports regex's with wildcards (*, **)
     copyFiles: [

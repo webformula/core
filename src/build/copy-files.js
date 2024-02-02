@@ -5,8 +5,8 @@ import { promisify } from 'node:util';
 
 const asyncGzip = promisify(gzip);
 
-export default async function copyFiles(config, outputFileNames) {
-  return Promise.all(config.copyFiles.flatMap(async (file) => {
+export default async function copyFiles(copyFiles = [], outputFileNames) {
+  return Promise.all(copyFiles.flatMap(async (file) => {
     let { from, to, transform, gzip } = file;
     const isGlob = from.includes('*');
     if (!isGlob) {
