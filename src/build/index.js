@@ -10,22 +10,25 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 /**
  * Build application
- * @param {any} config={basedir:'app/'
- * @param {any} outdir:'dist/'
- * @param {any} chunks:true
- * @param {any} minify:true
- * @param {any} sourcemaps:false
- * @param {any} gzip:true
- * @param {any} devServer:true
- * @param {any} devServerPort:3000
- * @param {any} devServerLivereload:true
- * @param {any} copyFiles:[{from:''
- * @param {any} to:''
- * @param {any} transform:({content
- * @param {any} outputFileNames}
- * @returns {any}
+ * @param {Object} config
+ * @param {Boolean} config.spa Enable spa routing. Default: true
+ * @param {String} config.basedir App root directory. Default: 'app/'
+ * @param {String} config.outdir App bundle directory. Default: 'dist/'
+ * @param {Boolean} config.chunks Chunk app per page. Default: true
+ * @param {Boolean} config.minify Minify bundle. Default: true
+ * @param {Boolean} config.sourcemaps Include sourcemaps. Default: false
+ * @param {Boolean} config.gzip Compress bundle. Default: true
+ * @param {Boolean} config.devServer Enable dev server. Default: true
+ * @param {Number} config.devServerPort Dev server port. Default: 3000
+ * @param {Boolean} config.devServerLivereload Enable live reload. Default: true
+ * @param {Object[]} config.copyFiles Copy file config
+ * @param {String} config.copyFiles[].from Location of file
+ * @param {String} config.copyFiles[].to Destination for file
+ * @param {Function} config.copyFiles[].transform Transform function
+ * @returns {Object} Build data
  */
 export default async function build(config = {
+  spa: true,
   basedir: 'app/',
   outdir: 'dist/',
   chunks: true,
@@ -244,7 +247,7 @@ function injectCode(config) {
       build.onLoad({ filter: /app\.js/ }, async args => {
         let contents = await readFile(args.path, 'utf-8');
         if (contents.match(routesImportRegex) === null) {
-          contents = `import { routes } from \'@webformula/core\';\n${config.routes.routesCode}\n${contents}`;
+          contents = `import { routes, enableSPA } from \'@webformula/core\';${config.spa ? '\nenableSPA()' : ''}\n${config.routes.routesCode}\n${contents}`;
         }
         return { contents };
       });

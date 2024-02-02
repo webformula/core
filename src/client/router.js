@@ -52,13 +52,15 @@ export function preventNavigation(enabled = true) {
 
 /** Makes navigation localized for SPA */
 export function enableSPA() {
+  console.log('enableSPA');
   window.wfcSPA = true;
   document.addEventListener('click', event => {
+    console.log('click');
     if (!event.target.matches('[href]')) return;
-
+    console.log('1');
     // allow external links
     if (event.target.getAttribute('href').includes('://')) return;
-
+    console.log('2');
     event.preventDefault();
 
     route(new URL(event.target.href));
@@ -69,6 +71,7 @@ export function enableSPA() {
 
   let popPrevented = false;
   window.addEventListener('popstate', event => {
+    console.log('popstate');
     if (popPrevented) return popPrevented = false; // used in preventing back navigation
 
     // TODO
