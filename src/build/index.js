@@ -74,7 +74,7 @@ export default async function build(config = {
 
   const entryPoints = [config.appJsPath];
   // add entry points for each page
-  if (config.chunks) entryPoints.concat(routes.routesConfig.map(v => v.filePath));
+  if (config.chunks) entryPoints.concat(config.routes.routesConfig.map(v => v.filePath));
   const { metafile } = await esbuild.build({
     entryPoints,
     bundle: true,
