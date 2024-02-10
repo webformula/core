@@ -115,7 +115,7 @@ async function route(locationObject, back = false, initial = false) {
     const hashMatches = locationObject.hash === location.hash;
     const searchMatches = locationObject.search === location.search;
     if (hashMatches && searchMatches) return;
-    if (!back) window.history.pushState({}, currentPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
+    if (!back) window.history.pushState({}, currentPage.constructor.pageTitle, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
     if (!hashMatches) window.dispatchEvent(new Event('hashchange'));
     return;
   }
@@ -125,7 +125,7 @@ async function route(locationObject, back = false, initial = false) {
     currentPage.disconnectedCallback();
   }
   const nextPage = new match.component();
-  if (!back && !initial) window.history.pushState({}, nextPage.constructor.title, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
+  if (!back && !initial) window.history.pushState({}, nextPage.constructor.pageTitle, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
   window.page = nextPage;
 
   if (!initial) {

@@ -163,7 +163,7 @@ body {
   import './component.js';
   
   export default class extends Component {
-    static title = 'Home'; // html page title
+    static pageTitle = 'Home'; // html page title
     static html = html; // hook up imported html. Supports template literals (undefined)
 
     someVar = 'Some var';

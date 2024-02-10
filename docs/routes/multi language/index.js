@@ -3,7 +3,7 @@ import html from './page.html';
 import { i18nLanguage } from '@webformula/core';
 
 export default class extends Component {
-  static title = 'Multiple languages';
+  static pageTitle = 'Multiple languages';
   static html = html;
 
   languagesChecked = false;
