@@ -21,6 +21,12 @@ window.addEventListener('locationchange', () => {
   });
 });
 
+window.addEventListener('wfclanguagechange', () => {
+  setTimeout(() => {
+    hljs.highlightAll();
+  });
+});
+
 window.addEventListener('hashchange', () => {
   if (!location.hash) return;
   handleHashAnchor(location.hash);

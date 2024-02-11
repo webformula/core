@@ -79,9 +79,7 @@ export default class Component extends HTMLElement {
   #attributesLookup;
   #prepared;
   #templateElement;
-  #translationMatches;
   #templateString;
-  #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
     super();
@@ -158,7 +156,7 @@ export default class Component extends HTMLElement {
   afterRender() {}
 
   internalDisconnect() {
-    window.removeEventListener('wfclanguagechange', this.#languageChange_bound);
+    if (this.#pageBinding) this.#pageBinding.destroy();
   }
 
   /** Render Component. This is automatically called for pages */
@@ -168,6 +166,7 @@ export default class Component extends HTMLElement {
     if (!this.constructor.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
     this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
     if (this.#pageBinding) this.#pageBinding.postRender();
+    this.#pageBinding.parseTranslations();
     !this.#pageBinding ? this.afterRender() : this.afterRender.call(this.#pageBinding.proxy);
     if (this.constructor._isPage) window.dispatchEvent(new Event('webformulacorepagerender'));
   }
@@ -204,13 +203,6 @@ export default class Component extends HTMLElement {
       this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
     }
 
-    this.#translationMatches = i18Language.activeSortedMessageKeys.filter(key => {
-      const included = this.#templateString.includes(key);
-      if (included) this.#templateString.replace(key, '');
-      return included;
-    });
-    if (this.#translationMatches.length > 0) window.addEventListener('wfclanguagechange', this.#languageChange_bound);
-
     if (this.constructor._isPage) {
       const title = document.querySelector('title');
       title.innerText = this.constructor.pageTitle;
@@ -237,15 +229,6 @@ export default class Component extends HTMLElement {
         this.#root.adoptedStyleSheets = [].concat(this.constructor.shadowRootStyleSheets);
       }
     }
-  }
-
-  #languageChange() {
-    let translatedTemplate = this.#templateString;
-    this.#translationMatches.forEach(key => {
-      translatedTemplate = translatedTemplate.replace(key, i18Language.translate(key));
-    });
-    this.template = () => new Function('$page', `return \`${translatedTemplate}\`;`).call(this, this);
-    this.render();
   }
 
 

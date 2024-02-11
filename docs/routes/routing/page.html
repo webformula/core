@@ -1,11 +1,11 @@
 <h3 class="page-title">Getting started</h3>
-<div class="page-subheader mdw-font-title-medium">Build a basic web application</div>
+<div class="page-subheader wfc-font-title-medium">Build a basic web application</div>
 
 
 
 <section class="page-content-section">
   <nav class="links-nav" aria-label="page-content">
-    <div class="mdw-font-headline-small page-secondary-header">Links</div>
+    <div class="wfc-font-headline-small page-secondary-header">Links</div>
     <ul class="links">
       <li><a href="#routing">Directory routing</a></li>
       <li><a href="#pageexample">Page.js</a></li>
@@ -13,10 +13,10 @@
   </nav>
 
   <div class="page-content-container">
-    <mdw-card id="routing">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Routing</div>
-        <div class="mdw-subheader">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
+    <wfc-card id="routing">
+      <div class="card-content">
+        <div class="headline">Routing</div>
+        <div class="supporting-text">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
       </div>
     
       <pre>
@@ -41,33 +41,33 @@
       </pre>
     
       <div style="margin: 18px">
-        <div class="mdw-font-body-large route-list">app/routes/index/index.js → <span>/</span></div>
-        <div class="mdw-font-body-large route-list">app/routes/one/index.js → <span>one</span></div>
-        <div class="mdw-font-body-large route-list">app/routes/two[id?]/index.js → <span>two/:id?</span></div>
-        <div class="mdw-font-body-large route-list">app/routes/three/[id]/index.js → <span>three/:id</span></div>
-        <div class="mdw-font-body-large route-list">app/routes/four/[...rest]/index.js →
+        <div class="wfc-font-body-large route-list">app/routes/index/index.js → <span>/</span></div>
+        <div class="wfc-font-body-large route-list">app/routes/one/index.js → <span>one</span></div>
+        <div class="wfc-font-body-large route-list">app/routes/two[id?]/index.js → <span>two/:id?</span></div>
+        <div class="wfc-font-body-large route-list">app/routes/three/[id]/index.js → <span>three/:id</span></div>
+        <div class="wfc-font-body-large route-list">app/routes/four/[...rest]/index.js →
           <span>four/*rest</span>
         </div>
     
-        <div class="mdw-font-title-medium" style="margin-top: 24px; margin-bottom: 8px;">Directory route details</div>
-        <div class="mdw-font-body-large route-list"><span>routes/index/index.js</span> Root page (/)</div>
-        <div class="mdw-font-body-large route-list"><span>routes/404/index.js</span> Not found page. Auto redirect on non
+        <div class="wfc-font-title-medium" style="margin-top: 24px; margin-bottom: 8px;">Directory route details</div>
+        <div class="wfc-font-body-large route-list"><span>routes/index/index.js</span> Root page (/)</div>
+        <div class="wfc-font-body-large route-list"><span>routes/404/index.js</span> Not found page. Auto redirect on non
           matching routes</div>
-        <div class="mdw-font-body-large route-list"><span>index.js</span> Route component file</div>
-        <div class="mdw-font-body-large route-list"><span>[id]</span> Directory that represents a url parameter</div>
-        <div class="mdw-font-body-large route-list"><span>[id?]</span> Directory that represents an options url parameter
+        <div class="wfc-font-body-large route-list"><span>index.js</span> Route component file</div>
+        <div class="wfc-font-body-large route-list"><span>[id]</span> Directory that represents a url parameter</div>
+        <div class="wfc-font-body-large route-list"><span>[id?]</span> Directory that represents an options url parameter
         </div>
-        <div class="mdw-font-body-large route-list"><span>name[id?]</span> Inline url parameter to avoid sub folder</div>
-        <div class="mdw-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
-        <div class="mdw-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all
+        <div class="wfc-font-body-large route-list"><span>name[id?]</span> Inline url parameter to avoid sub folder</div>
+        <div class="wfc-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
+        <div class="wfc-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all
           route</div>
       </div>
-    </mdw-card>
+    </wfc-card>
     
-    <mdw-card id="pageexample">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Page</div>
-        <div class="mdw-subheader">Accessing url parameters</div>
+    <wfc-card id="pageexample">
+      <div class="card-content">
+        <div class="headline">Page</div>
+        <div class="supporting-text">Accessing url parameters</div>
       </div>
     
       <pre>
@@ -93,6 +93,6 @@
   }`}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
   </div>
 </section>

@@ -1,13 +1,11 @@
-<div>${page.translate('Some other text')}</div>
 <h3 class="page-title">Multiple languages</h3>
-<div class="page-subheader mdw-font-title-medium">You can add a language configuration to support multiple languages</div>
+<div class="page-subheader wfc-font-title-medium">You can add a language configuration to support multiple languages</div>
 
 
 <section class="page-content-section">
   <nav class="links-nav" aria-label="page-content">
-    <div class="mdw-font-headline-small page-secondary-header">Links</div>
+    <div class="wfc-font-headline-small page-secondary-header">Links</div>
     <ul class="links">
-      <li><a href="#config">Language configuration</a></li>
       <li><a href="#auto">Auto translate</a></li>
       <li><a href="#method">Translate method</a></li>
       <li><a href="#template">Template translations</a></li>
@@ -15,32 +13,32 @@
   </nav>
 
   <div class="page-content-container">
-    <mdw-card id="config">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Language configuration</div>
-        <div class="mdw-subheader">Languages are configured based on the values of the default language</div>
-        <div class="mdw-subheader">The active language is pulled from the browser 'navigation.language'</div>
-        <div class="mdw-subheader">Pages will automatically update if browser language changes</div>
-        <div class="mdw-subheader">If no key exists in the config then the key will be used</div>
+    <wfc-card id="auto">
+      <div class="card-content">
+        <div class="headline">Auto translate</div>
+        <div class="supporting-text">Languages are configured based on the values of the default language</div>
+        <div class="supporting-text">The active language is pulled from the browser 'navigation.language'. You can use caching in localStorage.</div>
+        <div class="supporting-text">Pages will automatically update if browser language changes</div>
+        <div class="supporting-text">If no key exists in the config then the key will be used</div>
       </div>
 
-      <div class="mdw-card-content">
+      <div class="card-content">
         <div style="display: flex; flex-direction: column; width: 120px; margin-bottom: 12px;">
-          <mdw-switch ${page.languagesChecked ? 'checked' : ''} onchange="page.changeLanguage(this.checked)">en / es</mdw-switch>
+          <wfc-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en / es</wfc-switch>
         </div>
-        <div>${page.translate('Some other text')}</div>
-      </div>
+        <div>Some other text</div>
+        <div>About</div>
 
+        <div class="supporting-text">Below ignored with <strong>wfc-no-translate</strong> attribute</div>
+        <div wfc-no-translate>Some other text</div>
+      </div>
+    
       <pre>
-        <code class="language-html">
-  ${page.escape(`<!-- example html from above -->
-  <div>\${page.translate('Some other text')}</div>`)}
-        </code>
-      </pre>
-      
-      <pre>
-        <code class="language-javascript">
-  ${page.escape(`import { i18nLanguage } from '@webformula/core';
+        <code class="language-javascript" wfc-no-translate>
+  ${page.escape(`// Enable auto translation for pages
+  import { i18nLanguage } from '@webformula/core';
+
+  i18nLanguage.autoTranslate = true;
   i18nLanguage.messages = {
     en: {
       'About': 'About',
@@ -51,49 +49,43 @@
       'Some other text': 'algún otro texto'
     }
   };
-  
+
   // get translation
   console.log(i18nLanguage.translate('key'));
-
+  
   // en-US will match to en messages
   console.log(i18nLanguage.language); // en, en-US, es
-
-  // Set cache strategy: localStorage (default), sessionStorage, none
+  
+  // Turn on cache. Stores language in localStorage
   i18nLanguage.cacheType = 'sessionStorage';
   
   // get messages config
   console.log(i18nLanguage.messages);`)}
         </code>
       </pre>
-    </mdw-card>
 
-
-    <mdw-card id="auto">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Auto translate</div>
-        <div class="mdw-subheader">If auto translate is turned on pages will automatically have keys replaced without any additional code</div>
-        <div class="mdw-subheader">Pages will automatically update if browser language changes</div>
-      </div>
-    
       <pre>
-        <code class="language-javascript">
-  ${page.escape(`// Enable auto translation for pages
-  window._webformulaCoreAutoTranslate = true;`)}
+        <code class="language-html" wfc-no-translate>
+  ${page.escape(`<!-- Text content is automatically translated -->
+  <div>Some other text</div>
+  <div>About</div>
+  
+  <!-- Use wfc-no-translate attribute to prevent translation on element -->
+  <div wfc-no-translate>Some other text</div>`)}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
 
-    <mdw-card id="method">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Translate method</div>
-        <div class="mdw-subheader">You can use the built in translate method to handle translations on pages</div>
-        <div class="mdw-subheader">You can also import the i18nLanguage module to interact with translate outside of pages</div>
-        <div class="mdw-subheader">Pages will automatically update if browser language changes</div>
+    <wfc-card id="method">
+      <div class="card-content">
+        <div class="headline">Translate method</div>
+        <div class="supporting-text">You can use the built in translate method to handle translations, if you do not want auto translations</div>
+        <div class="supporting-text">You can also import the i18nLanguage module to interact with translate outside of pages</div>
       </div>
     
       <pre>
-        <code class="language-javascript">
+        <code class="language-javascript" wfc-no-translate>
   ${page.escape(`// use the built in translate method on pages
   <div>\${page.translate('Some other text')}</div>
 
@@ -103,25 +95,24 @@
   console.log(i18nLanguage.translate('key'));`)}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
-    <mdw-card id="template">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Template translations</div>
-        <div class="mdw-subheader">You can specify templates to enable dynamic translations</div>
-        <div class="mdw-subheader">This can provide a way to translate messages sent from your api</div>
+    <wfc-card id="template">
+      <div class="card-content">
+        <div class="headline">Template translations</div>
+        <div class="supporting-text">You can specify templates to enable dynamic translations</div>
+        <div class="supporting-text">This can provide a way to translate messages sent from your api</div>
       </div>
 
-      <div class="mdw-card-content">
+      <div class="card-content">
         <div style="display: flex; flex-direction: column; width: 120px; margin-bottom: 12px;">
-          <mdw-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en /
-            es</mdw-switch>
+          <wfc-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en / es</wfc-switch>
         </div>
-        <div>${page.translate('keep this section of text in place and this value')}</div>
+        <div>keep this section of text in place and this value</div>
       </div>
     
       <pre>
-        <code class="language-javascript">
+        <code class="language-javascript" wfc-no-translate>
   ${page.escape(`// templated value: "keep this section of text in place and this value"
   import { i18nLanguage } from '@webformula/core';
   i18nLanguage.messages = {
@@ -134,6 +125,6 @@
   };`)}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
   </div>
 </section>

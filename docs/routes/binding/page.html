@@ -1,18 +1,18 @@
 <h3 class="page-title">Binding variables</h3>
-<div class="page-subheader mdw-font-title-medium">Variables bind automatically and do not need any special code</div>
+<div class="page-subheader wfc-font-title-medium">Variables bind automatically and do not need any special code</div>
 
 
 <section class="page-content-section">
   <div class="page-content-container">
-    <mdw-card id="indexhtml">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Basic binding</div>
+    <wfc-card id="indexhtml">
+      <div class="card-content">
+        <div class="headline">Basic binding</div>
         
-        <mdw-textfield class="mdw-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}" oninput="page.basicBind = this.value">
-        </mdw-textfield>
+        <wfc-textfield class="wfc-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}" oninput="page.basicBind = this.value">
+        </wfc-textfield>
 
         <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
-        <mdw-button onclick="page.updateValue()">Set value to Updated</mdw-button>
+        <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
       </div>
       
       <pre>
@@ -20,7 +20,7 @@
   ${page.escape(`<input value="\${page.basicBind}" oninput="page.basicBind = this.value">
 
   <div>Value: \${page.basicBind}</div>
-  <mdw-button onclick="page.updateValue()">Set value to Updated</mdw-button>
+  <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
 
   <!--
     If you do not bind the value attribute,
@@ -58,6 +58,6 @@
   }`}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
   </div>
 </section>

@@ -1,9 +1,9 @@
 <h3 class="page-title">Getting started</h3>
-<div class="page-subheader mdw-font-title-medium">Build a basic web application</div>
+<div class="page-subheader wfc-font-title-medium">Build a basic web application</div>
 
 <section class="page-content-section">
   <nav class="links-nav" aria-label="page-content">
-    <div class="mdw-font-headline-small page-secondary-header">Links</div>
+    <div class="wfc-font-headline-small page-secondary-header">Links</div>
     <ul class="links">
       <li><a href="#install">Install</a></li>
       <li><a href="#routing">Routing</a></li>
@@ -19,25 +19,25 @@
   </nav>
 
   <div class="page-content-container">
-    <mdw-card id="install">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Install</div>
+    <wfc-card id="install">
+      <div class="card-content">
+        <div class="headline">Install</div>
       </div>
 
-      <div class="mdw-card-content">
-        <div class="mdw-subheader">NPM</div>
+      <div class="card-content">
+        <div class="supporting-text">NPM</div>
       </div>
       <pre>
         <code class="language-bash">
   ${`npm install @webformula/core`}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
 
-    <mdw-card id="indexhtml">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">index.html</div>
+    <wfc-card id="indexhtml">
+      <div class="card-content">
+        <div class="headline">index.html</div>
       </div>
 
       <pre>
@@ -64,13 +64,13 @@
   </html>`)}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
 
-    <mdw-card id="routing">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Routing</div>
-        <div class="mdw-subheader">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
+    <wfc-card id="routing">
+      <div class="card-content">
+        <div class="headline">Routing</div>
+        <div class="supporting-text">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
       </div>
 
       <pre>
@@ -95,34 +95,34 @@
       </pre>
 
       <div style="margin: 18px">
-        <div class="mdw-font-body-large route-list">app/routes/index/index.js → <span>/</span></div>
-        <div class="mdw-font-body-large route-list">app/routes/one/index.js → <span>one</span></div>
-        <div class="mdw-font-body-large route-list">app/routes/two[id?]/index.js → <span>two/:id?</span></div>
-        <div class="mdw-font-body-large route-list">app/routes/three/[id]/index.js → <span>three/:id</span></div>
-        <div class="mdw-font-body-large route-list">app/routes/four/[...rest]/index.js →
+        <div class="wfc-font-body-large route-list">app/routes/index/index.js → <span>/</span></div>
+        <div class="wfc-font-body-large route-list">app/routes/one/index.js → <span>one</span></div>
+        <div class="wfc-font-body-large route-list">app/routes/two[id?]/index.js → <span>two/:id?</span></div>
+        <div class="wfc-font-body-large route-list">app/routes/three/[id]/index.js → <span>three/:id</span></div>
+        <div class="wfc-font-body-large route-list">app/routes/four/[...rest]/index.js →
           <span>four/*</span>
         </div>
 
-        <div class="mdw-font-title-medium" style="margin-top: 24px; margin-bottom: 8px;">Directory route details</div>
-        <div class="mdw-font-body-large route-list"><span>routes/index/index.js</span> Root page (/)</div>
-        <div class="mdw-font-body-large route-list"><span>routes/404/index.js</span> Not found page. Auto redirect on non
+        <div class="wfc-font-title-medium" style="margin-top: 24px; margin-bottom: 8px;">Directory route details</div>
+        <div class="wfc-font-body-large route-list"><span>routes/index/index.js</span> Root page (/)</div>
+        <div class="wfc-font-body-large route-list"><span>routes/404/index.js</span> Not found page. Auto redirect on non
           matching routes</div>
-        <div class="mdw-font-body-large route-list"><span>index.js</span> Route component file</div>
-        <div class="mdw-font-body-large route-list"><span>[id]</span> Directory that represents a url parameter</div>
-        <div class="mdw-font-body-large route-list"><span>[id?]</span> Directory that represents an options url parameter
+        <div class="wfc-font-body-large route-list"><span>index.js</span> Route component file</div>
+        <div class="wfc-font-body-large route-list"><span>[id]</span> Directory that represents a url parameter</div>
+        <div class="wfc-font-body-large route-list"><span>[id?]</span> Directory that represents an options url parameter
         </div>
-        <div class="mdw-font-body-large route-list"><span>name[id?]</span> Inline url parameter to avoid sub folder</div>
-        <div class="mdw-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
-        <div class="mdw-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all
+        <div class="wfc-font-body-large route-list"><span>name[id?]</span> Inline url parameter to avoid sub folder</div>
+        <div class="wfc-font-body-large route-list"><span>[...rest]</span> Directory that represents catch-all route</div>
+        <div class="wfc-font-body-large route-list"><span>[...rest?]</span> Directory that represents optional catch-all
           route</div>
       </div>
-    </mdw-card>
+    </wfc-card>
 
 
-    <mdw-card id="config">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Config app</div>
-        <div class="mdw-subheader">Change settings for binding and routing</div>
+    <wfc-card id="config">
+      <div class="card-content">
+        <div class="headline">Config app</div>
+        <div class="supporting-text">Change settings for binding and routing</div>
       </div>
 
       <pre>
@@ -151,14 +151,14 @@
   `)}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
 
-    <mdw-card id="appjs">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Main application file</div>
-        <div class="mdw-subheader">app.js</div>
-        <div class="mdw-supporting-text">Required: Automatically uses app.js as entry file for bundling</div>
+    <wfc-card id="appjs">
+      <div class="card-content">
+        <div class="headline">Main application file</div>
+        <div class="supporting-text">app.js</div>
+        <div class="supporting-text">Required: Automatically uses app.js as entry file for bundling</div>
       </div>
 
       <pre>
@@ -173,8 +173,8 @@
         </code>
       </pre>
 
-      <div class="mdw-card-content" style="margin-top: 12px">
-        <div class="mdw-subheader">Prevent navigation allows you to lock down the app for uses like authentication</div>
+      <div class="card-content" style="margin-top: 12px">
+        <div class="supporting-text">Prevent navigation allows you to lock down the app for uses like authentication</div>
       </div>
       <pre>
         <code class="language-javascript">
@@ -195,13 +195,13 @@
   }`}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
-    <mdw-card id="appcss">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Main application Styles</div>
-        <div class="mdw-subheader">app.css</div>
-        <div class="mdw-supporting-text">Optional: Will bundle and minify into a single file</div>
+    <wfc-card id="appcss">
+      <div class="card-content">
+        <div class="headline">Main application Styles</div>
+        <div class="supporting-text">app.css</div>
+        <div class="supporting-text">Optional: Will bundle and minify into a single file</div>
       </div>
 
       <pre>
@@ -213,13 +213,13 @@
   }`}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
 
-    <mdw-card id="pagejs">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Page</div>
-        <div class="mdw-subheader">page.js and page.html</div>
+    <wfc-card id="pagejs">
+      <div class="card-content">
+        <div class="headline">Page</div>
+        <div class="supporting-text">page.js and page.html</div>
       </div>
 
       <pre>
@@ -294,13 +294,13 @@
   }`}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
-    <mdw-card id="build">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Build app</div>
-        <div class="mdw-subheader">build.js</div>
-        <div class="mdw-supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.
+    <wfc-card id="build">
+      <div class="card-content">
+        <div class="headline">Build app</div>
+        <div class="supporting-text">build.js</div>
+        <div class="supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.
         </div>
         <a href="/build">Build config</a>
       </div>
@@ -317,8 +317,8 @@
       </code>
     </pre>
 
-  <div class="mdw-card-content" style="margin-top: 12px">
-    <div class="mdw-subheader">Run commands</div>
+  <div class="card-content" style="margin-top: 12px">
+    <div class="supporting-text">Run commands</div>
   </div>
   <pre>
       <code class="language-bash">
@@ -333,19 +333,19 @@
   `}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
-    <mdw-card id="middleware">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Serve app</div>
-        <div class="mdw-subheader">server.js</div>
-        <div class="mdw-supporting-text">Handle routing and file serving with middleware. GZIP compression is automatically
+    <wfc-card id="middleware">
+      <div class="card-content">
+        <div class="headline">Serve app</div>
+        <div class="supporting-text">server.js</div>
+        <div class="supporting-text">Handle routing and file serving with middleware. GZIP compression is automatically
           handled.</div>
         <a href="/serve">Serve config</a>
       </div>
 
-      <div class="mdw-card-content" style="margin-top: 12px">
-        <div class="mdw-subheader">Native server</div>
+      <div class="card-content" style="margin-top: 12px">
+        <div class="supporting-text">Native server</div>
       </div>
       <pre>
         <code class="language-javascript">
@@ -369,8 +369,8 @@
         </code>
       </pre>
 
-      <div class="mdw-card-content" style="margin-top: 12px">
-        <div class="mdw-subheader">Express server</div>
+      <div class="card-content" style="margin-top: 12px">
+        <div class="supporting-text">Express server</div>
       </div>
       <pre>
         <code class="language-javascript">
@@ -390,8 +390,8 @@
         </code>
       </pre>
 
-      <div class="mdw-card-content" style="margin-top: 12px">
-        <div class="mdw-subheader">Livereload</div>
+      <div class="card-content" style="margin-top: 12px">
+        <div class="supporting-text">Livereload</div>
       </div>
       <pre>
         <code class="language-bash">
@@ -399,12 +399,12 @@
   node --watch-path=./src --watch-path=./docs server.js`}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
 
-    <mdw-card id="devtools">
-      <div class="mdw-card-content">
-        <div class="mdw-headline">Devtools</div>
-        <div class="mdw-subheader">A small set of helper functions</div>
+    <wfc-card id="devtools">
+      <div class="card-content">
+        <div class="headline">Devtools</div>
+        <div class="supporting-text">A small set of helper functions</div>
       </div>
 
       <pre>
@@ -419,6 +419,6 @@
   window.getRoutes();`}
         </code>
       </pre>
-    </mdw-card>
+    </wfc-card>
   </div>
 </section>

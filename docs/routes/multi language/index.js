@@ -11,7 +11,7 @@ export default class extends Component {
   constructor() {
     super();
 
-    i18nLanguage.cache = true;
+    i18nLanguage.autoTranslate = true;
     i18nLanguage.messages = {
       en: {
         'About': 'About',

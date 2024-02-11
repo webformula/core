@@ -1,3 +1,5 @@
+import i18Language from './i18n.js';
+
 const expressionCommentBlockRegex = /<!--(?:(?!-->)[\S\s])*-->/g;
 const expressionOpenRegex = /(?<!\\)\${/g;
 const expressionCloseRegex = /(?<!\\)}/g;
@@ -7,6 +9,7 @@ const attributeValueMatchRegex = /\s+(\S+)=\s*\"\s*$/;
 const attributeMatchRegex = /<([^<>]*)$/;
 const idPageRegex = /id\s*=\s*"\page"/g;
 const attrRegex = /([^\s=]*)?(?:="([^"]*)")?\s*/g;
+const whiteSpaceRegex = /[\n\r\s]+/g;
 
 
 let bindingsDisabled = !!document.querySelector('meta[name="wfc-disable-binding"]');
@@ -19,17 +22,22 @@ export default class BindPage  {
   #proxy;
   #proxies;
   #parsed;
-  #isPostRendered;
   #templateString;
   #variableReferences = {};
   #expressionBlocks = [];
+  #translationBlocks = [];
   #refValues = {};
+  #languageChange_bound = this.#languageChange.bind(this);
 
 
   constructor(instance) {
     this.#instance = instance;
 
     this.#buildProxy();
+  }
+
+  destroy() {
+    window.removeEventListener('wfclanguagechange', this.#languageChange_bound);
   }
 
 
@@ -41,18 +49,45 @@ export default class BindPage  {
   get enabled() { return !bindingsDisabled; }
   
   postRender() {
-    if (this.#isPostRendered) return;
-    this.#isPostRendered = true;
-
     const nodeIterator = document.createNodeIterator(
       document.body,
       NodeFilter.SHOW_COMMENT,
       (node) => node.data.includes('wfc-exp')
     );
-
+    
     let currentNode;
     while ((currentNode = nodeIterator.nextNode())) {
       this.#expressionBlocks.push(currentNode);
+    }
+  }
+
+  // TODO parse specific attributes like (label, supporting-text, error-text, ...)
+  parseTranslations() {
+    if (i18Language.autoTranslate) {
+      const nodeIteratorTranslations = document.createNodeIterator(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        (node) => {
+          return !(
+            !node.data.replace(whiteSpaceRegex, '')
+            || node.parentElement.hasAttribute('wfc-no-translate')
+          );
+        }
+      );
+      
+      let currentNode;
+      while ((currentNode = nodeIteratorTranslations.nextNode())) {
+        const match = i18Language.matchKeyFromNode(currentNode.data);
+        if (match) this.#translationBlocks.push([currentNode.data, currentNode]);
+      }
+
+      window.addEventListener('wfclanguagechange', this.#languageChange_bound);
+    }
+  }
+
+  #languageChange() {
+    for (const block of this.#translationBlocks) {
+      block[1].data = i18Language.translate(block[0]);
     }
   }
 

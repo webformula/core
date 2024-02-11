@@ -3,7 +3,8 @@ export default new class I18nLanguage {
   #language;
   #cache = false;
   #messages = {};
-  #templateMessages = {};
+  #messagesRegex = {};
+  #autoTranslate = false;
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
@@ -17,6 +18,7 @@ export default new class I18nLanguage {
    * @returns {String} Language locale
    */
   get language() { return this.#language; }
+  get #languageShort() { return this.#language.split('-')[0]; }
   /**
    * Set the language locale. Example: en-US
    * @param {String} value locale
@@ -50,35 +52,40 @@ export default new class I18nLanguage {
   set messages(value) {
     if (!value || typeof value !== 'object') throw Error('messages must be an object');
     this.#messages = value;
-
+    
     // build template string replaces
     // Example: 'keep this $var in place and this $var': 'keep this $var in place and this $var'
     Object.entries(value).forEach(([language, keys]) => {
-      this.#templateMessages[language] = [];
+      this.#messagesRegex[language] = [];
       Object.entries(keys).forEach(([key, value]) => {
-        if (value.includes('$var')) {
-          this.#templateMessages[language].push([
-            new RegExp(key.replace(/\$var/g, '([^]+)')),
-            value
-          ]);
-        }
+        const hasVar = value.includes('$var');
+        const varRegexString = hasVar ? (key.replace(/\$var/g, '([^]+)')) : undefined;
+        this.#messagesRegex[language].push({
+          key,
+          value,
+          nodeMatcher: new RegExp(`(?<!page\\.translate\\(['|"|\`])${varRegexString || key}`),
+          varMatcher: hasVar ? new RegExp(varRegexString) : undefined
+        });
       });
     });
   }
 
   /**
-   * Get sorted translation messages
+   * Get sorted translation messages. Sorting will prevent partial replacements
    * @returns {Object[]} Sorted translation messages
    */
   get activeSortedMessageKeys() {
-    return Object.keys(this.#messages[this.language] || []).sort((a, b) => b[0].length - a[0].length);
+    return Object.keys(this.#messages[this.language] || this.#messages[this.#languageShort] || []).sort((a, b) => b[0].length - a[0].length);
   }
 
   /**
    * Get is auto translated
    * @returns {Boolean} Is auto translated
    */
-  get autoTranslate() { return window._webformulaCoreAutoTranslate === true; }
+  get autoTranslate() { return this.#autoTranslate; }
+  set autoTranslate(value) {
+    this.#autoTranslate = !!value;
+  }
 
   /**
    * Get is cache enabled
@@ -100,24 +107,33 @@ export default new class I18nLanguage {
     if (this.#language === this.browserLanguage) return false;
     return true;
   }
+  
+  /**
+   * TRanslate string
+   * @param {String} key Translation key
+   */
+  matchKeyFromNode(key) {
+    const messages = this.#messagesRegex[this.language] || this.#messagesRegex[this.#languageShort] || {};
+    return !!messages.find(item => key.match(item.nodeMatcher) !== null);
+  }
 
   /**
    * TRanslate string
    * @param {String} key Translation key
    */
   translate(key) {
-    const messages = this.#messages[this.language] || this.#messages[this.language.split('-')[0]] || {};
-    let message = messages[key];
+    const messages = this.#messagesRegex[this.language] || this.#messagesRegex[this.#languageShort] || {};
+    const found = messages.find(item => {
+      if (key === item.key) return true;
+      if (item.varMatcher && key.match(item.varMatcher)) return true;
+      return false;
+    });
 
-    // check for template string replaces.
-    // Example: 'keep this $var in place and this $var': 'keep this $var in place and this $var'
-    if (!message) {
-      const found = (this.#templateMessages[this.language] || this.#templateMessages[this.language.split('-')[0]] || []).find(([matcher]) => key.match(matcher));
-      if (found) {
-        const replacements = key.match(found[0]);
-        let index = 1;
-        message = found[1].replace(/\$var/g, () => replacements[index++]);
-      }
+    let message = found.value;
+    if (found.varMatcher) {
+      const replacements = key.match(found.varMatcher);
+      let index = 1;
+      message = found.value.replace(/\$var/g, () => replacements[index++]);
     }
 
     return message || key;
