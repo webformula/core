@@ -11,7 +11,7 @@ export default class extends Component {
   languagesChecked = false;
   time = 30
   date = new Date();
-  currency = 123.45;
+  currency = '123.45';
 
   constructor() {
     super();
