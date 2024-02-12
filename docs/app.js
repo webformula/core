@@ -7,8 +7,12 @@ import '@webformula/material/components/switch';
 import '@webformula/material/components/textfield';
 
 
-if (typeof hljs !== 'undefined') hljs.highlightAll();
+if (typeof hljs !== 'undefined') {
+  hljs.configure({ ignoreUnescapedHTML: true });
+  hljs.highlightAll();
+}
 window.addEventListener('load', () => {
+  hljs.configure({ ignoreUnescapedHTML: true });
   hljs.highlightAll();
   if (location.hash) handleHashAnchor(location.hash, false);
 });
@@ -18,12 +22,6 @@ window.addEventListener('locationchange', () => {
     hljs.highlightAll();
     if (!location.hash) return;
     handleHashAnchor(location.hash, false);
-  });
-});
-
-window.addEventListener('wfclanguagechange', () => {
-  setTimeout(() => {
-    hljs.highlightAll();
   });
 });
 

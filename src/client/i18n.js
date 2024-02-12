@@ -1,90 +1,42 @@
 /** Ia8n language class */
-export default new class I18nLanguage {
-  #language;
+export default new class i18n {
   #cache = false;
-  #messages = {};
-  #messagesRegex = {};
-  #autoTranslate = false;
+  #locale = navigator.language;
+  #localeSet;
+  #cardinalRules;
+  #ordinalRules;
+  #localizations = [];
+  #localeMessages = {};
+  #sortedMessages = [];
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
-    this.#language = this.browserLanguage;
+    this.locale = navigator.language;
     window.addEventListener('languagechange', this.#languageChange_bound);
   }
 
+  /**
+   * Get locale
+   * @returns {String} locale
+   */
+  get locale() { return this.#locale; }
 
   /**
-   * Get the language locale
-   * @returns {String} Language locale
-   */
-  get language() { return this.#language; }
-  get #languageShort() { return this.#language.split('-')[0]; }
-  /**
-   * Set the language locale. Example: en-US
+   * Set locale. Example: en-US
    * @param {String} value locale
    */
-  set language(value) {
-    if (value === this.#language) return;
+  set locale(value) {
+    const change = value !== this.#locale;
+    this.#locale = this.#cleanLocale(value);
+    this.#cardinalRules = new Intl.PluralRules(this.#locale);
+    this.#ordinalRules = new Intl.PluralRules(this.#locale, { type: 'ordinal' });
+    if (!change) return;
 
-    this.#language = value;
-    if (this.cache) localStorage.setItem('wfc-user-language', this.#language);
-    else localStorage.removeItem('wfc-user-language');
-
-    window.wfcLanguage = this.#language;
+    this.#localeSet = true;
+    this.#sortedMessages = this.#getSortedMessages();
+    this.localizeDocument(true);
     window.dispatchEvent(new Event('wfclanguagechange'));
-  }
-
-  /**
-   * Get browser language locale
-   * @returns {String} Language locale
-   */
-  get browserLanguage() { return navigator.language; }
-
-  /**
-   * Get translation messages
-   * @returns {Object[]} Translation messages
-   */
-  get messages() { return this.#messages; }
-  /**
-   * Set translation messages
-   * @param {Object[]} value Translation messages
-   */
-  set messages(value) {
-    if (!value || typeof value !== 'object') throw Error('messages must be an object');
-    this.#messages = value;
-    
-    // build template string replaces
-    // Example: 'keep this $var in place and this $var': 'keep this $var in place and this $var'
-    Object.entries(value).forEach(([language, keys]) => {
-      this.#messagesRegex[language] = [];
-      Object.entries(keys).forEach(([key, value]) => {
-        const hasVar = value.includes('$var');
-        const varRegexString = hasVar ? (key.replace(/\$var/g, '([^]+)')) : undefined;
-        this.#messagesRegex[language].push({
-          key,
-          value,
-          nodeMatcher: new RegExp(`(?<!page\\.translate\\(['|"|\`])${varRegexString || key}`),
-          varMatcher: hasVar ? new RegExp(varRegexString) : undefined
-        });
-      });
-    });
-  }
-
-  /**
-   * Get sorted translation messages. Sorting will prevent partial replacements
-   * @returns {Object[]} Sorted translation messages
-   */
-  get activeSortedMessageKeys() {
-    return Object.keys(this.#messages[this.language] || this.#messages[this.#languageShort] || []).sort((a, b) => b[0].length - a[0].length);
-  }
-
-  /**
-   * Get is auto translated
-   * @returns {Boolean} Is auto translated
-   */
-  get autoTranslate() { return this.#autoTranslate; }
-  set autoTranslate(value) {
-    this.#autoTranslate = !!value;
+    if (this.cache) localStorage.setItem('wfc-locale', this.#locale);
   }
 
   /**
@@ -93,56 +45,187 @@ export default new class I18nLanguage {
    */
   get cache() { return this.#cache; }
   set cache(value) {
-    this.#cache = !!value;
-    if (this.#cache && localStorage.getItem('wfc-user-language')) this.#language = localStorage.getItem('wfc-user-language');
-    else localStorage.removeItem('wfc-user-language');
-  }
+    if (!!value) {
+      if (this.#localeSet) {
+        localStorage.setItem('wfc-locale', this.locale);
+        if (Object.keys(this.#localeMessages).length > 0) localStorage.setItem('wfc-locale-messages', JSON.stringify(this.#localeMessages));
+      } else {
+        const locale = localStorage.getItem('wfc-locale');
+        if (locale) this.local = locale;
+      }
 
-  /**
-   * Boolean stating if translations are needed based on messages existing
-   * @returns {Boolean} Is translation needed
-   */
-  shouldTranslate() {
-    if (!this.#messages) return false;
-    if (this.#language === this.browserLanguage) return false;
-    return true;
-  }
-  
-  /**
-   * TRanslate string
-   * @param {String} key Translation key
-   */
-  matchKeyFromNode(key) {
-    const messages = this.#messagesRegex[this.language] || this.#messagesRegex[this.#languageShort] || {};
-    return !!messages.find(item => key.match(item.nodeMatcher) !== null);
-  }
-
-  /**
-   * TRanslate string
-   * @param {String} key Translation key
-   */
-  translate(key) {
-    const messages = this.#messagesRegex[this.language] || this.#messagesRegex[this.#languageShort] || {};
-    const found = messages.find(item => {
-      if (key === item.key) return true;
-      if (item.varMatcher && key.match(item.varMatcher)) return true;
-      return false;
-    });
-
-    let message = found.value;
-    if (found.varMatcher) {
-      const replacements = key.match(found.varMatcher);
-      let index = 1;
-      message = found.value.replace(/\$var/g, () => replacements[index++]);
+      // pull local messages from cache if they do not exist already
+      if (Object.keys(this.#localeMessages).length === 0) {
+        try {
+          const messages = JSON.parse(localStorage.getItem('wfc-locale-messages') || '{}');
+          Object.entries(messages).forEach(item => this.loadMessages(...item));
+        } catch { }
+      }
+    } else {
+      localStorage.removeItem('wfc-locale');
+      localStorage.removeItem('wfc-locale-messages');
     }
 
-    return message || key;
+    // set after so we do not duplicate interactions with localStorage from this.local or this.loadMessages
+    this.#cache = !!value;
+  }
+
+
+
+  /**
+   * Set locale messages
+   * @param {String} locale Locale
+   * @param {Object} messages Locale messages
+   */
+  loadMessages(locale, messages) {
+    locale = this.#cleanLocale(locale);
+    if (typeof messages !== 'object' || messages === null) throw Error('messages must be an object');
+    this.#localeMessages[locale] = Object.entries(messages).map(([key, value]) => ({
+      key,
+      value,
+      matcher: new RegExp(`^${key.replace(/\$\w+/g, '\\$\\w+')}$`)
+    }));
+
+    if (this.cache) localStorage.setItem('wfc-locale-messages', JSON.stringify(this.#localeMessages));
+    if (locale === this.locale || this.#sortedMessages.length === 0) this.#sortedMessages = this.#getSortedMessages();
+  }
+
+  /**
+   * Localize key
+   * @param {String} key Locale key
+   */
+  localize(key, element) {
+    if (this.#sortedMessages.length === 0) return key;
+
+    // try matching exact key then use loose regex
+    const match = (
+      this.#sortedMessages.find(({ key: itemKey }) => itemKey === key)
+      || this.#sortedMessages.forEach(({ matcher }) => key.match(matcher))
+    );
+    if (!match) return key;
+
+    let message
+    if (typeof match.value === 'string') {
+      message = match.value;
+    } else if (typeof match.value === 'object') {
+      const parsed = this.#parseVariables(match.value.variables, element);
+      message = match.value.message.replace(/\$(\w+)/g, (_, varname) => {
+        if (varname in parsed) return parsed[varname];
+        else if (element && element.hasAttribute(varname)) return element.getAttribute(varname);
+        return window.page[varname];
+      });
+    }
+
+    return message;
+  }
+
+  localizeDocument(localeChange = false) {
+    if (!localeChange) this.#localizations =[];
+    const elements = [...document.querySelectorAll('[i18n]')];
+    for (const element of elements) {
+      const text = element.textContent;
+      const key = localeChange ? (this.#localizations.find(v => v[0] === text) || ['', text])[1] : text;
+      const message = this.localize(key, element);
+      this.#localizations.push([message, key]);
+      element.innerText = message;
+    }
+
+    const elementAttrs = [...document.querySelectorAll('[i18n-attr]')];
+    for (const element of elementAttrs) {
+      const attrs = element.getAttribute('i18n-attr').split(',');
+      attrs.forEach(name => {
+        const text = element.getAttribute(name);
+        const key = localeChange ? (this.#localizations.find(v => v[0] === text) || ['', text])[1] : text;
+        const message = this.localize(key);
+        this.#localizations.push([message, key]);
+        element.setAttribute(name, message);
+      });
+    }
+  }
+
+  #parseVariables(config, element) {
+    if (!config) return {};
+
+    const sortOrder = Object.entries(config).sort((a, b) => {
+      if (typeof a === 'string') return -1;
+      else if (typeof a.variable === 'string') return 1;
+      return 0;
+    });
+
+    const results = {};
+    sortOrder.map(item => {
+      const varname = item[0];
+
+      const value = config[varname];
+      if (typeof value === 'string') {
+        results[varname] = value;
+        return;
+      }
+
+      let referenceVar;
+      if (value.variable in results) referenceVar = results[value.variable];
+      else if (element && element.hasAttribute(value.variable)) referenceVar = element.getAttribute(value.variable);
+      else referenceVar = window.page[value.variable];
+
+      let varValue
+      switch (value.type) {
+        case 'cardinal':
+          const cardinal = this.#cardinalRules.select(parseInt(referenceVar));
+          results[varname] = value[cardinal] || value.other;
+          break;
+        case 'ordinal':
+          const ordinal = this.#ordinalRules.select(parseInt(referenceVar));
+          results[varname] = value[ordinal] || value.other;
+          break;
+        case 'date':
+          if (!value.formatter) value.formatter = new Intl.DateTimeFormat(this.locale, value.options);
+          varValue = element && element.getAttribute(varname);
+          if (!varValue) varValue = window.page[varname];
+          results[varname] = value.formatter.format(varValue);
+          break;
+        case 'number':
+          if (!value.formatter) value.formatter = new Intl.NumberFormat(this.locale, value.options);
+          varValue = element && element.getAttribute(varname);
+          if (!varValue) varValue = window.page[varname];
+          results[varname] = value.formatter.format(varValue);
+          break;
+
+        default:
+          if (element) {
+            const attr = element.getAttribute(varname);
+            if (attr) {
+              results[varname] = attr;
+              return;
+            }
+          }
+
+          if (window.page[varname]) {
+            results[varname] = window.page[varname];
+            return;
+          }
+      }
+    });
+
+    return results;
+  }
+
+  #getSortedMessages() {
+    return (
+      this.#localeMessages[this.locale]
+      || this.#localeMessages[this.locale.split('-')[0]]
+    ).sort((a, b) => b.key.length - a.key.length);
+  }
+
+  #cleanLocale(locale) {
+    if (!locale) throw Error('locale required');
+    locale = Intl.getCanonicalLocales(locale)[0];
+    return locale;
   }
 
   #languageChange() {
-    const language = navigator.language;
-    if (language === this.#language) return;
-    this.#language = language;
+    const locale = navigator.language;
+    if (locale === this.locale) return;
+    this.locale = locale;
     window.dispatchEvent(new Event('wfclanguagechange'));
   }
 }

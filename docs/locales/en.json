@@ -1,0 +1,71 @@
+{
+  "About": "About",
+  "Label": "Label",
+  "key_string": "This is a key string",
+  "item_count": {
+    "message": "$count $item",
+    "variables": {
+      "item": {
+        "type": "cardinal",
+        "variable": "count",
+        "zero": "items",
+        "one": "item",
+        "two": "items",
+        "few": "items",
+        "many": "items",
+        "other": "items"
+      }
+    }
+  },
+  "place_ordinal": {
+    "message": "$place$order",
+    "variables": {
+      "order": {
+        "type": "ordinal",
+        "variable": "place",
+        "one": "st",
+        "two": "nd",
+        "few": "rd",
+        "other": "th"
+      }
+    }
+  },
+
+  "$time $minutes from now": {
+    "message": "$time $minutes from now",
+    "variables": {
+      "minutes": {
+        "type": "cardinal",
+        "variable": "time",
+        "one": "minute",
+        "other": "minutes"
+      }
+    }
+  },
+
+  "date": {
+    "message": "$date",
+    "variables": {
+      "date": {
+        "type": "date",
+        "options": {
+          "dateStyle": "short",
+          "timeStyle": "short"
+        }
+      }
+    }
+  },
+
+  "currency": {
+    "message": "$currency",
+    "variables": {
+      "currency": {
+        "type": "number",
+        "options": {
+          "style": "currency",
+          "currency": "USD"
+        }
+      }
+    }
+  }
+}

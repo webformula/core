@@ -1,77 +1,195 @@
-<h3 class="page-title">Multiple languages</h3>
-<div class="page-subheader wfc-font-title-medium">You can add a language configuration to support multiple languages</div>
-
+<h3 class="page-title">Localization</h3>
 
 <section class="page-content-section">
   <nav class="links-nav" aria-label="page-content">
     <div class="wfc-font-headline-small page-secondary-header">Links</div>
     <ul class="links">
-      <li><a href="#auto">Auto translate</a></li>
-      <li><a href="#method">Translate method</a></li>
-      <li><a href="#template">Template translations</a></li>
+      <li><a href="#Localization">Localization</a></li>
     </ul>
   </nav>
 
   <div class="page-content-container">
-    <wfc-card id="auto">
+    <wfc-card id="Localization">
       <div class="card-content">
-        <div class="headline">Auto translate</div>
-        <div class="supporting-text">Languages are configured based on the values of the default language</div>
-        <div class="supporting-text">The active language is pulled from the browser 'navigation.language'. You can use caching in localStorage.</div>
-        <div class="supporting-text">Pages will automatically update if browser language changes</div>
-        <div class="supporting-text">If no key exists in the config then the key will be used</div>
+        <div class="headline">Localization</div>
+        <div class="supporting-text">Localization allows to configure multiple locales with local message configurations</div>
+        <ul class="supporting-text">
+          <li>Variables (Data is pulled from page variables)</li>
+          <li>Pluralization</li>
+          <li>Date formatting</li>
+          <li>Number formatting</li>
+          <li>Relative time formatting</li>
+        </ul>
       </div>
 
       <div class="card-content">
         <div style="display: flex; flex-direction: column; width: 120px; margin-bottom: 12px;">
           <wfc-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en / es</wfc-switch>
         </div>
-        <div>Some other text</div>
-        <div>About</div>
 
-        <div class="supporting-text">Below ignored with <strong>wfc-no-translate</strong> attribute</div>
-        <div wfc-no-translate>Some other text</div>
+        <div i18n>About</div>
+        <div i18n>key_string</div>
+        <div i18n count="1">item_count</div>
+        <div i18n count="2">item_count</div>
+        <div i18n>$time $minutes from now</div>
+        <div i18n>date</div>
+        <div i18n>currency</div>
+
+        <wfc-textfield i18n-attr="label" label="Label"></wfc-textfield>
       </div>
     
       <pre>
-        <code class="language-javascript" wfc-no-translate>
-  ${page.escape(`// Enable auto translation for pages
-  import { i18nLanguage } from '@webformula/core';
+        <code class="language-javascript">
+  ${page.escape(`import { i18n } from '@webformula/core';
+  
+  /* Set locale
+   *   Defaults to browser if not set
+   *   You can use language only locale 'en' and 'en-US'
+   */
+  i18n.locale = 'en-US';
 
-  i18nLanguage.autoTranslate = true;
-  i18nLanguage.messages = {
-    en: {
-      'About': 'About',
-      'Some other text': 'Some other text'
-    },
-    es: {
-      'About': 'Acerca de',
-      'Some other text': 'algún otro texto'
-    }
-  };
+  // turn on cache. This will load and save data to localStorage
+  i18n.cache = true;
 
-  // get translation
-  console.log(i18nLanguage.translate('key'));
-  
-  // en-US will match to en messages
-  console.log(i18nLanguage.language); // en, en-US, es
-  
-  // Turn on cache. Stores language in localStorage
-  i18nLanguage.cacheType = 'sessionStorage';
-  
-  // get messages config
-  console.log(i18nLanguage.messages);`)}
+  // Load local messages
+  i18n.loadMessages('en', en);
+  i18n.loadMessages('es', es);`)}
         </code>
       </pre>
 
       <pre>
-        <code class="language-html" wfc-no-translate>
-  ${page.escape(`<!-- Text content is automatically translated -->
-  <div>Some other text</div>
-  <div>About</div>
+        <code class="language-html">
+  ${page.escape(`<!-- Add i18n attribute to an element to enable translations -->
+  <div i18n>About</div>
+  <div i18n>key_string</div>
+
+  <!--
+    you can set message variables as element attributes
+    By default variables will be pulled from current page
+  -->
+  <div i18n count="1">item_count</div>
+  <div i18n count="2">item_count</div>
+  <div i18n>date</div>
+  <div i18n>currency</div>
+
+  <!-- You can use one of the languages messages as the key -->
+  <div i18n>$time $minutes from now</div>
   
-  <!-- Use wfc-no-translate attribute to prevent translation on element -->
-  <div wfc-no-translate>Some other text</div>`)}
+  <!-- Attribute binding -->
+  <wfc-textfield i18n-attr="label" label="Label"></wfc-textfield>
+  
+  <!-- Attribute binding multiple -->
+  <div i18n-attr="one,two" one="one" two="two"></div>`)}
+        </code>
+      </pre>
+
+
+      <pre>
+        <code class="language-json">
+  ${page.escape(`// en
+  { "About": "About",
+    "key_string": "This is a key string",
+    "item_count": {
+      "message": "$count $item",
+      "variables": {
+        "item": {
+          "type": "cardinal",
+          "variable": "count",
+          "zero": "items",
+          "one": "item",
+          "two": "items",
+          "few": "items",
+          "many": "items",
+          "other": "items" } } },
+    "place_ordinal": {
+      "message": "$place$order",
+      "variables": {
+        "order": {
+          "type": "ordinal",
+          "variable": "place",
+          "one": "st",
+          "two": "nd",
+          "few": "rd",
+          "other": "th" } } },
+
+    "$time $minutes from now": {
+      "message": "$time $minutes from now",
+      "variables": {
+        "minutes": {
+          "type": "cardinal",
+          "variable": "time",
+          "one": "minute",
+          "other": "minutes" } } },
+  "date": {
+    "message": "$date",
+    "variables": {
+      "date": {
+        "type": "date",
+        "options": {
+          "dateStyle": "short",
+          "timeStyle": "short" } } } },
+  "currency": {
+    "message": "$currency",
+    "variables": {
+      "currency": {
+        "type": "number",
+        "options": {
+          "style": "currency",
+          "currency": "USD" } } } } }`)}
+        </code>
+      </pre>
+
+      <pre>
+        <code class="language-json">
+  ${page.escape(`// es
+  { "About": "About",
+    "key_string": "Esta es una cadena clave",
+    "item_count": {
+      "message": "$count $item",
+      "variables": {
+        "item": {
+          "type": "cardinal",
+          "variable": "count",
+          "zero": "elementos",
+          "one": "artículo",
+          "two": "elementos",
+          "few": "elementos",
+          "many": "elementos",
+          "other": "elementos" } } },
+    "place_ordinal": {
+      "message": "$place$order",
+      "variables": {
+        "order": {
+          "type": "ordinal",
+          "variable": "place",
+          "one": "er",
+          "two": "do",
+          "few": "er",
+          "other": "to" } } },
+    "$time $minutes from now": {
+      "message": "$time $minutes desde ahora",
+      "variables": {
+        "minutes": {
+          "type": "cardinal",
+          "variable": "time",
+          "one": "minuto",
+          "other": "minutos" } } },
+    "date": {
+    "message": "$date",
+    "variables": {
+      "date": {
+        "type": "date",
+        "options": {
+          "dateStyle": "short",
+          "timeStyle": "short" } } } },
+  "currency": {
+    "message": "$currency",
+    "variables": {
+      "currency": {
+        "type": "number",
+        "options": {
+          "style": "currency",
+          "currency": "MXN" } } } } }`)}
         </code>
       </pre>
     </wfc-card>
@@ -81,48 +199,18 @@
       <div class="card-content">
         <div class="headline">Translate method</div>
         <div class="supporting-text">You can use the built in translate method to handle translations, if you do not want auto translations</div>
-        <div class="supporting-text">You can also import the i18nLanguage module to interact with translate outside of pages</div>
+        <div class="supporting-text">You can also import the i18n module to interact with translate outside of pages</div>
       </div>
     
       <pre>
-        <code class="language-javascript" wfc-no-translate>
+        <code class="language-javascript">
   ${page.escape(`// use the built in translate method on pages
   <div>\${page.translate('Some other text')}</div>
 
   
   // directly interact with the module
-  import { i18nLanguage } from '@webformula/core';
-  console.log(i18nLanguage.translate('key'));`)}
-        </code>
-      </pre>
-    </wfc-card>
-
-    <wfc-card id="template">
-      <div class="card-content">
-        <div class="headline">Template translations</div>
-        <div class="supporting-text">You can specify templates to enable dynamic translations</div>
-        <div class="supporting-text">This can provide a way to translate messages sent from your api</div>
-      </div>
-
-      <div class="card-content">
-        <div style="display: flex; flex-direction: column; width: 120px; margin-bottom: 12px;">
-          <wfc-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en / es</wfc-switch>
-        </div>
-        <div>keep this section of text in place and this value</div>
-      </div>
-    
-      <pre>
-        <code class="language-javascript" wfc-no-translate>
-  ${page.escape(`// templated value: "keep this section of text in place and this value"
-  import { i18nLanguage } from '@webformula/core';
-  i18nLanguage.messages = {
-    en: {
-      'keep this $var in place and this $var': 'keep this $var in place and this $var'
-    },
-    es: {
-      'keep this $var in place and this $var': 'mantenga este $var en su lugar y este $var'
-    }
-  };`)}
+  import { i18n } from '@webformula/core';
+  console.log(i18n.translate('key'));`)}
         </code>
       </pre>
     </wfc-card>

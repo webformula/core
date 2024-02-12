@@ -121,7 +121,6 @@ async function route(locationObject, back = false, initial = false) {
   }
 
   if (!currentPage.__initial__) {
-    currentPage.internalDisconnect();
     currentPage.disconnectedCallback();
   }
   const nextPage = new match.component();

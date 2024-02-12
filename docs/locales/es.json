@@ -1,0 +1,70 @@
+{
+  "About": "Acerca de",
+  "Label": "Etiqueta",
+  "key_string": "Esta es una cadena clave",
+  "item_count": {
+    "message": "$count $item",
+    "variables": {
+      "item": {
+        "type": "cardinal",
+        "variable": "count",
+        "zero": "elementos",
+        "one": "artículo",
+        "two": "elementos",
+        "few": "elementos",
+        "many": "elementos",
+        "other": "elementos"
+      }
+    }
+  },
+  "place_ordinal": {
+    "message": "$place$order",
+    "variables": {
+      "order": {
+        "type": "ordinal",
+        "variable": "place",
+        "one": "er",
+        "two": "do",
+        "few": "er",
+        "other": "to"
+      }
+    }
+  },
+  "$time $minutes from now": {
+    "message": "$time $minutes desde ahora",
+    "variables": {
+      "minutes": {
+        "type": "cardinal",
+        "variable": "time",
+        "one": "minuto",
+        "other": "minutos"
+      }
+    }
+  },
+
+  "date": {
+    "message": "$date",
+    "variables": {
+      "date": {
+        "type": "date",
+        "options": {
+          "dateStyle": "short",
+          "timeStyle": "short"
+        }
+      }
+    }
+  },
+
+  "currency": {
+    "message": "$currency",
+    "variables": {
+      "currency": {
+        "type": "number",
+        "options": {
+          "style": "currency",
+          "currency": "MXN"
+        }
+      }
+    }
+  }
+}

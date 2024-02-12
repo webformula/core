@@ -1,37 +1,31 @@
 import { Component } from '@webformula/core';
 import html from './page.html';
-import { i18nLanguage } from '@webformula/core';
+import { i18n } from '@webformula/core';
+import en from '../../locales/en.json' assert { type: "json" };
+import es from '../../locales/es.json' assert { type: "json" };
 
 export default class extends Component {
   static pageTitle = 'Multiple languages';
   static html = html;
 
   languagesChecked = false;
+  time = 30
+  date = new Date();
+  currency = 123.45;
 
   constructor() {
     super();
 
-    i18nLanguage.autoTranslate = true;
-    i18nLanguage.messages = {
-      en: {
-        'About': 'About',
-        'Some other text': 'Some other text',
-        'keep this $var in place and this $var': 'keep this $var in place and this $var'
-      },
-      es: {
-        'About': 'Acerca de',
-        'Some other text': 'algún otro texto',
-        'keep this $var in place and this $var': 'mantenga este $var en su lugar y este $var'
-      }
-    };
+    i18n.loadMessages('en', en);
+    i18n.loadMessages('es', es);
   }
 
   changeLanguage(checked) {
     this.languagesChecked = checked;
-    i18nLanguage.language = checked ? 'es' : 'en';
+    i18n.locale = checked ? 'es' : 'en';
   }
 
   disconnectedCallback() {
-    i18nLanguage.language = navigator.language;
+    i18n.locale = navigator.language;
   }
 }

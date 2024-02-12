@@ -1,5 +1,5 @@
 import BindPage from './page-binding.js';
-import i18Language from './i18n.js';
+import i18n from './i18n.js';
 
 
 const templateElements = [];
@@ -155,10 +155,6 @@ export default class Component extends HTMLElement {
   /** Called after render */
   afterRender() {}
 
-  internalDisconnect() {
-    if (this.#pageBinding) this.#pageBinding.destroy();
-  }
-
   /** Render Component. This is automatically called for pages */
   render() {
     if (!this.#prepared) this.#prepareRender();
@@ -166,20 +162,20 @@ export default class Component extends HTMLElement {
     if (!this.constructor.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
     this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
     if (this.#pageBinding) this.#pageBinding.postRender();
-    this.#pageBinding.parseTranslations();
+    i18n.localizeDocument();
     !this.#pageBinding ? this.afterRender() : this.afterRender.call(this.#pageBinding.proxy);
     if (this.constructor._isPage) window.dispatchEvent(new Event('webformulacorepagerender'));
-  }
-
-  /** Translate string. <div>${page.translate('some key string')}</div> */
-  translate(key) {
-    return i18Language.translate(key);
   }
 
   /** Escape html. <div>${page.escape('some string')}</div> */
   escape(str) {
     return str.replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
   };
+
+  /** Translate string. <div>${page.translate('some key string')}</div> */
+  localize(key) {
+    return i18n.localize(key, this);
+  }
 
   /** @private */
   bindAttrVal(str, id) {

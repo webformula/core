@@ -1,4 +1,4 @@
-import i18Language from './i18n.js';
+import i18n from './i18n.js';
 
 const expressionCommentBlockRegex = /<!--(?:(?!-->)[\S\s])*-->/g;
 const expressionOpenRegex = /(?<!\\)\${/g;
@@ -25,19 +25,13 @@ export default class BindPage  {
   #templateString;
   #variableReferences = {};
   #expressionBlocks = [];
-  #translationBlocks = [];
   #refValues = {};
-  #languageChange_bound = this.#languageChange.bind(this);
 
 
   constructor(instance) {
     this.#instance = instance;
 
     this.#buildProxy();
-  }
-
-  destroy() {
-    window.removeEventListener('wfclanguagechange', this.#languageChange_bound);
   }
 
 
@@ -58,36 +52,6 @@ export default class BindPage  {
     let currentNode;
     while ((currentNode = nodeIterator.nextNode())) {
       this.#expressionBlocks.push(currentNode);
-    }
-  }
-
-  // TODO parse specific attributes like (label, supporting-text, error-text, ...)
-  parseTranslations() {
-    if (i18Language.autoTranslate) {
-      const nodeIteratorTranslations = document.createNodeIterator(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        (node) => {
-          return !(
-            !node.data.replace(whiteSpaceRegex, '')
-            || node.parentElement.hasAttribute('wfc-no-translate')
-          );
-        }
-      );
-      
-      let currentNode;
-      while ((currentNode = nodeIteratorTranslations.nextNode())) {
-        const match = i18Language.matchKeyFromNode(currentNode.data);
-        if (match) this.#translationBlocks.push([currentNode.data, currentNode]);
-      }
-
-      window.addEventListener('wfclanguagechange', this.#languageChange_bound);
-    }
-  }
-
-  #languageChange() {
-    for (const block of this.#translationBlocks) {
-      block[1].data = i18Language.translate(block[0]);
     }
   }
 
