@@ -35,11 +35,11 @@
         <div i18n>date</div>
         <div i18n>currency</div>
 
-        <wfc-textfield i18n-attr="label" label="Label"></wfc-textfield>
+        <wfc-textfield i18n-attr="label" label="Label" value="${page.currency}" oninput="page.currency = this.value"></wfc-textfield>
       </div>
     
       <pre>
-        <code class="language-javascript">
+        <code class="language-javascript" wfc-no-binding>
   ${page.escape(`import { i18n } from '@webformula/core';
   
   /* Set locale
@@ -58,7 +58,7 @@
       </pre>
 
       <pre>
-        <code class="language-html">
+        <code class="language-html" wfc-no-binding>
   ${page.escape(`<!-- Add i18n attribute to an element to enable translations -->
   <div i18n>About</div>
   <div i18n>key_string</div>
@@ -76,7 +76,7 @@
   <div i18n>$time $minutes from now</div>
   
   <!-- Attribute binding -->
-  <wfc-textfield i18n-attr="label" label="Label"></wfc-textfield>
+  <wfc-textfield i18n-attr="label" label="Label" value="${page.currency}"></wfc-textfield>
   
   <!-- Attribute binding multiple -->
   <div i18n-attr="one,two" one="one" two="two"></div>`)}
@@ -85,7 +85,7 @@
 
 
       <pre>
-        <code class="language-json">
+        <code class="language-json" wfc-no-binding>
   ${page.escape(`// en
   { "About": "About",
     "key_string": "This is a key string",
@@ -140,7 +140,7 @@
       </pre>
 
       <pre>
-        <code class="language-json">
+        <code class="language-json" wfc-no-binding>
   ${page.escape(`// es
   { "About": "About",
     "key_string": "Esta es una cadena clave",
@@ -203,7 +203,7 @@
       </div>
     
       <pre>
-        <code class="language-javascript">
+        <code class="language-javascript" wfc-no-binding>
   ${page.escape(`// use the built in translate method on pages
   <div>\${page.translate('Some other text')}</div>
 

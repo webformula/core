@@ -9,7 +9,7 @@ const attributeValueMatchRegex = /\s+(\S+)=\s*\"\s*$/;
 const attributeMatchRegex = /<([^<>]*)$/;
 const idPageRegex = /id\s*=\s*"\page"/g;
 const attrRegex = /([^\s=]*)?(?:="([^"]*)")?\s*/g;
-const whiteSpaceRegex = /[\n\r\s]+/g;
+const noBindingEndTag = /(<code[^<>]+>|<[^<]+wfc-no-binding[^>]*>)(:?[\s\n]*)?$/;
 
 
 let bindingsDisabled = !!document.querySelector('meta[name="wfc-disable-binding"]');
@@ -189,8 +189,10 @@ export default class BindPage  {
         templateStr = `${templateString.slice(attrMatch.index, group.open)}\${page.bindAttrVal(\`${templateString.slice(group.open, group.close + 1)}\`, ${id})}${templateString.slice(group.close + 1)}`;
         templateString = `${templateString.slice(0, attrMatch.index)}<!-- wfc-exp-attr wfc-bind-${id} -->${templateStr}`;
       } else {
+        const preStart = templateString.slice(0, group.open);
+        if (preStart.match(noBindingEndTag)) continue;
         templateString = `${templateString.slice(0, group.close + 1)}<!-- wfc-exp-end wfc-bind-${id} -->${templateString.slice(group.close + 1)}`;
-        templateString = `${templateString.slice(0, group.open)}<!-- wfc-exp-start wfc-bind-${id} -->${templateString.slice(group.open)}`;
+        templateString = `${preStart}<!-- wfc-exp-start wfc-bind-${id} -->${templateString.slice(group.open)}`;
       }
 
       const variableConfig = {
@@ -253,6 +255,7 @@ export default class BindPage  {
         if (!variableReference) return Reflect.set(target, key, value, receiver);
         target[key] = value;
         handleBindings(variableReference);
+        i18n.bindingVariableChange(key);
         return true;
       }
     };

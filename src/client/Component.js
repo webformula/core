@@ -162,7 +162,7 @@ export default class Component extends HTMLElement {
     if (!this.constructor.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
     this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
     if (this.#pageBinding) this.#pageBinding.postRender();
-    i18n.localizeDocument();
+    if (this.constructor._isPage) i18n.localizeDocument();
     !this.#pageBinding ? this.afterRender() : this.afterRender.call(this.#pageBinding.proxy);
     if (this.constructor._isPage) window.dispatchEvent(new Event('webformulacorepagerender'));
   }

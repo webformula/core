@@ -1,3 +1,6 @@
+const varRegex = /\$\w+/g;
+const varReplaceRegex = /\$(\w+)/g;
+
 /** Ia8n language class */
 export default new class i18n {
   #cache = false;
@@ -5,9 +8,10 @@ export default new class i18n {
   #localeSet;
   #cardinalRules;
   #ordinalRules;
-  #localizations = [];
   #localeMessages = {};
   #sortedMessages = [];
+  #localizationReferences;
+  #localizationVariableReference;
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
@@ -83,7 +87,8 @@ export default new class i18n {
     this.#localeMessages[locale] = Object.entries(messages).map(([key, value]) => ({
       key,
       value,
-      matcher: new RegExp(`^${key.replace(/\$\w+/g, '\\$\\w+')}$`)
+      matcher: new RegExp(`^${key.replace(varRegex, '\\$\\w+')}$`),
+      variables: ((typeof value === 'string' ? value : value.message).match(varRegex) || []).map(v => v.replace(/^\$/g, ''))
     }));
 
     if (this.cache) localStorage.setItem('wfc-locale-messages', JSON.stringify(this.#localeMessages));
@@ -104,30 +109,35 @@ export default new class i18n {
     );
     if (!match) return key;
 
-    let message
-    if (typeof match.value === 'string') {
-      message = match.value;
-    } else if (typeof match.value === 'object') {
-      const parsed = this.#parseVariables(match.value.variables, element);
-      message = match.value.message.replace(/\$(\w+)/g, (_, varname) => {
-        if (varname in parsed) return parsed[varname];
-        else if (element && element.hasAttribute(varname)) return element.getAttribute(varname);
-        return window.page[varname];
-      });
+    if (element && match.variables.length > 0 && !this.#localizationVariableReference.find(v => v[0] === element)) {
+      this.#localizationVariableReference.push([element, match.variables]);
     }
+
+    const isObject = typeof match.value === 'object';
+    const parsed = isObject ? this.#parseVariables(match.value.variables, element) : undefined;
+    const message = (isObject ? match.value.message : match.value).replace(varReplaceRegex, (_, varname) => {
+      if (parsed && varname in parsed) return parsed[varname];
+      else if (element && element.hasAttribute(varname)) return element.getAttribute(varname);
+      return window.page[varname];
+    });
 
     return message;
   }
 
+
+  /**
+   * Localize entire document. This is called by component render
+   * @param {String} key Locale key
+   */
   localizeDocument(localeChange = false) {
-    if (!localeChange) this.#localizations =[];
+    if (!localeChange) {
+      this.#localizationReferences = [];
+      this.#localizationVariableReference = [];
+    }
+
     const elements = [...document.querySelectorAll('[i18n]')];
     for (const element of elements) {
-      const text = element.textContent;
-      const key = localeChange ? (this.#localizations.find(v => v[0] === text) || ['', text])[1] : text;
-      const message = this.localize(key, element);
-      this.#localizations.push([message, key]);
-      element.innerText = message;
+      this.#localizeElement(element);
     }
 
     const elementAttrs = [...document.querySelectorAll('[i18n-attr]')];
@@ -135,17 +145,34 @@ export default new class i18n {
       const attrs = element.getAttribute('i18n-attr').split(',');
       attrs.forEach(name => {
         const text = element.getAttribute(name);
-        const key = localeChange ? (this.#localizations.find(v => v[0] === text) || ['', text])[1] : text;
+        const key = localeChange ? (this.#localizationReferences.find(v => v[0] === text) || ['', text])[1] : text;
         const message = this.localize(key);
-        this.#localizations.push([message, key]);
+        this.#localizationReferences.push([message, key]);
         element.setAttribute(name, message);
       });
     }
   }
 
+  /** called by page binder to update translations with corresponding variables
+   * @private
+   */
+  bindingVariableChange(varname) {
+    this.#localizationVariableReference
+      .filter(v => v[1].includes(varname))
+      .forEach(v => this.#localizeElement(v[0]));
+  }
+
+  #localizeElement(element) {
+    const text = element.textContent;
+    const key = (this.#localizationReferences.find(v => v[0] === text) || ['', text])[1];
+    const message = this.localize(key, element);
+    this.#localizationReferences.push([message, key]);
+    element.innerText = message;
+  }
+
   #parseVariables(config, element) {
     if (!config) return {};
-
+    
     const sortOrder = Object.entries(config).sort((a, b) => {
       if (typeof a === 'string') return -1;
       else if (typeof a.variable === 'string') return 1;
