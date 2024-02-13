@@ -172,7 +172,7 @@ export default new class i18n {
 
   #parseVariables(config, element) {
     if (!config) return {};
-    
+
     const sortOrder = Object.entries(config).sort((a, b) => {
       if (typeof a === 'string') return -1;
       else if (typeof a.variable === 'string') return 1;
@@ -180,13 +180,12 @@ export default new class i18n {
     });
 
     const results = {};
-    sortOrder.map(item => {
-      const varname = item[0];
-
+    for (let i = 0; i < sortOrder.length; i += 1) {
+      const varname = sortOrder[i][0];
       const value = config[varname];
       if (typeof value === 'string') {
         results[varname] = value;
-        return;
+        continue;
       }
 
       let referenceVar;
@@ -205,33 +204,24 @@ export default new class i18n {
           results[varname] = value[ordinal] || value.other;
           break;
         case 'date':
-          if (!value.formatter) value.formatter = new Intl.DateTimeFormat(this.locale, value.options);
           varValue = element && element.getAttribute(varname);
           if (!varValue) varValue = window.page[varname];
-          results[varname] = value.formatter.format(varValue);
+          results[varname] = this.#getDateFormatter(this.locale, value.options).format(varValue);
           break;
         case 'number':
-          if (!value.formatter) value.formatter = new Intl.NumberFormat(this.locale, value.options);
           varValue = element && element.getAttribute(varname);
           if (!varValue) varValue = window.page[varname];
-          results[varname] = value.formatter.format(varValue);
+          results[varname] = this.#getNumberFormatter(this.locale, value.options).format(varValue);
           break;
 
         default:
-          if (element) {
-            const attr = element.getAttribute(varname);
-            if (attr) {
-              results[varname] = attr;
-              return;
-            }
-          }
-
-          if (window.page[varname]) {
+          if (element && element.hasAttribute(varname)) {
+            results[varname] = element.getAttribute(varname);
+          } else if (window.page[varname]) {
             results[varname] = window.page[varname];
-            return;
           }
       }
-    });
+    }
 
     return results;
   }
@@ -254,5 +244,19 @@ export default new class i18n {
     if (locale === this.locale) return;
     this.locale = locale;
     window.dispatchEvent(new Event('wfclanguagechange'));
+  }
+
+  #dateFormatters = [];
+  #getDateFormatter(locale, options) {
+    const key = `${locale}${JSON.stringify(options || '')}`;
+    if (!this.#dateFormatters[key])  this.#dateFormatters[key] = new Intl.DateTimeFormat(locale, options);
+    return this.#dateFormatters[key];
+  }
+
+  #numberFormatters = [];
+  #getNumberFormatter(locale, options) {
+    const key = `${locale}${JSON.stringify(options || '')}`;
+    if (!this.#numberFormatters[key]) this.#numberFormatters[key] = new Intl.NumberFormat(locale, options);
+    return this.#numberFormatters[key];
   }
 }
