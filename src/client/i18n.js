@@ -103,7 +103,7 @@ export default new class i18n {
         types,
         template: new Function(...[...variables, ...types], `return \`${value}\`;`)
       };
-    });
+    }).filter(v => !!v);
 
     if (this.cache) localStorage.setItem('wfc-locale-messages', JSON.stringify(this.#localeMessages));
     if (locale === this.locale || this.#sortedMessages.length === 0) {
@@ -124,7 +124,10 @@ export default new class i18n {
       this.#sortedMessages.find(({ key: itemKey }) => itemKey === key)
       || this.#sortedMessages.forEach(({ matcher }) => key.match(matcher))
     );
-    if (!match) return key;
+    if (!match) {
+      console.warn(`Cannot localize. Missing key: ${key}`);
+      return key;
+    }
 
     if (element && !this.#localizationVariableReference.find(v => v[0] === element)) {
       this.#localizationVariableReference.push([element, match.variables]);

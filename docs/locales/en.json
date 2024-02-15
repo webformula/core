@@ -34,5 +34,5 @@
   "item_count": "${count} ${itemPlural(count)}",
   "place_ordinal": "${place} ${placeOrdinal(place)}",
   "time_from_now": "${time} ${minutesCardinal(minutes)} from now",
-  "date": "${dateFormat(date)}",
-  "currency": "${currencyFormat(currency)}" }
+  "date_key": "${dateFormat(date)}",
+  "currency_key": "${currencyFormat(currency)}" }
