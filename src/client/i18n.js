@@ -10,11 +10,13 @@ export default new class i18n {
   #ordinalRules;
   #localeMessages = {};
   #sortedMessages = [];
-  #localizationReferences;
-  #localizationVariableReference;
   #types = {};
   #localeTypes = {};
+  #localizedRef = [];
+  #mutationObserver;
+  #observerConnected;
   #languageChange_bound = this.#languageChange.bind(this);
+  #observeHandler_bound = this.#observeHandler.bind(this);
 
   constructor() {
     this.locale = navigator.language;
@@ -41,7 +43,7 @@ export default new class i18n {
     this.#localeSet = true;
     this.#sortedMessages = this.#getSortedMessages();
     this.#localeTypes = this.#types[this.#locale] || this.#types[this.#locale.split('-')[0]];
-    this.localizeDocument(true);
+    this.localizeDocument();
     window.dispatchEvent(new Event('wfclanguagechange'));
     if (this.cache) localStorage.setItem('wfc-locale', this.#locale);
   }
@@ -129,8 +131,8 @@ export default new class i18n {
       return key;
     }
 
-    if (element && !this.#localizationVariableReference.find(v => v[0] === element)) {
-      this.#localizationVariableReference.push([element, match.variables]);
+    if (element && !this.#localizedRef.find(v => v[0] === element)) {
+      this.#localizedRef.push([element, match]);
     }
 
     const variables = match.variables.map(key => {
@@ -147,13 +149,17 @@ export default new class i18n {
    * Localize entire document. This is called by component render
    * @param {String} key Locale key
    */
-  localizeDocument(localeChange = false) {
-    if (!localeChange) {
-      this.#localizationReferences = [];
-      this.#localizationVariableReference = [];
+  localizeDocument() {
+    const elements = [...document.querySelectorAll('[i18n]')];
+
+    if (!this.#observerConnected && elements.length > 0) {
+      if (!this.#mutationObserver) this.#mutationObserver = new MutationObserver(this.#observeHandler_bound);
+      if (!this.#observerConnected) {
+        this.#mutationObserver.observe(document.body, { subtree: true, childList: true });
+        this.#observerConnected = true;
+      }
     }
 
-    const elements = [...document.querySelectorAll('[i18n]')];
     for (const element of elements) {
       this.#localizeElement(element);
     }
@@ -162,10 +168,9 @@ export default new class i18n {
     for (const element of elementAttrs) {
       const attrs = element.getAttribute('i18n-attr').split(',');
       attrs.forEach(name => {
-        const text = element.getAttribute(name);
-        const key = localeChange ? (this.#localizationReferences.find(v => v[0] === text) || ['', text])[1] : text;
-        const message = this.localize(key);
-        this.#localizationReferences.push([message, key]);
+        const elementMatch = this.#localizedRef.find(v => v[0] === element);
+        const key = elementMatch ? elementMatch[1].key : element.getAttribute(name);
+        const message = this.localize(key, element);
         element.setAttribute(name, message);
       });
     }
@@ -175,16 +180,29 @@ export default new class i18n {
    * @private
    */
   bindingVariableChange(varname) {
-    this.#localizationVariableReference
-      .filter(v => v[1].includes(varname))
+    this.#localizedRef
+      .filter(v => v[1].variables.includes(varname))
       .forEach(v => this.#localizeElement(v[0]));
   }
 
+  #observeHandler(mutationList) {
+    for (let mutationRecord of mutationList) {
+      if (mutationRecord.removedNodes) {
+        for (let removedNode of mutationRecord.removedNodes) {
+          this.#localizedRef = this.#localizedRef.filter(v => !(v[0] === removedNode || removedNode.contains(v[0])));
+        }
+      }
+    }
+    if (this.#localizedRef.length === 0 && this.#observerConnected) {
+      this.#mutationObserver.disconnect();
+      this.#observerConnected = false;
+    }
+  }
+
   #localizeElement(element) {
-    const text = element.textContent;
-    const key = (this.#localizationReferences.find(v => v[0] === text) || ['', text])[1];
+    const elementMatch = this.#localizedRef.find(v => v[0] === element);
+    const key = elementMatch ? elementMatch[1].key : element.textContent;
     const message = this.localize(key, element);
-    this.#localizationReferences.push([message, key]);
     element.innerText = message;
   }
 
@@ -211,6 +229,11 @@ export default new class i18n {
         case 'number':
           value.method = data => {
             return this.#getNumberFormatter(this.locale, value.options).format(data);
+          };
+          break;
+        case 'relativeTime':
+          value.method = data => {
+            return this.#getRelativeTimeFormatter(this.locale, value.options).format(data, value.unit);
           };
           break;
 
@@ -253,5 +276,12 @@ export default new class i18n {
     const key = `${locale}${JSON.stringify(options || '')}`;
     if (!this.#numberFormatters[key]) this.#numberFormatters[key] = new Intl.NumberFormat(locale, options);
     return this.#numberFormatters[key];
+  }
+
+  #relativeTimeFormatters = [];
+  #getRelativeTimeFormatter(locale, options) {
+    const key = `${locale}${JSON.stringify(options || '')}`;
+    if (!this.#relativeTimeFormatters[key]) this.#relativeTimeFormatters[key] = new Intl.RelativeTimeFormat(locale, options);
+    return this.#relativeTimeFormatters[key];
   }
 }

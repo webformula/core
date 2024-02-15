@@ -26,13 +26,19 @@
       "type": "number",
       "options": {
         "style": "currency",
-        "currency": "MXN" } } },
+        "currency": "MXN" } },
+    "relativeTimeFormat": {
+      "type": "relativeTime",
+      "unit": "day",
+      "options": {
+        "style": "short" } } },
 
   "About": "Acerca de",
-  "Label": "Etiqueta",
+  "Label days": "Días de etiqueta",
   "key_string": "Esta es una cadena clave",
   "item_count": "${count} ${itemPlural(count)}",
   "place_ordinal": "${place} ${placeOrdinal(place)}",
   "time_from_now": "${time} ${minutesCardinal(minutes)} desde ahora",
   "date_key": "${dateFormat(date)}",
-  "currency_key": "${currencyFormat(currency)}" }
+  "currency_key": "${currencyFormat(currency)}",
+  "relativeTime_key": "${relativeTimeFormat(days)}" }

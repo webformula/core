@@ -34,8 +34,9 @@
         <div i18n>time_from_now</div>
         <div i18n>date_key</div>
         <div i18n>currency_key</div>
+        <div i18n>relativeTime_key</div>
 
-        <wfc-textfield i18n-attr="label" label="Label" value="${page.currency}" oninput="page.currency = this.value"></wfc-textfield>
+        <wfc-textfield i18n-attr="label" label="Label days" value="${page.days}" oninput="page.days = this.value"></wfc-textfield>
       </div>
     
       <pre>
@@ -71,12 +72,11 @@
   <div i18n count="2">item_count</div>
   <div i18n>date_key</div>
   <div i18n>currency_key</div>
-
-  <!-- You can use one of the languages messages as the key -->
   <div i18n>time_from_now</div>
+  <div i18n>relativeTime_key</div>
   
   <!-- Attribute binding -->
-  <wfc-textfield i18n-attr="label" label="Label" value="${page.currency}"></wfc-textfield>
+  <wfc-textfield i18n-attr="label" label="Label days" value="${page.days}" oninput="page.days = this.value"></wfc-textfield>
   
   <!-- Attribute binding multiple -->
   <div i18n-attr="one,two" one="one" two="two"></div>`)}
@@ -117,11 +117,16 @@
       "type": "number",
       "options": {
         "style": "currency",
-        "currency": "USD" } } },
+        "currency": "USD" } },
+    "relativeTimeFormat": {
+      "type": "relativeTime",
+      "unit": "day",
+      "options": {
+        "style": "short" } } },
   
   // keys
   "About": "About",
-  "Label": "Label",
+  "Label days": "Label",
   "key_string": "This is a key string",
 
   // use types
@@ -129,7 +134,8 @@
   "place_ordinal": "\${place} \${placeOrdinal(place)}",
   "time_from_now": "\${time} \${minutesCardinal(minutes)} from now",
   "date_key": "\${dateFormat(date)}",
-  "currency_key": "\${currencyFormat(currency)}" }`)}
+  "currency_key": "\${currencyFormat(currency)}",
+  "relativeTime_key": "\${relativeTimeFormat(days)}" }`)}
         </code>
       </pre>
 
@@ -166,11 +172,16 @@
       "type": "number",
       "options": {
         "style": "currency",
-        "currency": "MXN" } } },
+        "currency": "MXN" } },
+    "relativeTimeFormat": {
+      "type": "relativeTime",
+      "unit": "day",
+      "options": {
+        "style": "short" } } },
   
   // keys
   "About": "Acerca de",
-  "Label": "Etiqueta",
+  "Label days": "Etiqueta",
   "key_string": "Esta es una cadena clave",
 
   // use types
@@ -178,7 +189,8 @@
   "place_ordinal": "\${place} \${placeOrdinal(place)}",
   "time_from_now": "\${time} \${minutesCardinal(minutes)} desde ahora",
   "date_key": "\${dateFormat(date)}",
-  "currency_key": "\${currencyFormat(currency)}" }`)}
+  "currency_key": "\${currencyFormat(currency)}",
+  "relativeTime_key": "\${relativeTimeFormat(days)}" }`)}
         </code>
       </pre>
     </wfc-card>
