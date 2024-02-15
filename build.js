@@ -8,7 +8,6 @@ if (process.env.NODE_ENV === 'production') generate({
   }
 }, './docs/colorTokens.css');
 
-// TODO bug without spa when routing. Can get stuck or be slow
 build({
   spa: true,
   chunks: false,

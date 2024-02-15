@@ -1,5 +1,5 @@
-const varRegex = /\$\w+/g;
-const varReplaceRegex = /\$(\w+)/g;
+const varRegex = /(?!{|\()\w+(?=\)|})/g;
+const typeRegex = /(?!{)\w+(?=\()/g;
 
 /** Ia8n language class */
 export default new class i18n {
@@ -12,6 +12,8 @@ export default new class i18n {
   #sortedMessages = [];
   #localizationReferences;
   #localizationVariableReference;
+  #types = {};
+  #localeTypes = {};
   #languageChange_bound = this.#languageChange.bind(this);
 
   constructor() {
@@ -38,6 +40,7 @@ export default new class i18n {
 
     this.#localeSet = true;
     this.#sortedMessages = this.#getSortedMessages();
+    this.#localeTypes = this.#types[this.#locale] || this.#types[this.#locale.split('-')[0]];
     this.localizeDocument(true);
     window.dispatchEvent(new Event('wfclanguagechange'));
     if (this.cache) localStorage.setItem('wfc-locale', this.#locale);
@@ -84,15 +87,29 @@ export default new class i18n {
   loadMessages(locale, messages) {
     locale = this.#cleanLocale(locale);
     if (typeof messages !== 'object' || messages === null) throw Error('messages must be an object');
-    this.#localeMessages[locale] = Object.entries(messages).map(([key, value]) => ({
-      key,
-      value,
-      matcher: new RegExp(`^${key.replace(varRegex, '\\$\\w+')}$`),
-      variables: ((typeof value === 'string' ? value : value.message).match(varRegex) || []).map(v => v.replace(/^\$/g, ''))
-    }));
+    this.#localeMessages[locale] = Object.entries(messages).map(([key, value]) => {
+      if (key === 'types') {
+        this.#types[locale] = this.#parseTypes(value);
+        return;
+      }
+
+      const variables = value.match(varRegex) || [];
+      const types = value.match(typeRegex) || [];
+
+      return {
+        key,
+        value,
+        variables,
+        types,
+        template: new Function(...[...variables, ...types], `return \`${value}\`;`)
+      };
+    });
 
     if (this.cache) localStorage.setItem('wfc-locale-messages', JSON.stringify(this.#localeMessages));
-    if (locale === this.locale || this.#sortedMessages.length === 0) this.#sortedMessages = this.#getSortedMessages();
+    if (locale === this.locale || this.#sortedMessages.length === 0) {
+      this.#sortedMessages = this.#getSortedMessages();
+      this.#localeTypes = this.#types[this.#locale] || this.#types[this.#locale.split('-')[0]];
+    }
   }
 
   /**
@@ -109,19 +126,17 @@ export default new class i18n {
     );
     if (!match) return key;
 
-    if (element && match.variables.length > 0 && !this.#localizationVariableReference.find(v => v[0] === element)) {
+    if (element && !this.#localizationVariableReference.find(v => v[0] === element)) {
       this.#localizationVariableReference.push([element, match.variables]);
     }
 
-    const isObject = typeof match.value === 'object';
-    const parsed = isObject ? this.#parseVariables(match.value.variables, element) : undefined;
-    const message = (isObject ? match.value.message : match.value).replace(varReplaceRegex, (_, varname) => {
-      if (parsed && varname in parsed) return parsed[varname];
-      else if (element && element.hasAttribute(varname)) return element.getAttribute(varname);
-      return window.page[varname];
+    const variables = match.variables.map(key => {
+      if (element && element.hasAttribute(key)) return element.getAttribute(key);
+      return window.page[key];
     });
+    const methods = match.types.map(key => this.#localeTypes[key].method);
 
-    return message;
+    return match.template.call(null, ...[...variables, ...methods]);
   }
 
 
@@ -170,60 +185,37 @@ export default new class i18n {
     element.innerText = message;
   }
 
-  #parseVariables(config, element) {
-    if (!config) return {};
-
-    const sortOrder = Object.entries(config).sort((a, b) => {
-      if (typeof a === 'string') return -1;
-      else if (typeof a.variable === 'string') return 1;
-      return 0;
-    });
-
-    const results = {};
-    for (let i = 0; i < sortOrder.length; i += 1) {
-      const varname = sortOrder[i][0];
-      const value = config[varname];
-      if (typeof value === 'string') {
-        results[varname] = value;
-        continue;
-      }
-
-      let referenceVar;
-      if (value.variable in results) referenceVar = results[value.variable];
-      else if (element && element.hasAttribute(value.variable)) referenceVar = element.getAttribute(value.variable);
-      else referenceVar = window.page[value.variable];
-
-      let varValue
+  #parseTypes(types) {
+    Object.entries(types).forEach(([key, value]) => {
       switch (value.type) {
         case 'cardinal':
-          const cardinal = this.#cardinalRules.select(parseInt(referenceVar));
-          results[varname] = value[cardinal] || value.other;
+          value.method = data => {
+            const cardinal = this.#cardinalRules.select(parseInt(data));
+            return value[cardinal] || value.other;
+          };
           break;
         case 'ordinal':
-          const ordinal = this.#ordinalRules.select(parseInt(referenceVar));
-          results[varname] = value[ordinal] || value.other;
+          value.method = data => {
+            const ordinal = this.#ordinalRules.select(parseInt(data));
+            return value[ordinal] || value.other;
+          };
           break;
         case 'date':
-          varValue = element && element.getAttribute(varname);
-          if (!varValue) varValue = window.page[varname];
-          results[varname] = this.#getDateFormatter(this.locale, value.options).format(varValue);
+          value.method = data => {
+            return this.#getDateFormatter(this.locale, value.options).format(data);
+          };
           break;
         case 'number':
-          varValue = element && element.getAttribute(varname);
-          if (!varValue) varValue = window.page[varname];
-          results[varname] = this.#getNumberFormatter(this.locale, value.options).format(varValue);
+          value.method = data => {
+            return this.#getNumberFormatter(this.locale, value.options).format(data);
+          };
           break;
 
         default:
-          if (element && element.hasAttribute(varname)) {
-            results[varname] = element.getAttribute(varname);
-          } else if (window.page[varname]) {
-            results[varname] = window.page[varname];
-          }
+          value.method = data => data;
       }
-    }
-
-    return results;
+    });
+    return types;
   }
 
   #getSortedMessages() {

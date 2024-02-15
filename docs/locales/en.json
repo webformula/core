@@ -1,71 +1,38 @@
-{
+{ "types": {
+    "itemPlural": {
+      "type": "cardinal",
+      "zero": "items",
+      "one": "item",
+      "two": "items",
+      "few": "items",
+      "many": "items",
+      "other": "items" },
+    "placeOrdinal": {
+      "type": "ordinal",
+      "one": "st",
+      "two": "nd",
+      "few": "rd",
+      "other": "th" },
+    "minutesCardinal": {
+      "type": "cardinal",
+      "one": "minute",
+      "other": "minutes" },
+    "dateFormat": {
+      "type": "date",
+      "options": {
+        "dateStyle": "short",
+        "timeStyle": "short" } },
+    "currencyFormat": {
+      "type": "number",
+      "options": {
+        "style": "currency",
+        "currency": "USD" } } },
+
   "About": "About",
   "Label": "Label",
   "key_string": "This is a key string",
-  "item_count": {
-    "message": "$count $item",
-    "variables": {
-      "item": {
-        "type": "cardinal",
-        "variable": "count",
-        "zero": "items",
-        "one": "item",
-        "two": "items",
-        "few": "items",
-        "many": "items",
-        "other": "items"
-      }
-    }
-  },
-  "place_ordinal": {
-    "message": "$place$order",
-    "variables": {
-      "order": {
-        "type": "ordinal",
-        "variable": "place",
-        "one": "st",
-        "two": "nd",
-        "few": "rd",
-        "other": "th"
-      }
-    }
-  },
-
-  "$time $minutes from now": {
-    "message": "$time $minutes from now",
-    "variables": {
-      "minutes": {
-        "type": "cardinal",
-        "variable": "time",
-        "one": "minute",
-        "other": "minutes"
-      }
-    }
-  },
-
-  "date": {
-    "message": "$date",
-    "variables": {
-      "date": {
-        "type": "date",
-        "options": {
-          "dateStyle": "short",
-          "timeStyle": "short"
-        }
-      }
-    }
-  },
-
-  "currency": {
-    "message": "$currency",
-    "variables": {
-      "currency": {
-        "type": "number",
-        "options": {
-          "style": "currency",
-          "currency": "USD"
-        }
-      }
-    }
-  }
-}
+  "item_count": "${count} ${itemPlural(count)}",
+  "place_ordinal": "${place} ${placeOrdinal(place)}",
+  "time_from_now": "${time} ${minutesCardinal(minutes)} from now",
+  "date": "${dateFormat(date)}",
+  "currency": "${currencyFormat(currency)}" }

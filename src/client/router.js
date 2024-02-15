@@ -69,8 +69,6 @@ export function enableSPA() {
   window.addEventListener('popstate', event => {
     if (popPrevented) return popPrevented = false; // used in preventing back navigation
 
-    // TODO
-    // simulate before unload for spa
     if (window.wfcSPA !== false) {
       const beforeUnloadEvent = new Event('beforeunload', { cancelable: true });
       window.dispatchEvent(beforeUnloadEvent);

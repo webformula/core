@@ -31,7 +31,7 @@
         <div i18n>key_string</div>
         <div i18n count="1">item_count</div>
         <div i18n count="2">item_count</div>
-        <div i18n>$time $minutes from now</div>
+        <div i18n>time_from_now</div>
         <div i18n>date</div>
         <div i18n>currency</div>
 
@@ -73,7 +73,7 @@
   <div i18n>currency</div>
 
   <!-- You can use one of the languages messages as the key -->
-  <div i18n>$time $minutes from now</div>
+  <div i18n>time_from_now</div>
   
   <!-- Attribute binding -->
   <wfc-textfield i18n-attr="label" label="Label" value="${page.currency}"></wfc-textfield>
@@ -87,130 +87,98 @@
       <pre>
         <code class="language-json" wfc-no-binding>
   ${page.escape(`// en
-  { "About": "About",
-    "key_string": "This is a key string",
-    "item_count": {
-      "message": "$count $item",
-      "variables": {
-        "item": {
-          "type": "cardinal",
-          "variable": "count",
-          "zero": "items",
-          "one": "item",
-          "two": "items",
-          "few": "items",
-          "many": "items",
-          "other": "items" } } },
-    "place_ordinal": {
-      "message": "$place$order",
-      "variables": {
-        "order": {
-          "type": "ordinal",
-          "variable": "place",
-          "one": "st",
-          "two": "nd",
-          "few": "rd",
-          "other": "th" } } },
+  
+  // type configuration
+  { "types": {
+    "itemPlural": {
+      "type": "cardinal",
+      "zero": "items",
+      "one": "item",
+      "two": "items",
+      "few": "items",
+      "many": "items",
+      "other": "items" },
+    "placeOrdinal": {
+      "type": "ordinal",
+      "one": "st",
+      "two": "nd",
+      "few": "rd",
+      "other": "th" },
+    "minutesCardinal": {
+      "type": "cardinal",
+      "one": "minute",
+      "other": "minutes" },
+    "dateFormat": {
+      "type": "date",
+      "options": {
+        "dateStyle": "short",
+        "timeStyle": "short" } },
+    "currencyFormat": {
+      "type": "number",
+      "options": {
+        "style": "currency",
+        "currency": "USD" } } },
+  
+  // keys
+  "About": "About",
+  "Label": "Label",
+  "key_string": "This is a key string",
 
-    "$time $minutes from now": {
-      "message": "$time $minutes from now",
-      "variables": {
-        "minutes": {
-          "type": "cardinal",
-          "variable": "time",
-          "one": "minute",
-          "other": "minutes" } } },
-  "date": {
-    "message": "$date",
-    "variables": {
-      "date": {
-        "type": "date",
-        "options": {
-          "dateStyle": "short",
-          "timeStyle": "short" } } } },
-  "currency": {
-    "message": "$currency",
-    "variables": {
-      "currency": {
-        "type": "number",
-        "options": {
-          "style": "currency",
-          "currency": "USD" } } } } }`)}
+  // use types
+  "item_count": "\${count} \${itemPlural(count)}",
+  "place_ordinal": "\${place} \${placeOrdinal(place)}",
+  "time_from_now": "\${time} \${minutesCardinal(minutes)} from now",
+  "date": "\${dateFormat(date)}",
+  "currency": "\${currencyFormat(currency)}" }`)}
         </code>
       </pre>
 
       <pre>
         <code class="language-json" wfc-no-binding>
   ${page.escape(`// es
-  { "About": "About",
-    "key_string": "Esta es una cadena clave",
-    "item_count": {
-      "message": "$count $item",
-      "variables": {
-        "item": {
-          "type": "cardinal",
-          "variable": "count",
-          "zero": "elementos",
-          "one": "artículo",
-          "two": "elementos",
-          "few": "elementos",
-          "many": "elementos",
-          "other": "elementos" } } },
-    "place_ordinal": {
-      "message": "$place$order",
-      "variables": {
-        "order": {
-          "type": "ordinal",
-          "variable": "place",
-          "one": "er",
-          "two": "do",
-          "few": "er",
-          "other": "to" } } },
-    "$time $minutes from now": {
-      "message": "$time $minutes desde ahora",
-      "variables": {
-        "minutes": {
-          "type": "cardinal",
-          "variable": "time",
-          "one": "minuto",
-          "other": "minutos" } } },
-    "date": {
-    "message": "$date",
-    "variables": {
-      "date": {
-        "type": "date",
-        "options": {
-          "dateStyle": "short",
-          "timeStyle": "short" } } } },
-  "currency": {
-    "message": "$currency",
-    "variables": {
-      "currency": {
-        "type": "number",
-        "options": {
-          "style": "currency",
-          "currency": "MXN" } } } } }`)}
-        </code>
-      </pre>
-    </wfc-card>
-
-
-    <wfc-card id="method">
-      <div class="card-content">
-        <div class="headline">Translate method</div>
-        <div class="supporting-text">You can use the built in translate method to handle translations, if you do not want auto translations</div>
-        <div class="supporting-text">You can also import the i18n module to interact with translate outside of pages</div>
-      </div>
-    
-      <pre>
-        <code class="language-javascript" wfc-no-binding>
-  ${page.escape(`// use the built in translate method on pages
-  <div>\${page.translate('Some other text')}</div>
-
   
-  // directly interact with the module
-  import { i18n } from '@webformula/core';
-  console.log(i18n.translate('key'));`)}
+  // type configuration
+  { "types": {
+    "itemPlural": {
+      "type": "cardinal",
+      "zero": "elementos",
+      "one": "artículo",
+      "two": "elementos",
+      "few": "elementos",
+      "many": "elementos",
+      "other": "elementos" },
+    "placeOrdinal": {
+      "type": "ordinal",
+      "one": "er",
+      "two": "do",
+      "few": "er",
+      "other": "to" },
+    "minutesCardinal": {
+      "type": "cardinal",
+      "one": "minuto",
+      "other": "minutos" },
+    "dateFormat": {
+      "type": "date",
+      "options": {
+        "dateStyle": "short",
+        "timeStyle": "short" } },
+    "currencyFormat": {
+      "type": "number",
+      "options": {
+        "style": "currency",
+        "currency": "MXN" } } },
+  
+  // keys
+  "About": "Acerca de",
+  "Label": "Etiqueta",
+  "key_string": "Esta es una cadena clave",
+
+  // use types
+  "item_count": "\${count} \${itemPlural(count)}",
+  "place_ordinal": "\${place} \${placeOrdinal(place)}",
+  "time_from_now": "\${time} \${minutesCardinal(minutes)} desde ahora",
+  "date": "\${dateFormat(date)}",
+  "currency": "\${currencyFormat(currency)}" }`)}
         </code>
       </pre>
     </wfc-card>
