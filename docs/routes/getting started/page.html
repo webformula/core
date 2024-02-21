@@ -20,13 +20,8 @@
 
   <div class="page-content-container">
     <wfc-card id="install">
-      <div class="card-content">
-        <div class="headline">Install</div>
-      </div>
+      <div slot="headline">Install</div>
 
-      <div class="card-content">
-        <div class="supporting-text">NPM</div>
-      </div>
       <pre>
         <code class="language-bash">
   ${`npm install @webformula/core`}
@@ -36,9 +31,7 @@
 
 
     <wfc-card id="indexhtml">
-      <div class="card-content">
-        <div class="headline">index.html</div>
-      </div>
+      <div slot="headline">index.html</div>
 
       <pre>
         <code class="language-html">
@@ -68,10 +61,8 @@
 
 
     <wfc-card id="routing">
-      <div class="card-content">
-        <div class="headline">Routing</div>
-        <div class="supporting-text">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
-      </div>
+      <div slot="headline">Routing</div>
+      <div slot="supporting-text">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
 
       <pre>
         <code class="language-yaml">
@@ -120,10 +111,8 @@
 
 
     <wfc-card id="config">
-      <div class="card-content">
-        <div class="headline">Config app</div>
-        <div class="supporting-text">Change settings for binding and routing</div>
-      </div>
+      <div slot="headline">Config app</div>
+      <div slot="supporting-text">Change settings for binding and routing</div>
 
       <pre>
         <code class="language-html">
@@ -155,11 +144,9 @@
 
 
     <wfc-card id="appjs">
-      <div class="card-content">
-        <div class="headline">Main application file</div>
-        <div class="supporting-text">app.js</div>
-        <div class="supporting-text">Required: Automatically uses app.js as entry file for bundling</div>
-      </div>
+      <div slot="headline">Main application file</div>
+      <div slot="supporting-text">app.js</div>
+      <div slot="supporting-text">Required: Automatically uses app.js as entry file for bundling</div>
 
       <pre>
         <code class="language-javascript">
@@ -173,8 +160,8 @@
         </code>
       </pre>
 
-      <div class="card-content" style="margin-top: 12px">
-        <div class="supporting-text">Prevent navigation allows you to lock down the app for uses like authentication</div>
+      <div style="margin-top: 42px; margin-bottom: 12px;">
+        <div style="font-size: 16px;">Prevent navigation allows you to lock down the app for uses like authentication</div>
       </div>
       <pre>
         <code class="language-javascript">
@@ -198,11 +185,9 @@
     </wfc-card>
 
     <wfc-card id="appcss">
-      <div class="card-content">
-        <div class="headline">Main application Styles</div>
-        <div class="supporting-text">app.css</div>
-        <div class="supporting-text">Optional: Will bundle and minify into a single file</div>
-      </div>
+      <div slot="headline">Main application Styles</div>
+      <div slot="supporting-text">app.css</div>
+      <div slot="supporting-text">Optional: Will bundle and minify into a single file</div>
 
       <pre>
         <code class="language-javascript">
@@ -217,10 +202,8 @@
 
 
     <wfc-card id="pagejs">
-      <div class="card-content">
-        <div class="headline">Page</div>
-        <div class="supporting-text">page.js and page.html</div>
-      </div>
+      <div slot="headline">Page</div>
+      <div slot="supporting-text">page.js and page.html</div>
 
       <pre>
         <code class="language-javascript" wfc-no-binding>
@@ -297,13 +280,11 @@
     </wfc-card>
 
     <wfc-card id="build">
-      <div class="card-content">
-        <div class="headline">Build app</div>
-        <div class="supporting-text">build.js</div>
-        <div class="supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.
-        </div>
-        <a href="/build">Build config</a>
+      <div slot="headline">Build app</div>
+      <div slot="supporting-text">build.js</div>
+      <div slot="supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured.
       </div>
+      <a href="/build">Build config</a>
 
       <pre>
         <code class="language-javascript">
@@ -317,8 +298,8 @@
       </code>
     </pre>
 
-  <div class="card-content" style="margin-top: 12px">
-    <div class="supporting-text">Run commands</div>
+  <div style="margin-top: 42px; margin-bottom: 12px;">
+    <div style="font-size: 24px;">Run commands</div>
   </div>
   <pre>
       <code class="language-bash">
@@ -336,16 +317,14 @@
     </wfc-card>
 
     <wfc-card id="middleware">
-      <div class="card-content">
-        <div class="headline">Serve app</div>
-        <div class="supporting-text">server.js</div>
-        <div class="supporting-text">Handle routing and file serving with middleware. GZIP compression is automatically
-          handled.</div>
-        <a href="/serve">Serve config</a>
-      </div>
+      <div slot="headline">Serve app</div>
+      <div slot="supporting-text">server.js</div>
+      <div slot="supporting-text">Handle routing and file serving with middleware. GZIP compression is automatically
+        handled.</div>
+      <a href="/serve">Serve config</a>
 
-      <div class="card-content" style="margin-top: 12px">
-        <div class="supporting-text">Native server</div>
+      <div class="card-content" style="margin-top: 42px; margin-bottom: 12px;">
+        <div style="font-size: 24px;">Native server</div>
       </div>
       <pre>
         <code class="language-javascript">
@@ -369,8 +348,8 @@
         </code>
       </pre>
 
-      <div class="card-content" style="margin-top: 12px">
-        <div class="supporting-text">Express server</div>
+      <div class="card-content" style="margin-top: 42px; margin-bottom: 12px;">
+        <div style="font-size: 24px;">Express server</div>
       </div>
       <pre>
         <code class="language-javascript">
@@ -390,8 +369,8 @@
         </code>
       </pre>
 
-      <div class="card-content" style="margin-top: 12px">
-        <div class="supporting-text">Livereload</div>
+      <div class="card-content" style="margin-top: 42px; margin-bottom: 12px;">
+        <div style="font-size: 24px;">Livereload</div>
       </div>
       <pre>
         <code class="language-bash">
@@ -402,10 +381,8 @@
     </wfc-card>
 
     <wfc-card id="devtools">
-      <div class="card-content">
-        <div class="headline">Devtools</div>
-        <div class="supporting-text">A small set of helper functions</div>
-      </div>
+      <div slot="headline">Devtools</div>
+      <div slot="supporting-text">A small set of helper functions</div>
 
       <pre>
         <code class="language-javascript">

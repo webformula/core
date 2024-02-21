@@ -4,18 +4,17 @@
 <section class="page-content-section">
   <div class="page-content-container">
     <wfc-card id="build">
-      <div class="card-content">
-        <div class="headline">Build app</div>
-        <div class="supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured. Builds are also optimized based on route entry points.</div>
-        <ul>
-          <li>Minification</li>
-          <li>Sourcemaps</li>
-          <li>Dev server</li>
-          <li>live relaoding</li>
-          <li>Gzip content</li>
-          <li>File copying</li>
-        </ul>
-      </div>
+      <div slot="headline">Build app</div>
+      <div slot="supporting-text">No need for webpack or other bundlers. ESbuild is packed in and pre configured. Builds are
+        also optimized based on route entry points.</div>
+      <ul slot="supporting-text">
+        <li>Minification</li>
+        <li>Sourcemaps</li>
+        <li>Dev server</li>
+        <li>live relaoding</li>
+        <li>Gzip content</li>
+        <li>File copying</li>
+      </ul>
       
       <pre>
         <code class="language-javascript">
@@ -114,8 +113,8 @@
         </code>
       </pre>
 
-      <div class="card-content" style="margin-top: 12px">
-        <div class="supporting-text">Native server</div>
+      <div class="card-content" style="margin-top: 42px; margin-bottom: 12px;">
+        <div style="font-size: 24px;">Native server</div>
       </div>
       <pre>
         <code class="language-javascript">
@@ -140,8 +139,8 @@
         </code>
       </pre>
       
-      <div class="card-content" style="margin-top: 12px">
-        <div class="supporting-text">Express server</div>
+      <div class="card-content" style="margin-top: 42px; margin-bottom: 12px;">
+        <div style="font-size: 24px;">Express server</div>
       </div>
       <pre>
         <code class="language-javascript">
@@ -162,8 +161,9 @@
         </code>
       </pre>
 
-      <div class="card-content" style="margin-top: 12px">
-        <div class="supporting-text">Run commands</div>
+
+      <div class="card-content" style="margin-top: 42px; margin-bottom: 12px;">
+        <div style="font-size: 24px;">Run commands</div>
       </div>
       <pre>
         <code class="language-bash">

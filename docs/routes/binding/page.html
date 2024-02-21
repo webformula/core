@@ -5,15 +5,14 @@
 <section class="page-content-section">
   <div class="page-content-container">
     <wfc-card id="indexhtml">
-      <div class="card-content">
-        <div class="headline">Basic binding</div>
-        
-        <wfc-textfield class="wfc-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}" oninput="page.basicBind = this.value">
-        </wfc-textfield>
+      <div slot="headline">Basic binding</div>
 
-        <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
-        <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
-      </div>
+      <wfc-textfield class="wfc-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}"
+        oninput="page.basicBind = this.value">
+      </wfc-textfield>
+      
+      <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
+      <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
       
       <pre>
         <code class="language-html">

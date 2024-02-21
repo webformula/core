@@ -44,9 +44,19 @@ section {
 }
 
 pre {
-  display: contents;
+  display: flex;
   margin: 0;
   white-space: pre-wrap;
+}
+
+pre > code {
+  flex-grow: 1;
+}
+
+wfc-card pre,
+wfc-card pre {
+  margin: 0 -16px;
+  margin-bottom: -16px;
 }
 
 pre > code {
@@ -54,10 +64,14 @@ pre > code {
   overflow-x: auto;
 }
 
+
+
+wfc-card > pre:first-of-type > code,
 wfc-card > pre:first-of-type > code {
-  margin-top: 8px;
+  margin-top: 24px;
 }
 
+wfc-card > pre:last-of-type > code,
 wfc-card > pre:last-of-type > code {
   border-radius: 0 0 var(--wfc-shape-medium) var(--wfc-shape-medium);
 }
@@ -66,8 +80,9 @@ wfc-card .example {
   margin-top: 18px;
 }
 
-wfc-card .card-content {
-  padding: 24px !important;
+page-content > section > wfc-card,
+page-content > section > .page-content-container > wfc-card {
+  margin-bottom: 36px;
 }
 
 wfc-card.header-card {
@@ -77,12 +92,18 @@ wfc-card.header-card {
   box-shadow: none;
 }
 
-wfc-card > .card-content > .headline + .supporting-text {
+wfc-card.header-card > .headline {
+  font-size: 32px;
+}
+
+wfc-card > .card-content > .headline + .subheader {
   margin-top: 2px;
 }
 
-page-content > section > wfc-card,
-page-content > section > .page-content-container > wfc-card {
+#page-content > section > wfc-card,
+#page-content > section > .page-content-container > wfc-card,
+#page-content > section > wfc-card,
+#page-content > section > .page-content-container > wfc-card {
   margin-bottom: 36px;
 }
 

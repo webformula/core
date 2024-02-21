@@ -10,34 +10,29 @@
 
   <div class="page-content-container">
     <wfc-card id="Localization">
-      <div class="card-content">
-        <div class="headline">Localization</div>
-        <div class="supporting-text">Localization allows to configure multiple locales with local message configurations</div>
-        <ul class="supporting-text">
-          <li>Variables (Data is pulled from page variables)</li>
-          <li>Pluralization</li>
-          <li>Date formatting</li>
-          <li>Number formatting</li>
-          <li>Relative time formatting</li>
-        </ul>
-      </div>
+      <div slot="headline">Localization</div>
+      <div slot="supporting-text">Localization allows to configure multiple locales with local message configurations</div>
+      <ul slot="supporting-text">
+        <li>Variables (Data is pulled from page variables)</li>
+        <li>Pluralization</li>
+        <li>Date formatting</li>
+        <li>Number formatting</li>
+        <li>Relative time formatting</li>
+      </ul>
 
-      <div class="card-content">
-        <div style="display: flex; flex-direction: column; width: 120px; margin-bottom: 12px;">
-          <wfc-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en / es</wfc-switch>
-        </div>
+      <wfc-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en / es</wfc-switch>
 
-        <div i18n>About</div>
-        <div i18n>key_string</div>
-        <div i18n count="1">item_count</div>
-        <div i18n count="2">item_count</div>
-        <div i18n>time_from_now</div>
-        <div i18n>date_key</div>
-        <div i18n>currency_key</div>
-        <div i18n>relativeTime_key</div>
-
-        <wfc-textfield i18n-attr="label" label="Label days" value="${page.days}" oninput="page.days = this.value"></wfc-textfield>
-      </div>
+      <div i18n>About</div>
+      <div i18n>key_string</div>
+      <div i18n count="1">item_count</div>
+      <div i18n count="2">item_count</div>
+      <div i18n>time_from_now</div>
+      <div i18n>date_key</div>
+      <div i18n>currency_key</div>
+      <div i18n>relativeTime_key</div>
+      
+      <wfc-textfield i18n-attr="label" label="Label days" value="${page.days}"
+        oninput="page.days = this.value"></wfc-textfield>
     
       <pre>
         <code class="language-javascript" wfc-no-binding>

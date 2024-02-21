@@ -9,17 +9,15 @@
     <ul class="links">
       <li><a href="#pagejs">page.js</a></li>
       <li><a href="#componentjs">component.js</a></li>
-      <li><a href="#nteracting">Interacting with component elements</a></li>
+      <li><a href="#nteracting">Interacting with components</a></li>
     </ul>
   </nav>
 
   <div class="page-content-container">
     <wfc-card id="pagejs">
-      <div class="card-content">
-        <div class="headline">Page file</div>
-        <div class="supporting-text">page.js</div>
-        <div class="supporting-text">Web component is imported in this file</div>
-      </div>
+      <div slot="headline">Page file</div>
+      <div slot="supporting-text">page.js</div>
+      <div slot="supporting-text">Web component is imported in this file</div>
 
       <pre>
         <code class="language-javascript">
@@ -53,10 +51,8 @@
     </wfc-card>
 
     <wfc-card id="componentjs">
-      <div class="card-content">
-        <div class="headline">Component file</div>
-        <div class="supporting-text">component.js</div>
-      </div>
+      <div slot="headline">Component file</div>
+      <div slot="supporting-text">component.js</div>
       
       <pre>
         <code class="language-html">
@@ -71,20 +67,70 @@
   import html from './component.html'; // automatically bundles
   
   class CustomButton extends Component {
-    static html = html; // hook up imported html. Supports template literals (undefined)
-
     /**
-      * Defaults to false.
-      * If this is false then the component will render directly in root element
+      * Pass in HTML string. Use for imported .HTML
+      * Supports template literals: <div>${this.var}</div>
+      * @type {String}
       */
-    static useShadowRoot = true;
+    static html = '';
+
 
     /**
-    * Defaults to true.
-    * Use global template element
-    * This should be set to false if the template is dynamic (<div>\${this.var}</div>)
-    */
+      * Hook up shadow root
+      * @type {Boolean}
+      */
+    static useShadowRoot = false;
+
+    
+    /**
+      * @type {Boolean}
+      */
+    static shadowRootDelegateFocus = false;
+
+
+    /**
+      * Store template string in template element
+      * Using this will break dynamic rendering from values that change: <div>${this.var}</div>
+      * @type {Boolean}
+      */
     static useTemplate = true;
+
+
+    /**
+      * Pass in styles for shadow root.
+      * Can use imported stylesheets: import styles from '../styles.css' assert { type: 'css' };
+      * @type {CSSStyleSheet}
+      */
+    static shadowRootStyleSheets;
+
+
+    /**
+      * @typedef {String} AttributeType
+      * @value '' default handling
+      * @value 'string' Convert to a string. null = ''
+      * @value 'number' Convert to a number. isNaN = ''
+      * @value 'int' Convert to a int. isNaN = ''
+      * @value 'boolean' Convert to a boolean. null = false
+      * @value 'event' Allows code to be executed. Similar to onchange="console.log('test')"
+      */
+      /**
+      * Enhances observedAttributes, allowing you to specify types
+      * You can still use \`observedAttributes\` in stead of this.
+      * @type {Array.<[name:String, AttributeType]>}
+      */
+    static get observedAttributesExtended() { return []; }; // static observedAttributesExtended = [['required', 'boolean']];
+    
+
+    /**
+      * Use with observedAttributesExtended
+      * You can still use \`attributeChangedCallback\` in stead of this.
+      * @function
+      * @param {String} name - Attribute name
+      * @param {String} oldValue - Old attribute value
+      * @param {String} newValue - New attribute value
+      */
+    attributeChangedCallbackExtended(name, oldValue, newValue) { }
+
 
     // need to bind events to access \`this\`
     #onClick_bound = this.#onClick.bind(this);
@@ -93,6 +139,10 @@
     constructor() {
       super();
     }
+
+    connectedCallback() {}
+    disconnectedCallback() {}
+    beforeRender() {}
 
     afterRender() {
       this.#root.querySelector('button').addEventListener('click', this.#onClick_bound);
@@ -115,9 +165,7 @@
 
 
     <wfc-card id="nteracting">
-      <div class="card-content">
-        <div class="headline">Interacting with component elements</div>
-      </div>
+      <div slot="headline">Interacting with component elements</div>
       
       <pre>
         <code class="language-html">
