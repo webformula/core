@@ -158,6 +158,8 @@ export default class Component extends HTMLElement {
   /** Render Component. This is automatically called for pages */
   render() {
     if (!this.#prepared) this.#prepareRender();
+    if (this.constructor._isBuild) return;
+    
     !this.#pageBinding ? this.beforeRender() : this.beforeRender.call(this.#pageBinding.proxy);
     if (!this.constructor.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
     this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
@@ -198,6 +200,8 @@ export default class Component extends HTMLElement {
       this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
       this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
     }
+
+    if (this.constructor._isBuild) return;
 
     if (this.constructor._isPage) {
       const title = document.querySelector('title');

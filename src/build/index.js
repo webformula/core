@@ -172,8 +172,11 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
     const routeModule = await window.wfcRoutes.find(v => v.path === route.routePath).component;
     customElements.define(`page-${i}`, routeModule.default);
     routeModule.default._isPage = true;
+    routeModule.default._isBuild = true;
     routeModule.default.useTemplate = false;
-    const template = new routeModule.default().template();
+    const instance = new routeModule.default();
+    instance.render();
+    const template = instance.template();
 
     // prepare module preload links
     const pageScriptPreload = route.routeScriptPath && route.routeScriptPath !== appScriptPath ? `\n  <link rel="modulepreload" href="${route.routeScriptPath}" />` : '';
