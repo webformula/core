@@ -146,7 +146,7 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
 
   const appScriptPreload = `<link rel="modulepreload" href="${appScriptPath}"/>`;
   const appImportChunks = appJSOutput.imports.map(v => v.path.split('/').pop()).filter(v => v.startsWith('chunk-'));
-  const appScriptTag = `<script src="${appScriptPath}" type="module" async></script>`;
+  const appScriptTag = `<script src="${appScriptPath}" type="module" defer></script>`;
   const appCssTag = !appCssPath ? '' : `<link rel="preload" href="${appCssPath}" as="style" onload="this.onload=null;this.rel='stylesheet'">`;
 
   // prepare template file
