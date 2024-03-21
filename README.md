@@ -31,18 +31,18 @@ Browsers, javascript, css, and html provide a robust set of features these days.
 
 
 # Getting started
-<a name="gettingstarted"/>
+<a name="gettingstarted"></a>
 
 
 ## **Installation**
-<a name="installation"/>
+<a name="installation"></a>
 
 ```bash
 npm install @webformula/core
 ```
 
 ## **Routing**
-<a name="routing"/>
+<a name="routing"></a>
 @Webformula/core uses directory based routing. All routes go in a 'routes' folder.
 
 ```yaml
@@ -83,10 +83,10 @@ Check out the [page.js section](#page.js) for details on how to get url paramete
 
 
 ## **Example code**
-<a name="examplecode"/>
+<a name="examplecode"></a>
 
 ### **index.html**
-<a name="index.html"/>
+<a name="index.html"></a>
 
 ```html
 <!doctype html>
@@ -113,7 +113,7 @@ Check out the [page.js section](#page.js) for details on how to get url paramete
 <br/>
 
 ### **Main app `app.js`**
-<a name="app.js"/>
+<a name="app.js"></a>
 
 ```javascript
   /* Main app file
@@ -140,7 +140,7 @@ Prevent navigation allows you to lock down the app for uses like authentication
 <br/>
 
 ### **Main app css `app.css`**
-<a name="app.css"/>
+<a name="app.css"></a>
 
 ```css
 @import url('./other.css');
@@ -153,7 +153,7 @@ body {
 <br/>
 
 ### **Basic page `routes/home/index.js`**
-<a name="page.js"/>
+<a name="page.js"></a>
 
 ```javascript
   import { Component } from '@webformula/core';
@@ -235,7 +235,7 @@ body {
 <br/>
 
 ### **HTML page template `routes/home/page.html`** Can use javascript template literal syntax
-<a name="page.html"/>
+<a name="page.html"></a>
 
 ```html
 <div>Page Content</div>
@@ -253,7 +253,7 @@ body {
 <br/>
 
 ### **Web component `component.js`**
-<a name="component.js"/>
+<a name="component.js"></a>
 
 ```javascript
   import { Component } from '@webformula/core';
@@ -310,7 +310,7 @@ body {
 <br/>
 
 ### **Build single page app `build.js`**
-<a name="buildapp"/>
+<a name="buildapp"></a>
 The build process will handle:
 - Minification
 - Sourcemaps
@@ -433,7 +433,7 @@ NODE_ENV=production node build.js
 <br/>
 
 ### **Build single page app `build.js`**
-<a name="middleware"/>
+<a name="middleware"></a>
 Use middleware to handle routing and file serving. GZIP compression is automatically handled.
 - Native server
 - Express server
