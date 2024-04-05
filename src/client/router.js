@@ -119,6 +119,7 @@ async function route(locationObject, back = false, initial = false) {
   }
 
   if (!currentPage.__initial__) {
+    currentPage.destroy();
     currentPage.disconnectedCallback();
   }
   const nextPage = new match.component();

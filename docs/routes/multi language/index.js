@@ -12,7 +12,7 @@ export default class extends Component {
   time = 30
   date = new Date();
   currency = '123.45';
-  days = 3;
+  days = this.signal(3);
 
   constructor() {
     super();

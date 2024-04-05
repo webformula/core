@@ -1,5 +1,5 @@
-import BindPage from './page-binding.js';
 import i18n from './i18n.js';
+import { Signal } from './signal.js';
 
 
 const templateElements = [];
@@ -73,13 +73,13 @@ export default class Component extends HTMLElement {
 
   
   #classId;
-  #pageBinding;
   #root = this;
   #attributeEvents = {};
   #attributesLookup;
   #prepared;
   #templateElement;
   #templateString;
+  #signals = [];
 
   constructor() {
     super();
@@ -90,16 +90,17 @@ export default class Component extends HTMLElement {
       const pageContent = document.querySelector('page-content') || document.querySelector('#page-content');
       if (!pageContent) throw Error('Could not find page-content');
       this.#root = pageContent;
-
-      this.#pageBinding = new BindPage(this);
-      if (this.#pageBinding) {
-        return this.#pageBinding.proxy;
-      }
     }
   }
 
   get rootElement() { return this.#root; }
 
+
+  signal(value) {
+    const sig = new Signal(value);
+    this.#signals.push(sig);
+    return sig;
+  }
 
   /**
    * Method that returns a html template string. This is an alternative to use static html
@@ -160,12 +161,11 @@ export default class Component extends HTMLElement {
     if (!this.#prepared) this.#prepareRender();
     if (this.constructor._isBuild) return;
     
-    !this.#pageBinding ? this.beforeRender() : this.beforeRender.call(this.#pageBinding.proxy);
+    this.beforeRender();
     if (!this.constructor.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
     this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
-    if (this.#pageBinding) this.#pageBinding.postRender();
     if (this.constructor._isPage) i18n.localizeDocument();
-    !this.#pageBinding ? this.afterRender() : this.afterRender.call(this.#pageBinding.proxy);
+    this.afterRender();
     if (this.constructor._isPage) window.dispatchEvent(new Event('webformulacorepagerender'));
   }
 
@@ -179,27 +179,38 @@ export default class Component extends HTMLElement {
     return i18n.localize(key, this);
   }
 
+  #attrRegex = /<[^<>\s]+(?:\s+[^=]+="[^"]+")*(?:\s+([^=]+)=)+"$/;
   /** @private */
-  bindAttrVal(str, id) {
-    if (this.#pageBinding) {
-      if (!this.#pageBinding.refValues[id]) this.#pageBinding.refValues[id] = {};
-      this.#pageBinding.refValues[id].lastValue = this.#pageBinding.refValues[id].value;
-      this.#pageBinding.refValues[id].value = str;
-      return str;
+  signalTag(strings, ...vars) {
+    let result = '';
+    let i = 0;
+    const length = strings.length;
+    for (; i < length; i += 1) {
+      let value = vars[i];
+      if (value !== undefined && value !== null && value.constructor.name === 'Signal') {
+        const match = (result + strings[i]).match(this.#attrRegex);
+        if (match !== null) value = value.templateValueAttribute(match[match.length - 1]);
+        else value = value.templateValueContent;
+      }
+      result += `${strings[i]}${i === length - 1 ? '' : value}`;
     }
+    return result;
+  }
+
+  /** @private */
+  destroy() {
+    for (const sig of this.#signals) {
+      sig.destroy();
+    }
+    this.#signals = [];
   }
 
   #prepareRender() {
     // set on constructor?
     this.#prepared = true;
     
-    if (this.#pageBinding?.enabled && !this.#pageBinding?.parsed) {
-      this.template = this.#pageBinding.parseTemplate();
-      this.#templateString = this.#pageBinding.templateString;
-    } else {
-      this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
-      this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
-    }
+    this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+    this.template = () => new Function('page', `return page.signalTag\`${this.#templateString}\`;`).call(this, this);
 
     if (this.constructor._isBuild) return;
 

@@ -137,7 +137,9 @@ export default new class i18n {
 
     const variables = match.variables.map(key => {
       if (element && element.hasAttribute(key)) return element.getAttribute(key);
-      return window.page[key];
+      let val = window.page[key];
+      if (val !== undefined && val !== null && val.constructor.name === 'Signal') val = val.i18nValue;
+      return val;
     });
     const methods = match.types.map(key => this.#localeTypes[key].method);
 
@@ -174,15 +176,6 @@ export default new class i18n {
         element.setAttribute(name, message);
       });
     }
-  }
-
-  /** called by page binder to update translations with corresponding variables
-   * @private
-   */
-  bindingVariableChange(varname) {
-    this.#localizedRef
-      .filter(v => v[1].variables.includes(varname))
-      .forEach(v => this.#localizeElement(v[0]));
   }
 
   #observeHandler(mutationList) {

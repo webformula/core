@@ -5,13 +5,13 @@ export default class extends Component {
   static pageTitle = 'Binding variables';
   static html = html;
 
-  basicBind = '';
+  basicBind = this.signal('');
 
   constructor() {
     super();
   }
 
   updateValue() {
-    this.basicBind = 'Updated';
+    this.basicBind.value = 'Updated';
   }
 }

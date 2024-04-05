@@ -8,7 +8,7 @@
       <div slot="headline">Basic binding</div>
 
       <wfc-textfield class="wfc-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}"
-        oninput="page.basicBind = this.value">
+        oninput="page.basicBind.value = this.value">
       </wfc-textfield>
       
       <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
@@ -16,7 +16,7 @@
       
       <pre>
         <code class="language-html">
-  ${page.escape(`<input value="\${page.basicBind}" oninput="page.basicBind = this.value">
+  ${page.escape(`<input value="\${page.basicBind}" oninput="page.basicBind.value = this.value">
 
   <div>Value: \${page.basicBind}</div>
   <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
@@ -25,7 +25,7 @@
     If you do not bind the value attribute,
     then changing the value outside of the input will not update the input
   -->
-  <input oninput="page.basicBind = this.value">
+  <input oninput="page.basicBind.value = this.value">
 
 
   <!--
@@ -45,14 +45,14 @@
     static pageTitle = 'Binding variables';
     static html = html;
     
-    basicBind = '';
+    basicBind = this.signal('');
     
     constructor() {
       super();
     }
 
     updateValue() {
-      this.basicBind = 'Updated';
+      this.basicBind.value = 'Updated';
     }
   }`}
         </code>

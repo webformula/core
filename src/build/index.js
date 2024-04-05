@@ -284,21 +284,11 @@ function injectCode(config) {
         build.onLoad({ filter: /Component\.js/ }, async args => {
           let contents = await readFile(args.path, 'utf-8');
           contents = contents.replace('#prepareRender() {', `
-  getVariableReferences() {
-    return this.#pageBinding.variableReferences;
-  }
-
   getTemplate() {
     return this.#templateString;
   }
 
   #prepareRender() {`);
-          return { contents };
-        });
-
-        build.onLoad({ filter: /page-binding\.js/ }, async args => {
-          let contents = await readFile(args.path, 'utf-8');
-          contents = contents.replace(`['render', 'internalDisconnect', 'bindAttrVal']`, `['render', 'internalDisconnect', 'bindAttrVal', 'getVariableReferences', 'getTemplate']`);
           return { contents };
         });
       }
@@ -331,10 +321,6 @@ const pluginCss = {
 const debugScript = `
 <script>
   console.warn('Webformula Core: Debug mode');
-
-  window.getBoundVariables = () => {
-    console.log(window.page.getVariableReferences());
-  }
 
   window.getPageTemplate = () => {
     console.log(window.page.getTemplate());
