@@ -1,5 +1,5 @@
 <h3 class="page-title">Binding variables</h3>
-<div class="page-subheader wfc-font-title-medium">Variables bind automatically and do not need any special code</div>
+<div class="page-subheader wfc-font-title-medium">Bind variables to templates using signals</div>
 
 
 <section class="page-content-section">
@@ -21,19 +21,9 @@
   <div>Value: \${page.basicBind}</div>
   <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
 
-  <!--
-    If you do not bind the value attribute,
-    then changing the value outside of the input will not update the input
-  -->
   <input oninput="page.basicBind.value = this.value">
 
-
-  <!--
-    Prevent content binding
-    you can disable content binding for individual elements
-    Add the attribute 'wfc-no-binding'
-  -->
-  <div wfc-no-binding>Value: \${page.basicBind}</div>`)}
+  <div>Value: \${page.basicBind}</div>`)}
         </code>
       </pre>
       <pre>
@@ -52,9 +42,30 @@
     }
 
     updateValue() {
+      // Components will automatically listen for signals and render, so you do not need effects
       this.basicBind.value = 'Updated';
     }
   }`}
+        </code>
+      </pre>
+      <pre>
+        <code class="language-javascript">
+  ${`
+    
+  // Use signals and effects outside of the Component class
+  
+  import { Signal, effect } from '@webformula/core';
+
+
+  const something = new Signal('some value');
+
+  effect(() => {
+    console.log(something.value);
+  });
+
+  something.value = 'new value';
+
+  something.destroy();`}
         </code>
       </pre>
     </wfc-card>
