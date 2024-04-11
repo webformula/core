@@ -1,3 +1,6 @@
+import { isSignal } from './signals.js';
+
+
 const varRegex = /(?!{|\()\w+(?=\)|})/g;
 const typeRegex = /(?!{)\w+(?=\()/g;
 
@@ -17,11 +20,16 @@ export default new class i18n {
   #observerConnected;
   #languageChange_bound = this.#languageChange.bind(this);
   #observeHandler_bound = this.#observeHandler.bind(this);
+  #checkForSignalChanges_bound = this.#checkForSignalChanges.bind(this);
+  #signals = new Map();
 
   constructor() {
     this.locale = navigator.language;
     window.addEventListener('languagechange', this.#languageChange_bound);
+    window.addEventListener('wfc-signal-change-ids', this.#checkForSignalChanges_bound);
+    window.addEventListener('locationchange', this.#checkForSignalChanges_bound);
   }
+
 
   /**
    * Get locale
@@ -138,7 +146,13 @@ export default new class i18n {
     const variables = match.variables.map(key => {
       if (element && element.hasAttribute(key)) return element.getAttribute(key);
       let val = window.page[key];
-      if (val !== undefined && val !== null && val.constructor.name === 'Signal') val = val.i18nValue;
+      if (isSignal(val)) {
+        if (element) {
+          if (!this.#signals.has(val.id)) this.#signals.set(val.id, new Set());
+          this.#signals.get(val.id).add(element);
+        }
+        val = val.untrackValue;
+      }
       return val;
     });
     const methods = match.types.map(key => this.#localeTypes[key].method);
@@ -276,5 +290,22 @@ export default new class i18n {
     const key = `${locale}${JSON.stringify(options || '')}`;
     if (!this.#relativeTimeFormatters[key]) this.#relativeTimeFormatters[key] = new Intl.RelativeTimeFormat(locale, options);
     return this.#relativeTimeFormatters[key];
+  }
+  
+
+  // loop over all elements associated with a signal id
+  // also used on locationchange to cleanup
+  #checkForSignalChanges(event) {
+    const signalIds = event?.detail || [];
+
+    for (const [key, elements] of this.#signals.entries()) {
+      const exists = signalIds.includes(key);
+      for (const element of elements) {
+        if (!element.isConnected) elements.delete(element);
+        else if (exists) this.#localizeElement(element);
+      }
+
+      if (elements.size === 0) this.#signals.delete(key);
+    }
   }
 }

@@ -1,5 +1,5 @@
 import i18n from './i18n.js';
-import { Signal } from './signal.js';
+import { isSignal } from './signals.js';
 
 
 const templateElements = [];
@@ -79,7 +79,7 @@ export default class Component extends HTMLElement {
   #prepared;
   #templateElement;
   #templateString;
-  #signals = [];
+  #signals = new Map();
 
   constructor() {
     super();
@@ -95,12 +95,6 @@ export default class Component extends HTMLElement {
 
   get rootElement() { return this.#root; }
 
-
-  signal(value) {
-    const sig = new Signal(value);
-    this.#signals.push(sig);
-    return sig;
-  }
 
   /**
    * Method that returns a html template string. This is an alternative to use static html
@@ -187,22 +181,49 @@ export default class Component extends HTMLElement {
     const length = strings.length;
     for (; i < length; i += 1) {
       let value = vars[i];
-      if (value !== undefined && value !== null && value.constructor.name === 'Signal') {
+
+      if (isSignal(value)) {
+        if (!this.#signals.has(value)) {
+          this.#signals.set(value, new Set());
+          value.watch(this.#signalChange.bind(this));
+        }
+
         const match = (result + strings[i]).match(this.#attrRegex);
-        if (match !== null) value = value.templateValueAttribute(match[match.length - 1]);
-        else value = value.templateValueContent;
+        if (match !== null) {
+          const signalItems = this.#signals.get(value);
+          signalItems.add(match[match.length - 1]);
+          value = `${value.untrackValue}" wfc-bind-attr-id="${value.id}`;
+        }
+        else value = `<wfc-bind wfc-bind-id="${value.id}">${value.untrackValue}</wfc-bind>`;
       }
+
       result += `${strings[i]}${i === length - 1 ? '' : value}`;
     }
     return result;
   }
 
-  /** @private */
-  destroy() {
-    for (const sig of this.#signals) {
-      sig.destroy();
+  #signalChange(signal) {
+    const signalAttrs = this.#signals.get(signal);
+
+    const content = [...document.body.querySelectorAll(`[wfc-bind-id="${signal.id}"]`)];
+    for (const element of content) {
+      element.innerHTML = signal.value
     }
-    this.#signals = [];
+
+    const attrElements = [...document.body.querySelectorAll(`[wfc-bind-attr-id="${signal.id}"]`)];
+    for (const attrElement of attrElements) {
+      for (const attr of signalAttrs) {
+        if (attrElement.hasAttribute(attr)) attrElement.setAttribute(attr, signal.value);
+      }
+    }
+  }
+
+  /** @private */
+  _internalDisconnectedCallback() {
+    for (const signal of this.#signals.keys()) {
+      signal.dispose();
+    }
+    this.#signals.clear();
   }
 
   #prepareRender() {

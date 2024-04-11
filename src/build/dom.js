@@ -72,6 +72,7 @@ dom.document.adoptedStyleSheets = [];
 dom.document.styleSheets = [];
 dom.document.fonts = { ready: Promise.resolve([]) };
 dom.window.scrollTo = () => {};
+dom.window.postMessage = () => {};
 
 // Fix broken linkedom Customevent
 class CustomEvent extends dom.Event {

@@ -1,4 +1,4 @@
-import { Component } from '@webformula/core';
+import { Component, Signal } from '@webformula/core';
 import html from './page.html';
 import { i18n } from '@webformula/core';
 import en from '../../locales/en.json' assert { type: "json" };
@@ -12,7 +12,7 @@ export default class extends Component {
   time = 30
   date = new Date();
   currency = '123.45';
-  days = this.signal(3);
+  days = new Signal(3);
 
   constructor() {
     super();
