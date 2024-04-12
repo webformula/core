@@ -80,6 +80,7 @@ export default class Component extends HTMLElement {
   #templateElement;
   #templateString;
   #signals = new Map();
+  #signalChange_bound = this.#signalChange.bind(this);
 
   constructor() {
     super();
@@ -185,7 +186,7 @@ export default class Component extends HTMLElement {
       if (isSignal(value)) {
         if (!this.#signals.has(value)) {
           this.#signals.set(value, new Set());
-          value.watch(this.#signalChange.bind(this));
+          value.watch(this.#signalChange_bound);
         }
 
         const match = (result + strings[i]).match(this.#attrRegex);
@@ -220,6 +221,22 @@ export default class Component extends HTMLElement {
 
   /** @private */
   _internalDisconnectedCallback() {
+    // TODO can i dispose, do i need to unwatch?
+    //   Disposing assumes its owned by the page
+    //
+    // const propertyNames = Object.getOwnPropertyNames(this);
+    // for (const signal of this.#signals.keys()) {
+    //   let isPageProp = false;
+    //   for (let i = 0; i < propertyNames.length; i++) {
+    //     if (this[propertyNames[i]] === signal) {
+    //       isPageProp = true;
+    //       continue;
+    //     }
+    //   }
+    //   if (isPageProp) signal.dispose();
+    //   else signal.unwatch(this.#signalChange_bound);
+    // }
+
     for (const signal of this.#signals.keys()) {
       signal.dispose();
     }
