@@ -131,7 +131,7 @@
   });
   
   createServer(async (req, res) => {
-  const handled = await middleware(req, res);
+    const handled = await middleware(req, res);
     if (handled === true) return;
     
     // Do other stuff

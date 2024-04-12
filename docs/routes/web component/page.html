@@ -72,7 +72,7 @@
       * Supports template literals: <div>${this.var}</div>
       * @type {String}
       */
-    static html = '';
+    static html = html;
 
 
     /**
@@ -140,6 +140,14 @@
       super();
     }
 
+    /**
+     * Method that returns a html template string. This is an alternative to use static html
+     * @name template
+     * @function
+     * @return {String}
+     */
+    template() { return '<div></div>' }
+
     connectedCallback() {}
     disconnectedCallback() {}
     beforeRender() {}
@@ -190,7 +198,7 @@
   import html from './component.html'; // automatically bundles
   
   class CustomWebcomponent extends Component {
-    static html = html; // hook up imported html. Supports template literals (undefined)
+    static html = html;
 
     // need to bind events to access \`this\`
     #onClick_bound = this.clickIt.bind(this);
