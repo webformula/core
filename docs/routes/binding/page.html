@@ -1,71 +1,184 @@
-<h3 class="page-title">Binding variables</h3>
+<h3 class="page-title">Signals and binding</h3>
 <div class="page-subheader wfc-font-title-medium">Bind variables to templates using signals</div>
 
 
 <section class="page-content-section">
+  <nav class="links-nav" aria-label="page-content">
+    <div class="wfc-font-headline-small page-secondary-header">Links</div>
+    <ul class="links">
+      <li><a href="#signal">Signal</a></li>
+      <li><a href="#compute">Compute</a></li>
+      <li><a href="#effect">Effect</a></li>
+    </ul>
+  </nav>
+
   <div class="page-content-container">
-    <wfc-card id="indexhtml">
-      <div slot="headline">Basic binding</div>
+    <wfc-card id="signal">
+      <div slot="headline">Signal</div>
+      <div slot="supporting-text">A signal is a wrapper around a value that can notify interested consumers when that value changes</div>
 
       <wfc-textfield class="wfc-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}"
         oninput="page.basicBind.value = this.value">
       </wfc-textfield>
       
       <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
+      
       <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
       
       <pre>
         <code class="language-html">
-  ${page.escape(`<input value="\${page.basicBind}" oninput="page.basicBind.value = this.value">
+  ${page.escape(`<!-- Signals automatically update the HTML -->
+
+  <wfc-textfield
+    label="Type something"
+    value="\${page.basicBind}"
+    oninput="page.basicBind.value = this.value"
+  ></wfc-textfield>
 
   <div>Value: \${page.basicBind}</div>
-  <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
-
-  <input oninput="page.basicBind.value = this.value">
-
-  <div>Value: \${page.basicBind}</div>`)}
+  <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>`)}
         </code>
       </pre>
       <pre>
         <code class="language-javascript">
-  ${`import { Component } from '@webformula/core';
+  ${`import { Component, Signal } from '@webformula/core';
   import html from './page.html';
 
   export default class extends Component {
-    static pageTitle = 'Binding variables';
+    static pageTitle = 'Signal';
     static html = html;
     
-    basicBind = this.signal('');
+    basicBind = new Signal('');
     
     constructor() {
       super();
     }
 
     updateValue() {
-      // Components will automatically listen for signals and render, so you do not need effects
+      // HTML will automatically update
       this.basicBind.value = 'Updated';
     }
   }`}
         </code>
       </pre>
+
       <pre>
         <code class="language-javascript">
   ${`
+  // quick example of using Signal, Compute, and effect
     
-  // Use signals and effects outside of the Component class
+  import { Component, Signal, Compute, effect } from '@webformula/core';
+  import html from './page.html';
+
+  export default class extends Component {
+    static pageTitle = 'Signal Compute effect';
+    static html = html;
+    
+    one = new Signal(1);
+    // Compute will run when first created
+    two = new Compute(() => {
+      return this.one.value * 2;
+    });
+    
+    constructor() {
+      super();
+
+      // runs when any signals or computes contained inside change
+      // effect will run when first created
+      const dispose = effect(() => {
+        if (this.two > 10) {
+          // do some work
+        }
+      });
+
+      // dispose effect
+      dispose();
+    }
+  }`}
+        </code>
+      </pre>
+    </wfc-card>
+
+
+    <wfc-card id="compute">
+      <div slot="headline">Compute</div>
+      <div slot="supporting-text">Compute provides a way to interact with multiple signals to provide a single value</div>
+    
+      <wfc-textfield class="wfc-raise-label" type="number" style="margin-top: 24px;" label="Type something" value="${page.number}"
+        oninput="page.number.value = this.value">
+      </wfc-textfield>
+    
+      <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.numberTimesTwo}</div>
+
+      <pre>
+        <code class="language-html">
+  ${page.escape(`<!-- Computes automatically update the HTML -->
   
-  import { Signal, effect } from '@webformula/core';
+  <wfc-textfield
+    type="number"
+    label="Type something"
+    value="\${page.number}"
+    oninput="page.number.value = this.value">
+  </wfc-textfield>
+
+  <div>Value: \${page.numberTimesTwo}</div>`)}
+        </code>
+      </pre>
+      <pre>
+        <code class="language-javascript">
+  ${`import { Component, Signal, Compute } from '@webformula/core';
+  import html from './page.html';
+
+  export default class extends Component {
+    static pageTitle = 'Compute';
+    static html = html;
+    
+    number = new Signal(1);
+    // Compute will run when first created
+    numberTimesTwo = new Compute(() => {
+      return this.number.value * 2;
+    });
+    
+    constructor() {
+      super();
+    }
+  }`}
+        </code>
+      </pre>
+    </wfc-card>
 
 
-  const something = new Signal('some value');
+    <wfc-card id="effect">
+      <div slot="headline">Effect</div>
+      <div slot="supporting-text">Effects allows you to run code based on any changes for signals or computes it contains. The difference between effect and compute is that effects do not return values.</div>
+    
+      <pre>
+        <code class="language-javascript">
+  ${`import { Component, Signal, effect } from '@webformula/core';
+  import html from './page.html';
 
-  effect(() => {
-    console.log(something.value);
-  });
+  export default class extends Component {
+    static pageTitle = 'Effect';
+    static html = html;
+    
+    one = new Signal(1);
+    two = new Signal(2);
+    
+    constructor() {
+      super();
 
-  something.value = 'new value';
+      // runs when any signals or computes contained inside change
+      // effect will run when first created
+      const dispose = effect(() => {
+        if (this.one.value < this.two.value) {
+          // do some work
+        }
+      });
 
-  something.destroy();`}
+      // dispose effect
+      dispose();
+    }
+  }`}
         </code>
       </pre>
     </wfc-card>

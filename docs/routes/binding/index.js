@@ -1,11 +1,17 @@
-import { Component } from '@webformula/core';
+import { Component, Signal, Compute } from '@webformula/core';
 import html from './page.html';
 
+
 export default class extends Component {
-  static pageTitle = 'Binding variables';
+  static pageTitle = 'Signals and binding';
   static html = html;
 
-  basicBind = this.signal('');
+  basicBind = new Signal('');
+  number = new Signal(1);
+  numberTimesTwo = new Compute(() => {
+    return this.number.value * 2;
+  });
+
 
   constructor() {
     super();
