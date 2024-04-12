@@ -3,13 +3,13 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 ### Highlights
-- ⚡ Lightweight - 4KB compressed (GZIP)
+- ⚡ Lightweight - 5KB compressed (GZIP)
 - ⚡ Fast - leverages native browser features
 - ⚡ Simple - No complex concepts
-- ⚡ Single page app with index HTML for each route
-- ⚡ Includes bundling. No need for Webpack
-- ⚡ Bundles with route level chunk optimization or single file
-- ⚡ Server middleware
+- ⚡ Signals and template binding
+- ⚡ Optimized FCP (first contentful paint)
+- ⚡ Includes bundling
+- ⚡ Route level chunk optimization or single file builds
 
 ### About
 Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (2KB). You can create your web application and decide weather to build it as a single page app or server it.
@@ -98,7 +98,7 @@ Check out the [page.js section](#page.js) for details on how to get url paramete
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
     <title></title>
-    <!-- load js and css -->
+    <!-- load js and css. app.js and app.css will automatically be updated to match bundle outputs -->
     <link href="app.css" rel="stylesheet">
     <script src="app.js" type="module"></script>
   </head>
@@ -106,6 +106,9 @@ Check out the [page.js section](#page.js) for details on how to get url paramete
   <body>
     <!-- page template render into this element -->
     <page-content></page-content>
+
+    <!-- Alternative using id attribute -->
+    <div id="page-content"></div>
   </body>
 </html>
 ```
@@ -156,7 +159,7 @@ body {
 <a name="page.js"></a>
 
 ```javascript
-  import { Component } from '@webformula/core';
+  import { Component, Signal } from '@webformula/core';
   import html from './page.html'; // automatically bundles
 
   // imported component
@@ -166,7 +169,7 @@ body {
     static pageTitle = 'Home'; // html page title
     static html = html; // hook up imported html. Supports template literals (undefined)
 
-    someVar = 'Some var';
+    someVar = new Signal('Some var');
     clickIt_bound = this.clickIt.bind(this);
     userInput;
     
@@ -176,24 +179,17 @@ body {
     }
     
     connectedCallback() {
-      // called on element hookup to dome. May not be rendered yet
-    
       this.userInput = 'some user input';
       console.log(this.urlParameters); // { id: 'value' }
       console.log(this.searchParameters); // { id: 'value' }
     }
     
-    disconnectedCallback() {
-      // called on element removal
-    }
+    disconnectedCallback() { }
     
     // not called on initial render
-    beforeRender() {
-      // Do work before render
-    }
+    beforeRender() { }
     
     afterEnder() {
-      // Do work after render
       this.querySelector('#event-listener-button').addEventListener('click', this.clickIt_bound);
     }
     
@@ -204,7 +200,7 @@ body {
     
     // look below to how it is invoked on a button
     changeValueAndRender() {
-      this.someVar = 'Re-rendered';
+      this.someVar.value = 'Re-rendered';
       this.render(); // initial render is automatic
     }
     
@@ -257,20 +253,72 @@ body {
 
 ```javascript
   import { Component } from '@webformula/core';
+  import html from './component.html';
   
   export default class extends Component {
     /**
-      * Defaults to false.
-      * If this is false then the component will render directly in root element
+      * Pass in HTML string. Use for imported .HTML
+      * Supports template literals: <div>${this.var}</div>
+      * @type {String}
       */
-    static useShadowRoot = true;
+    static html = html;
+
 
     /**
-    * Defaults to true.
-    * Use global template element
-    * This should be set to false if the template is dynamic (<div>\${this.var}</div>)
-    */
+      * Hook up shadow root
+      * @type {Boolean}
+      */
+    static useShadowRoot = false;
+
+    
+    /**
+      * @type {Boolean}
+      */
+    static shadowRootDelegateFocus = false;
+
+
+    /**
+      * Store template string in template element
+      * Using this will break dynamic rendering from values that change: <div>${this.var}</div>
+      * @type {Boolean}
+      */
     static useTemplate = true;
+
+
+    /**
+      * Pass in styles for shadow root.
+      * Can use imported stylesheets: import styles from '../styles.css' assert { type: 'css' };
+      * @type {CSSStyleSheet}
+      */
+    static shadowRootStyleSheets;
+
+
+    /**
+      * @typedef {String} AttributeType
+      * @value '' default handling
+      * @value 'string' Convert to a string. null = ''
+      * @value 'number' Convert to a number. isNaN = ''
+      * @value 'int' Convert to a int. isNaN = ''
+      * @value 'boolean' Convert to a boolean. null = false
+      * @value 'event' Allows code to be executed. Similar to onchange="console.log('test')"
+      */
+      /**
+      * Enhances observedAttributes, allowing you to specify types
+      * You can still use \`observedAttributes\` in stead of this.
+      * @type {Array.<[name:String, AttributeType]>}
+      */
+    static get observedAttributesExtended() { return []; }; // static observedAttributesExtended = [['required', 'boolean']];
+
+    /**
+      * Use with observedAttributesExtended
+      * You can still use \`attributeChangedCallback\` in stead of this.
+      * @function
+      * @param {String} name - Attribute name
+      * @param {String} oldValue - Old attribute value
+      * @param {String} newValue - New attribute value
+      */
+    attributeChangedCallbackExtended(name, oldValue, newValue) { }
+
 
     // need to bind events to access \`this\`
     #onClick_bound = this.#onClick.bind(this);
@@ -425,7 +473,7 @@ node build.js
 # Development run with watch to enable livereload
 node --watch-path=./app build.js
 
-# Production run. minifies, gzips, and writes files
+# Production run. minifies and gzips
 NODE_ENV=production node build.js
 ```
 
