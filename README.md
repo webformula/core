@@ -12,7 +12,7 @@ Simple no thrills micro framework. Super performant and light-weight!
 - ⚡ Route level chunk optimization or single file builds
 
 ### About
-Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (2KB). You can create your web application and decide weather to build it as a single page app or server it.
+Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (5KB).
 
 
 ## Table of Contents  
