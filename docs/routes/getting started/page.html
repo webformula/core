@@ -35,7 +35,7 @@
 
       <pre>
         <code class="language-yaml">
-  ${page.escape(`app/
+  app/
   └── routes/
       ├── index/
       │   └── index.js     # /
@@ -50,7 +50,7 @@
       │       └── index.js # three/:id
       └── four/
           └── [...all]/
-              └── index.js # four/* (four/a/b/)`)}
+              └── index.js # four/* (four/a/b/)
         </code>
       </pre>
 
@@ -84,7 +84,7 @@
     
       <pre>
         <code class="language-html">
-  ${page.escape(`<!doctype html>
+  ${`<!doctype html>
     <html lang="en">
     
     <head>
@@ -106,7 +106,7 @@
       <!-- Alternative using id attribute -->
       <div id="page-content"></div>
     </body>
-  </html>`)}
+  </html>`}
         </code>
       </pre>
     </wfc-card>
@@ -176,7 +176,7 @@
     static pageTitle = 'Page';
 
     // hook up imported html. Supports template literals (\${this.someVar})
-    static html = html;
+    static htmlTemplate = html;
 
     someVar = new Signal('Some var');
     clickIt_bound = this.clickIt.bind(this);

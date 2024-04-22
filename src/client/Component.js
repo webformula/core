@@ -19,7 +19,7 @@ export default class Component extends HTMLElement {
     *   Supports template literals: <div>${this.var}</div>
     * @type {String}
     */
-  static html = '';
+  static htmlTemplate = '';
 
   /**
     * Pass in styles for shadow root.
@@ -94,7 +94,7 @@ export default class Component extends HTMLElement {
 
 
   /**
-   * Method that returns a html template string. This is an alternative to use static html
+   * Method that returns a html template string. This is an alternative to use static htmlTemplate
    *    template() {
    *       return `<div>${this.var}</div>`;
    *    }
@@ -103,7 +103,7 @@ export default class Component extends HTMLElement {
    * @return {String}
    */
   template() {
-    return this.constructor.html;
+    return this.constructor.htmlTemplate;
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -151,7 +151,7 @@ export default class Component extends HTMLElement {
   render() {
     if (!this.#prepared) this.#prepareRender();
 
-    if (!this.constructor._isBuild) this.beforeRender();
+    this.beforeRender();
     destroySignalCache();
 
     const parsed = this.template();
@@ -163,8 +163,8 @@ export default class Component extends HTMLElement {
     watchSignals();
 
     if (this.constructor._isPage) i18n.localizeDocument();
-    if (!this.constructor._isBuild)  this.afterRender();
-    if (this.constructor._isPage && !this.constructor._isBuild) window.dispatchEvent(new Event('webformulacorepagerender'));
+    this.afterRender();
+    if (this.constructor._isPage) window.dispatchEvent(new CustomEvent('webformulacorepagerender'));
   }
 
   /** Escape html. <div>${page.escape('some string')}</div> */
@@ -186,10 +186,9 @@ export default class Component extends HTMLElement {
   #prepareRender() {
     this.#prepared = true;
 
-    const templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+    const templateString = this.constructor.htmlTemplate || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
     this.template = () => new Function('page', `return page.constructor._html\`${templateString}\`;`).call(this, this);
 
-    if (this.constructor._isBuild) return;
     if (this.constructor._isPage) {
       const title = document.documentElement.querySelector('title');
       title.textContent = this.constructor.pageTitle;

@@ -129,7 +129,7 @@ async function route(locationObject, back = false, initial = false) {
   if (!match.component._defined) {
     match.component = await Promise.resolve(match.component);
     if (typeof match.component !== 'function') match.component = match.component.default;
-    match.component.useTemplate = false;
+    // match.component.useTemplate = false;
     match.component._isPage = true;
     match.component._pagePathRegex = match.regex;
     customElements.define(`page-${app.pageCounter++}`, match.component);

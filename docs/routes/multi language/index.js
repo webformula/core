@@ -1,12 +1,12 @@
 import { Component, Signal } from '@webformula/core';
-import html from './page.html';
+import htmlTemplate from './page.html';
 import { i18n } from '@webformula/core';
 import en from '../../locales/en.json' assert { type: "json" };
 import es from '../../locales/es.json' assert { type: "json" };
 
 export default class extends Component {
   static pageTitle = 'Multiple languages';
-  static html = html;
+  static htmlTemplate = htmlTemplate;
 
   languagesChecked = false;
   time = 30

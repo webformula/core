@@ -19,7 +19,7 @@
     
       <pre>
         <code class="language-yaml">
-  ${page.escape(`app/
+  ${`app/
   └── routes/
       ├── index/
       │   └── index.js     # /
@@ -34,7 +34,7 @@
       │       └── index.js # three/:id
       └── four/
           └── [...all]/
-              └── index.js # four/*all (four/a/b/)`)}
+              └── index.js # four/*all (four/a/b/)`}
         </code>
       </pre>
     
@@ -76,7 +76,7 @@
     static pageTitle = 'Page';
 
     // hook up imported html. Supports template literals (\${this.someVar})
-    static html = html;
+    static htmlTemplate = html;
     
     constructor() {
       super();

@@ -36,7 +36,7 @@
     
       <pre>
         <code class="language-javascript" wfc-no-binding>
-  ${page.escape(`import { i18n } from '@webformula/core';
+  ${`import { i18n } from '@webformula/core';
   
   /* Set locale
    *   Defaults to browser if not set
@@ -49,13 +49,13 @@
 
   // Load local messages
   i18n.loadMessages('en', en);
-  i18n.loadMessages('es', es);`)}
+  i18n.loadMessages('es', es);`}
         </code>
       </pre>
 
       <pre>
         <code class="language-html" wfc-no-binding>
-  ${page.escape(`<!-- Add i18n attribute to an element to enable translations -->
+  ${`<!-- Add i18n attribute to an element to enable translations -->
   <div i18n>About</div>
   <div i18n>key_string</div>
 
@@ -74,14 +74,14 @@
   <wfc-textfield i18n-attr="label" label="Label days" value="${page.days}" oninput="page.days = this.value"></wfc-textfield>
   
   <!-- Attribute binding multiple -->
-  <div i18n-attr="one,two" one="one" two="two"></div>`)}
+  <div i18n-attr="one,two" one="one" two="two"></div>`}
         </code>
       </pre>
 
 
       <pre>
         <code class="language-json" wfc-no-binding>
-  ${page.escape(`// en
+  ${`// en
   
   // type configuration
   { "types": {
@@ -130,13 +130,13 @@
   "time_from_now": "\${time} \${minutesCardinal(minutes)} from now",
   "date_key": "\${dateFormat(date)}",
   "currency_key": "\${currencyFormat(currency)}",
-  "relativeTime_key": "\${relativeTimeFormat(days)}" }`)}
+  "relativeTime_key": "\${relativeTimeFormat(days)}" }`}
         </code>
       </pre>
 
       <pre>
         <code class="language-json" wfc-no-binding>
-  ${page.escape(`// es
+  ${`// es
   
   // type configuration
   { "types": {
@@ -185,7 +185,7 @@
   "time_from_now": "\${time} \${minutesCardinal(minutes)} desde ahora",
   "date_key": "\${dateFormat(date)}",
   "currency_key": "\${currencyFormat(currency)}",
-  "relativeTime_key": "\${relativeTimeFormat(days)}" }`)}
+  "relativeTime_key": "\${relativeTimeFormat(days)}" }`}
         </code>
       </pre>
     </wfc-card>

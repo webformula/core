@@ -198,8 +198,8 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
     const routeModule = await window.wfcRoutes.find(v => v.path === route.routePath).component;
     customElements.define(`page-${i}`, routeModule.default);
     routeModule.default._isPage = true;
-    routeModule.default._isBuild = true;
-    routeModule.default.useTemplate = false;
+    // routeModule.default._isBuild = true;
+    // routeModule.default.useTemplate = false;
     const instance = new routeModule.default();
     instance.render();
     // const template = instance.template();
