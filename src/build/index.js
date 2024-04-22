@@ -201,7 +201,7 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
     routeModule.default._isBuild = true;
     routeModule.default.useTemplate = false;
     const instance = new routeModule.default();
-    // instance.render();
+    instance.render();
     // const template = instance.template();
 
     // prepare module preload links

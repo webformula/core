@@ -159,7 +159,7 @@ export default class Component extends HTMLElement {
 
     watchSignals();
 
-    // if (this.constructor._isPage) i18n.localizeDocument();
+    if (this.constructor._isPage) i18n.localizeDocument();
     if (!this.constructor._isBuild)  this.afterRender();
     if (this.constructor._isPage && !this.constructor._isBuild) window.dispatchEvent(new Event('webformulacorepagerender'));
   }
