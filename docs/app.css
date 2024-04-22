@@ -1,5 +1,5 @@
 @import url(./colorTokens.css);
-@import url('./dracula.css');
+@import url(./dracula.css);
 
 :root {
   font-family: system-ui, Arial;
@@ -203,7 +203,6 @@ body.wfc-window-compact .page-content-section {
 }
 
 .links a {
-  width: 0;
   white-space: nowrap;
 }
 

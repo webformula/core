@@ -210,7 +210,7 @@ export default new class i18n {
     const elementMatch = this.#localizedRef.find(v => v[0] === element);
     const key = elementMatch ? elementMatch[1].key : element.textContent;
     const message = this.localize(key, element);
-    element.innerText = message;
+    element.textContent = message;
   }
 
   #parseTypes(types) {
@@ -240,7 +240,7 @@ export default new class i18n {
           break;
         case 'relativeTime':
           value.method = data => {
-            return this.#getRelativeTimeFormatter(this.locale, value.options).format(data, value.unit);
+            return this.#getRelativeTimeFormatter(this.locale, value.options).format(data || '', value.unit);
           };
           break;
 

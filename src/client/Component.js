@@ -1,14 +1,13 @@
 import i18n from './i18n.js';
-import { isSignal } from './signals.js';
+import { html, watchSignals, destroySignalCache } from './html.js';
 
-
-const templateElements = [];
 
 /**
  * Component class used for pages and web components
  * @extends HTMLElement
  */
 export default class Component extends HTMLElement {
+  static _html = html;
   /**
     * Page title
     * @type {String}
@@ -41,13 +40,6 @@ export default class Component extends HTMLElement {
   static shadowRootDelegateFocus = false;
 
   /**
-    * Store template string in template element
-    *   Using this will break dynamic rendering from values that change: <div>${this.var}</div>
-    * @type {Boolean}
-    */
-  static useTemplate = true;
-
-  /**
   * @typedef {String} AttributeType
   * @value '' default handling
   * @value 'string' Convert to a string. null = ''
@@ -72,15 +64,10 @@ export default class Component extends HTMLElement {
   // static get observedAttributesExtended() { }
 
   
-  #classId;
   #root = this;
   #attributeEvents = {};
   #attributesLookup;
   #prepared;
-  #templateElement;
-  #templateString;
-  #signals = new Map();
-  #signalChange_bound = this.#signalChange.bind(this);
 
   constructor() {
     super();
@@ -91,6 +78,15 @@ export default class Component extends HTMLElement {
       const pageContent = document.querySelector('page-content') || document.querySelector('#page-content');
       if (!pageContent) throw Error('Could not find page-content');
       this.#root = pageContent;
+    }
+
+    if (this.constructor.useShadowRoot) {
+      this.attachShadow({ mode: 'open', delegatesFocus: this.constructor.shadowRootDelegateFocus });
+      this.#root = this.shadowRoot;
+
+      if (this.constructor.shadowRootStyleSheets instanceof CSSStyleSheet || this.constructor.shadowRootStyleSheets[0] instanceof CSSStyleSheet) {
+        this.shadowRoot.adoptedStyleSheets = [].concat(this.constructor.shadowRootStyleSheets);
+      }
     }
   }
 
@@ -154,14 +150,18 @@ export default class Component extends HTMLElement {
   /** Render Component. This is automatically called for pages */
   render() {
     if (!this.#prepared) this.#prepareRender();
-    if (this.constructor._isBuild) return;
-    
-    this.beforeRender();
-    if (!this.constructor.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
-    this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
-    if (this.constructor._isPage) i18n.localizeDocument();
-    this.afterRender();
-    if (this.constructor._isPage) window.dispatchEvent(new Event('webformulacorepagerender'));
+
+    if (!this.constructor._isBuild) this.beforeRender();
+    destroySignalCache();
+
+    const parsed = this.template();
+    this.#root.replaceChildren(...parsed);
+
+    watchSignals();
+
+    // if (this.constructor._isPage) i18n.localizeDocument();
+    if (!this.constructor._isBuild)  this.afterRender();
+    if (this.constructor._isPage && !this.constructor._isBuild) window.dispatchEvent(new Event('webformulacorepagerender'));
   }
 
   /** Escape html. <div>${page.escape('some string')}</div> */
@@ -174,112 +174,25 @@ export default class Component extends HTMLElement {
     return i18n.localize(key, this);
   }
 
-  #attrRegex = /<[^<>\s]+(?:\s+[^=]+="[^"]+")*(?:\s+([^=]+)=)+"$/;
-  /** @private */
-  signalTag(strings, ...vars) {
-    let result = '';
-    let i = 0;
-    const length = strings.length;
-    for (; i < length; i += 1) {
-      let value = vars[i];
-
-      if (isSignal(value)) {
-        if (!this.#signals.has(value)) {
-          this.#signals.set(value, new Set());
-          value.watch(this.#signalChange_bound);
-        }
-
-        const match = (result + strings[i]).match(this.#attrRegex);
-        if (match !== null) {
-          const signalItems = this.#signals.get(value);
-          signalItems.add(match[match.length - 1]);
-          value = `${value.untrackValue}" wfc-bind-attr-id="${value.id}`;
-        }
-        else value = `<wfc-bind wfc-bind-id="${value.id}">${value.untrackValue}</wfc-bind>`;
-      }
-
-      result += `${strings[i]}${i === length - 1 ? '' : value}`;
-    }
-    return result;
-  }
-
-  #signalChange(signal) {
-    const signalAttrs = this.#signals.get(signal);
-
-    const content = [...document.body.querySelectorAll(`[wfc-bind-id="${signal.id}"]`)];
-    for (const element of content) {
-      element.innerHTML = signal.value
-    }
-
-    const attrElements = [...document.body.querySelectorAll(`[wfc-bind-attr-id="${signal.id}"]`)];
-    for (const attrElement of attrElements) {
-      for (const attr of signalAttrs) {
-        if (attrElement.hasAttribute(attr)) attrElement.setAttribute(attr, signal.value);
-      }
-    }
-  }
-
   /** @private */
   _internalDisconnectedCallback() {
-    // TODO can i dispose, do i need to unwatch?
-    //   Disposing assumes its owned by the page
-    //
-    // const propertyNames = Object.getOwnPropertyNames(this);
-    // for (const signal of this.#signals.keys()) {
-    //   let isPageProp = false;
-    //   for (let i = 0; i < propertyNames.length; i++) {
-    //     if (this[propertyNames[i]] === signal) {
-    //       isPageProp = true;
-    //       continue;
-    //     }
-    //   }
-    //   if (isPageProp) signal.dispose();
-    //   else signal.unwatch(this.#signalChange_bound);
-    // }
-
-    for (const signal of this.#signals.keys()) {
-      signal.dispose();
-    }
-    this.#signals.clear();
+    destroySignalCache();
   }
+
 
   #prepareRender() {
-    // set on constructor?
     this.#prepared = true;
-    
-    this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
-    this.template = () => new Function('page', `return page.signalTag\`${this.#templateString}\`;`).call(this, this);
+
+    const templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+    this.template = () => new Function('page', `return page.constructor._html\`${templateString}\`;`).call(this, this);
 
     if (this.constructor._isBuild) return;
-
     if (this.constructor._isPage) {
-      const title = document.querySelector('title');
-      title.innerText = this.constructor.pageTitle;
-      this.#templateElement = document.createElement('template');
+      const title = document.documentElement.querySelector('title');
+      title.textContent = this.constructor.pageTitle;
       return;
     }
-
-    if (this.constructor.useTemplate) {
-      if (!this.#classId) this.#classId = btoa(this.constructor.toString().replace(/\s/g, ''));
-      if (!templateElements[this.#classId]) {
-        templateElements[this.#classId] = document.createElement('template');
-        templateElements[this.#classId].innerHTML = this.template();
-      }
-      this.#templateElement = templateElements[this.#classId];
-    } else {
-      this.#templateElement = document.createElement('template');
-    }
-
-    if (this.constructor.useShadowRoot) {
-      this.attachShadow({ mode: 'open', delegatesFocus: this.constructor.shadowRootDelegateFocus });
-      this.#root = this.shadowRoot;
-
-      if ((Array.isArray(this.constructor.shadowRootStyleSheets) && this.constructor.shadowRootStyleSheets.length > 0) || this.constructor.shadowRootStyleSheets instanceof CSSStyleSheet) {
-        this.#root.adoptedStyleSheets = [].concat(this.constructor.shadowRootStyleSheets);
-      }
-    }
   }
-
 
   #attributeDescriptorTypeConverter(value, type) {
     switch (type) {

@@ -3,6 +3,7 @@ import { routes, enableSPA } from './client/router.js';
 import i18n from './client/i18n.js';
 import { fetcher, createFetcher } from './client/fetcher.js';
 import { Signal, Compute, effect } from './client/signals.js'
+import { html } from './client/html.js'
 
 export {
   Component,
@@ -13,5 +14,9 @@ export {
   createFetcher,
   Signal,
   Compute,
-  effect
+  effect,
+  html
 }
+
+
+window.html = html;

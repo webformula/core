@@ -50,6 +50,36 @@ export function preventNavigation(enabled = true) {
 }
 
 
+/**
+ * TODO replace current spa intercepting with navigation api when broadly available
+ * https://developer.mozilla.org/en-US/docs/Web/API/Navigation#specifications
+ */
+// let isSpa = false;
+// export function enableSPA() {
+//   if (isSpa) return;
+//   isSpa = true;
+
+//   navigation.addEventListener('navigate', event => {
+//     const url = new URL(event.destination.url);
+//     if (
+//       event.navigationType === 'reload' ||
+//       location.origin !== url.origin ||
+//       !event.canIntercept ||
+//       event.hashChange ||
+//       event.downloadRequest ||
+//       event.formData
+//     ) return;
+
+
+//     event.intercept({
+//       handler() {
+//         route(url);
+//       }
+//     });
+//   });
+// }
+
+
 /** Makes navigation localized for SPA */
 export function enableSPA() {
   window.wfcSPA = true;
@@ -62,7 +92,7 @@ export function enableSPA() {
     route(new URL(event.target.href));
 
     // the prevent default keeps the link from loosing focus
-    event.target.blur();
+    // event.target.blur();
   }, false);
 
   let popPrevented = false;
@@ -113,6 +143,7 @@ async function route(locationObject, back = false, initial = false) {
     const hashMatches = locationObject.hash === location.hash;
     const searchMatches = locationObject.search === location.search;
     if (hashMatches && searchMatches) return;
+    // TODO remove when using navigation api
     if (!back) window.history.pushState({}, currentPage.constructor.pageTitle, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
     if (!hashMatches) window.dispatchEvent(new Event('hashchange'));
     return;
@@ -123,20 +154,26 @@ async function route(locationObject, back = false, initial = false) {
     currentPage.disconnectedCallback();
   }
   const nextPage = new match.component();
+  // TODO remove when using navigation api
   if (!back && !initial) window.history.pushState({}, nextPage.constructor.pageTitle, `${locationObject.pathname}${locationObject.search}${locationObject.hash}`);
   window.page = nextPage;
 
   if (!initial) {
-    nextPage.render();
     document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
+    nextPage.render();
+    // document.body.scrollTop = 0;
+    // document.documentElement.scrollTop = 0;
   } else {
     nextPage.render();
     // nextPage.onLoadRender();
   }
   nextPage.connectedCallback();
-  requestAnimationFrame(() => {
+  queueMicrotask(() => {
     if (!initial) window.dispatchEvent(new Event('locationchange'));
     else window.dispatchEvent(new Event('locationchangeinitial'));
   });
+  // requestAnimationFrame(() => {
+  //   if (!initial) window.dispatchEvent(new Event('locationchange'));
+  //   else window.dispatchEvent(new Event('locationchangeinitial'));
+  // });
 }

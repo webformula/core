@@ -1,14 +1,13 @@
 const SIGNAL = Symbol('SIGNAL');
 const COMPUTE = Symbol('COMPUTE');
 const ERRORED = Symbol('ERRORED');
+const MAPHTML = Symbol('MAPHTML');
 const queue = new Set();
 const signalChangeIds = new Set();
 let queueRunning = false;
 let epoch = 0;
 let idCounter = 0;
 let activeConsumer;
-
-
 
 class Base {
   #id = idCounter++;
@@ -73,6 +72,47 @@ class Base {
 
   set error(value) {
     this.#error = value;
+  }
+
+  mapHTML(callback) {
+    // -- Possible method to capture called args
+    // const args = [];
+    // const arrayProxyHandler = {
+    //   get: function (target, prop) {
+    //     // if (typeof t[k] === "function") {
+    //     //   return (...args) => Reflect.apply(t[k], t, args)
+    //     // }
+    //     console.log(prop) // This is just to see what properties I'm retrieving
+    //     return target[prop]
+    //   }
+    // };
+    // const proxy1 = new Proxy(callback, {
+    //   apply: function (target, thisArg, argumentsList) {
+    //     const argumentReplacer = argumentsList.map(() => '${#}');
+    //     const argumentProxies = argumentsList.map(v => {
+    //       if (typeof v !== 'object' || v === null) {
+    //         console.log('no proxy');
+    //         return v;
+    //       }
+    //       return new Proxy(v, arrayProxyHandler);
+    //     });
+
+    //     return target.apply(thisArg, argumentProxies);
+    //   }
+    // });
+    // const strings  = this.#value.map(proxy1);
+
+    // const wrapper = new Compute(() => this.#value.map(proxy1));
+    // wrapper[MAPHTML] = true;
+    // this.subscribe(wrapper);
+    // return wrapper;
+
+
+
+    const wrapper = new Compute(() => this.#value.map(callback));
+    wrapper[MAPHTML] = true;
+    this.subscribe(wrapper);
+    return wrapper;
   }
 
   subscribe(node) {
@@ -257,6 +297,10 @@ export function effect(callback) {
 
 export function isSignal(node) {
   return node instanceof Base;
+}
+
+export function isMapHTML(node) {
+  return node instanceof Base && node[MAPHTML];
 }
 
 

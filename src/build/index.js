@@ -5,7 +5,7 @@ import { gzip } from 'node:zlib';
 import { promisify } from 'node:util';
 import devServer from './dev-server.js';
 import routeParser from './route-parser.js';
-import addMockDom from './dom.js';
+import parseHTMLString from './dom.js';
 import copyFiles from './copy-files.js';
 
 const asyncGzip = promisify(gzip);
@@ -140,6 +140,98 @@ const headEndRegex = /<\/head>/;
 const pageContentTagRegex = /(<\s?page-content\s?>)[^>]*(<\s?\/\s?page-content\s?>)|(<[^>]*id="page-content"[^>]*>)[^>]*(<\/[^>]*>)/;
 
 async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
+  const appScriptPath = `/${appJSOutput.output.split('/').pop()}`;
+  const appCssPath = appCSSOutput && `/${appCSSOutput.output.split('/').pop()}`;
+  let indexFile = await readFile(config.indexHTMLPath, 'utf-8');
+
+  const appScriptPreload = `\n  <link rel="modulepreload" href="${appScriptPath}"/>\n`;
+  const appImportChunks = appJSOutput.imports.map(v => v.path.split('/').pop()).filter(v => v.startsWith('chunk-'));
+  const appScriptTag = `<script src="${appScriptPath}" type="module" defer></script>`;
+  const appCssTag = !appCssPath ? '' : `<link rel="preload" href="${appCssPath}" as="style" onload="this.onload=null;this.rel='stylesheet'">`;
+
+  // prepare template file
+  // indexFile = indexFile
+    // .replace(headRegex, `<head>\n  replace:preload`)
+    // .replace(scripRegex, `replace:script\n${config.liveReloadScript || ''}${isDev ? `\n${debugScript}` : ''}`)
+    // .replace(stylesheetRegex, `replace:css`);
+
+  // if use did not add script or css tags then default to adding them to bottom of head
+  // if (!indexFile.includes('replace:css')) indexFile = indexFile.replace(headEndRegex, '  replace:css\n</head>');
+  // if (!indexFile.includes('replace:script')) indexFile = indexFile.replace(headEndRegex, `  replace:script\n${config.liveReloadScript || ''}${isDev ? `\n${debugScript}` : ''}\n</head>`);
+
+  
+  // add mock dome so we can load the app script and render templates
+  parseHTMLString(indexFile);
+  const head = document.querySelector('head');
+  head.insertAdjacentHTML('afterbegin', appScriptPreload);
+
+  const appScriptElement = document.querySelector('script[src="app.js"]') || document.querySelector('script[src="/app.js"]') || document.querySelector('script[src="./app.js"]');
+  if (appScriptElement) {
+    appScriptElement.src = appScriptPath;
+    appScriptElement.type = 'module';
+    appScriptElement.defer = true;
+  } else {
+    head.insertAdjacentHTML('beforeend', appScriptTag);
+  }
+  head.insertAdjacentHTML('beforeend', `${config.liveReloadScript || ''}${isDev ? `\n${debugScript}` : ''}`);
+
+  if (appCssPath) {
+    const appStyleElement = document.querySelector('link[href="app.css"]') || document.querySelector('link[href="/app.css"]') || document.querySelector('link[href="./app.css"]');
+    if (appStyleElement) {
+      appStyleElement.href = appCssPath;
+      // appStyleElement.setAttribute('rel', 'preload');
+      // appStyleElement.setAttribute('as', 'style');
+      // appStyleElement.setAttribute('onload', "this.onload=null;this.rel='stylesheet'");
+    } else {
+      head.insertAdjacentHTML('beforeend', appCssTag);
+    }
+  }
+
+  // used to prevent router code from running
+  window.__isBuilding = true;
+  // load script so we can grab templates
+  await import(path.resolve('.', appJSOutput.output));
+
+  // render template and build index html file for each page
+  const data = await Promise.all(routeConfigs.map(async (route, i) => {
+    // load page to build template
+    const routeModule = await window.wfcRoutes.find(v => v.path === route.routePath).component;
+    customElements.define(`page-${i}`, routeModule.default);
+    routeModule.default._isPage = true;
+    routeModule.default._isBuild = true;
+    routeModule.default.useTemplate = false;
+    const instance = new routeModule.default();
+    // instance.render();
+    // const template = instance.template();
+
+    // prepare module preload links
+    const pageScriptPreload = route.routeScriptPath && route.routeScriptPath !== appScriptPath ? `\n  <link page rel="modulepreload" href="${route.routeScriptPath}" />` : '';
+    const pageImportChunks = [...new Set(appImportChunks.concat(
+      route.imports.map(v => v.path.split('/').pop()).filter(v => v.startsWith('chunk-'))
+    ))].map(v => `\n  <link rel="modulepreload" href="/${v}" />`).join('');
+
+    const title = document.querySelector('title');
+    if (title) title.textContent = routeModule.default.pageTitle;
+    const previousPageReloads = document.querySelectorAll('link[page]');
+    for (const p of previousPageReloads) {
+      p.remove();
+    }
+
+    const head = document.querySelector('head');
+    head.insertAdjacentHTML('afterbegin', `${pageScriptPreload}${pageImportChunks}`);
+
+    return {
+      fileName: route.indexHTMLFileName,
+      content: document.documentElement.outerHTML
+    };
+  }));
+
+  await Promise.all(data.map(async v => writeFile(v.fileName, v.content)));
+  return data.map(v => ({ output: v.fileName }));
+}
+
+
+async function buildIndexHTML1(appJSOutput, appCSSOutput, routeConfigs, config) {
   const appScriptPath = `/${appJSOutput.output.split('/').pop()}`;
   const appCssPath = appCSSOutput && `/${appCSSOutput.output.split('/').pop()}`;
   let indexFile = await readFile(config.indexHTMLPath, 'utf-8');
@@ -279,19 +371,19 @@ function injectCode(config) {
         return { contents };
       });
 
-      if (isDev) {
-        // inject deb functions to component files
-        build.onLoad({ filter: /Component\.js/ }, async args => {
-          let contents = await readFile(args.path, 'utf-8');
-          contents = contents.replace('#prepareRender() {', `
-  getTemplate() {
-    return this.#templateString;
-  }
+  //     if (isDev) {
+  //       // inject deb functions to component files
+  //       build.onLoad({ filter: /Component\.js/ }, async args => {
+  //         let contents = await readFile(args.path, 'utf-8');
+  //         contents = contents.replace('#prepareRender() {', `
+  // getTemplate() {
+  //   return this.#templateString;
+  // }
 
-  #prepareRender() {`);
-          return { contents };
-        });
-      }
+  // #prepareRender() {`);
+  //         return { contents };
+  //       });
+  //     }
     }
   }
 };
