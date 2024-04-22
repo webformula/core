@@ -157,9 +157,6 @@ export default class Component extends HTMLElement {
     const parsed = this.template();
     this.#root.replaceChildren(parsed);
 
-    // for html_dom.js
-    // this.#root.replaceChildren(...parsed);
-
     watchSignals();
 
     if (this.constructor._isPage) i18n.localizeDocument();

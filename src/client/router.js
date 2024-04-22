@@ -88,11 +88,7 @@ export function enableSPA() {
     // allow external links
     if (event.target.getAttribute('href').includes('://')) return;
     event.preventDefault();
-
     route(new URL(event.target.href));
-
-    // the prevent default keeps the link from loosing focus
-    // event.target.blur();
   }, false);
 
   let popPrevented = false;
@@ -129,7 +125,6 @@ async function route(locationObject, back = false, initial = false) {
   if (!match.component._defined) {
     match.component = await Promise.resolve(match.component);
     if (typeof match.component !== 'function') match.component = match.component.default;
-    // match.component.useTemplate = false;
     match.component._isPage = true;
     match.component._pagePathRegex = match.regex;
     customElements.define(`page-${app.pageCounter++}`, match.component);
@@ -161,19 +156,12 @@ async function route(locationObject, back = false, initial = false) {
   if (!initial) {
     document.body.scrollTop = 0;
     nextPage.render();
-    // document.body.scrollTop = 0;
-    // document.documentElement.scrollTop = 0;
   } else {
     nextPage.render();
-    // nextPage.onLoadRender();
   }
   nextPage.connectedCallback();
   queueMicrotask(() => {
     if (!initial) window.dispatchEvent(new Event('locationchange'));
     else window.dispatchEvent(new Event('locationchangeinitial'));
   });
-  // requestAnimationFrame(() => {
-  //   if (!initial) window.dispatchEvent(new Event('locationchange'));
-  //   else window.dispatchEvent(new Event('locationchangeinitial'));
-  // });
 }

@@ -244,6 +244,7 @@ export class Compute extends Base {
   updateValueVersion() {
     this.updateDirty();
     if (super.dirty) {
+      // TODO can i move the recompute to the read?
       this.#recompute();
       super.dirty = false;
       super.lastCleanEpoch = epoch;

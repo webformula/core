@@ -14,8 +14,18 @@ const insideCommentRegex = /<!--(?![.\s\S]*-->)/;
 const templateCache = new Map();
 const signalCache = new WeakMap();
 const signalsToWatch = new Set();
+const dangerousNodes = ['SCRIPT', 'IFRAME', 'NOSCRIPT'];
+const dangerousAttributesLevel2 = ['src', 'href', 'xlink:href'];
+const dangerousAttributesLevel1 = ['onload', 'onerror'];
+const securityLevels = [0,1,2];
+let securityLevel = 1;
 
 
+
+export function setSecurityLevel(level = 1) {
+  if (!securityLevels.includes(level)) throw Error('Invalid security level. Valid values [0,1,2]')
+  securityLevel = level;
+}
 
 export function html(strings, ...args) {
   args.reverse();
@@ -44,7 +54,7 @@ export function html(strings, ...args) {
       subClonedNodes.push(arg);
       template += subTemplateComment;
     } else {
-      template += sanitize(arg);
+      template += escape(arg);
     }
   }
   template += strings[i];
@@ -110,26 +120,22 @@ function signalChange(signal) {
   }
 }
 
-
-function sanitize(str) {
-  return ('' + str).replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
-  // for (const script of [...node.querySelectorAll('script')]) {
-  //   script.remove();
-  // }
-}
-
 function buildTemplateElement(template) {
   template = adjustTemplateForAttributes(template);
   const templateElement = document.createElement('template');
   templateElement.innerHTML = template;
   const nodes = document.createNodeIterator(
     templateElement.content,
-    NodeFilter.COMMENT_NODE
+    NodeFilter.SHOW_ALL
   );
 
   let node = nodes.nextNode();
   while (node = nodes.nextNode()) {
     switch (node.nodeType) {
+      case Node.ELEMENT_NODE:
+        sanitizeNode(node);
+        break;
+
       case Node.COMMENT_NODE:
         // replace signal comment with textNode
         if (node.data === signalString) {
@@ -188,7 +194,7 @@ function prepareTemplateElement(templateElement, args, subClonedNodes) {
 
           } else {
             signalCache.get(signal).push([node]);
-            node.textContent = signal.value;
+            node.textContent = signal.untrackValue;
           }
         }
         break;
@@ -208,7 +214,7 @@ function prepareTemplateElement(templateElement, args, subClonedNodes) {
               expressions.push(signal)
               if (isSignal(signal)) {
                 signals.add(signal);
-                return signal.value;
+                return signal.untrackValue;
               }
               return signal;
             });
@@ -222,9 +228,10 @@ function prepareTemplateElement(templateElement, args, subClonedNodes) {
 
           // handle expression attr <div ${this.var}>
           } else if (node.attributes[i].name.includes(attrString)) {
-            const signal = args.pop();
-            signalCache.get(sig).push([node.attributes[i], expressions]);
-            toAdd.push(document.createAttribute(signal));
+            const expressionValue = args.pop();
+            // TODO handle signals?
+            // signalCache.get(sig).push([node.attributes[i], expressions]);
+            toAdd.push(document.createAttribute(expressionValue));
             toRemove.push(node.attributes[i]);
           }
         }
@@ -243,4 +250,85 @@ function prepareTemplateElement(templateElement, args, subClonedNodes) {
   }
 
   return clonedNode;
+}
+
+
+
+/**
+ * Escaped content not wrapped in html template tag ${`anything`}
+ *   The sanitizeNode method will handle xss
+ */
+const escapeElement = document.createElement('p');
+function escape(str) {
+  escapeElement.textContent = str;
+  return escapeElement.innerHTML;
+}
+
+
+/**
+ * Provide basic protection from XSS
+ *   This is meant as a safety net. This should not be relied on to prevent attacks.
+ * 
+ * TODO replace with HTML Sanitizer API when available. https://developer.mozilla.org/en-US/docs/Web/API/HTML_Sanitizer_API
+ */
+const dangerousAttributeValueRegex = /javascript:|eval\(|alert|document.cookie|document\[['|"]cookie['|"]\]|&\#\d/gi;
+function sanitizeNode(node) {
+  let sanitized = false;
+
+  if (dangerousNodes.includes(node.nodeName)) {
+    if (securityLevel === 0) {
+      if (window.wfcDev === true) console.warn(`Template sanitizer (WARNING): Potentially dangerous node NOT removed because of current level (${securityLevel}) "${node.nodeName}"`);
+    } else {
+      if (window.wfcDev === true) console.warn(`Template sanitizer (INFO): A ${node.nodeName} tag was removed because of security level (${securityLevel})`);
+      node.remove();
+      sanitized = true;
+    }
+  }
+
+  const attributes = node.attributes;
+  for (const attr of attributes) {
+    if (sanitizeAttribute(attr) === true) sanitized = true;
+  }
+
+  return sanitized;
+}
+
+function sanitizeAttribute(attr) {
+  const nameSanitized = sanitizeAttributeName(attr.name, attr.value);
+  const valueSanitized = sanitizeAttributeValue(attr.name, attr.value);
+  if (nameSanitized || valueSanitized) {
+    if (window.wfcDev === true) console.warn(`Template sanitizer (INFO): Attribute removed "${attr.name}: ${attr.value}"`);
+    attr.ownerElement.removeAttribute(attr.name);
+    return true;
+  }
+  return false;
+}
+
+function sanitizeAttributeName(name, value) {
+  let shouldRemoveLevel2 = false;
+  let shouldRemoveLevel1 = false;
+
+  if ((name.startsWith('on') || dangerousAttributesLevel2.includes(name))) shouldRemoveLevel2 = true;
+  if (dangerousAttributesLevel1.includes(name)) shouldRemoveLevel1 = true;
+
+  if (
+    window.wfcDev === true &&
+    (securityLevel === 1 && shouldRemoveLevel2 && !shouldRemoveLevel1)
+    || (securityLevel === 0 && (!shouldRemoveLevel2 || !shouldRemoveLevel1))
+  ) {
+    console.warn(`Template sanitizer (WARNING): Potentially dangerous attribute NOT removed because of current level (${securityLevel}) "${name}: ${value}"`);
+  }
+
+  return (shouldRemoveLevel1 && securityLevel > 0) || (shouldRemoveLevel2 && securityLevel === 2);
+}
+
+function sanitizeAttributeValue(name, value) {
+  value = value.replace(/\s+/g, '').toLowerCase();
+  if (value.match(dangerousAttributeValueRegex) !== null) {
+    if (securityLevel === 0) {
+      console.warn(`Template sanitizer (WARNING): Potentially dangerous attribute NOT removed because of current level (${securityLevel}) "${name}: ${value}"`);
+    } else return true;
+  }
+
+  return false;
 }

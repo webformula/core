@@ -11,6 +11,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 build({
+  devWarnings: false,
   spa: true,
   chunks: false,
   basedir: 'docs/',
