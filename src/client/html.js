@@ -1,18 +1,18 @@
 import { isSignal, isMapHTML } from './signals.js';
 
-const tagRegex = /<\w+([^<>]*<!--#-->[^<\/>]*)+\/?>/g;
-const attrRegex = /(?:(\s+[^\s\/>"=]+)\s*=\s*"([\w\s]*<!--#-->[\w\s]*)")|(\s*<!--#-->\s*)/gi;
-const signalCommentRegex = /<!--#-->/g;
+const attrString = '###';
+const signalString = '#signal#';
+const signalComment = `<!--${signalString}-->`;
+const subTemplateString = '#template#';
+const subTemplateComment = `<!--${subTemplateString}-->`;
+const tagRegex = new RegExp(`<\\w+([^<>]*${signalComment}[^<\\/>]*)+\\/?>`, 'g');
+const attrRegex = new RegExp(`(?:(\\s+[^\\s\\/>"=]+)\\s*=\\s*"([\\w\\s]*${signalComment}[\\w\\s]*)")|(\\s*${signalComment}\\s*)`, 'g');
+const signalCommentRegex = new RegExp(signalComment, 'g');
 const twoSpaceRegex = /\s\s/g;
-const attrPlaceholderRegex = /###/g;
+const attrPlaceholderRegex = new RegExp(attrString, 'g');
 const insideCommentRegex = /<!--(?![.\s\S]*-->)/;
-const attrReplaceString = '###';
-const signalReplaceString = '<!--#-->';
-const signalTextNodeString = '#wfc#';
-const docReplaceString = '<!--#doc#-->';
-const docCache = new Map();
+const templateCache = new Map();
 const signalCache = new WeakMap();
-const parser = new DOMParser();
 const signalsToWatch = new Set();
 
 
@@ -21,13 +21,13 @@ export function html(strings, ...args) {
   args.reverse();
 
   const signals = [];
-  const subDocs = [];
+  const subClonedNodes = [];
   let template = '';
   let i = 0;
 
   for (; i < strings.length - 1; i++) {
     const arg = args.pop();
-    template = template + strings[i]
+    template = template + strings[i];
 
     // replace commented out expression
     const lastCommentOpen = template.match(insideCommentRegex);
@@ -39,20 +39,20 @@ export function html(strings, ...args) {
         signalCache.set(arg, []);
         signalsToWatch.add(arg);
       }
-      template += signalReplaceString;
-    } else if (arg instanceof NodeList) {
-      subDocs.push(arg);
-      template += docReplaceString;
+      template += signalComment;
+    } else if (arg instanceof DocumentFragment) {
+      subClonedNodes.push(arg);
+      template += subTemplateComment;
     } else {
       template += sanitize(arg);
     }
   }
   template += strings[i];
 
-  if (!docCache.has(template)) docCache.set(template, buildVirtualDOM(template));
-  const doc = docCache.get(template);
+  if (!templateCache.has(template)) templateCache.set(template, buildTemplateElement(template));
+  const templateElement = templateCache.get(template);
 
-  return prepareDOM(doc, signals, subDocs);
+  return prepareTemplateElement(templateElement, signals, subClonedNodes);
 }
 
 export function watchSignals() {
@@ -90,7 +90,7 @@ function signalChange(signal) {
 
     if (item[0].nodeType === Node.ATTRIBUTE_NODE) {
       let i = 0;
-      item[0].value = item[1].replace('###', function () {
+      item[0].value = item[1].replace(attrString, function () {
         return item[2][i++].untrackValue;
       });
     } else if (isMapHTML(signal)) {
@@ -100,8 +100,8 @@ function signalChange(signal) {
       const nodeList = signal.untrackValue;
       const activeNodes = [];
       for (const subNode of nodeList) {
-        activeNodes.push(...subNode);
-        item[0].parentElement.insertBefore(...subNode, item[0]);
+        activeNodes.push(...subNode.childNodes);
+        item[0].parentElement.insertBefore(subNode, item[0]);
       }
       item[2] = activeNodes;
     } else {
@@ -118,11 +118,12 @@ function sanitize(str) {
   // }
 }
 
-function buildVirtualDOM(template) {
+function buildTemplateElement(template) {
   template = adjustTemplateForAttributes(template);
-  const doc = parser.parseFromString('<!DOCTYPE html><html><head></head><body>' + template + '</body></html>', 'text/html');
-  const nodes = doc.createNodeIterator(
-    doc.body,
+  const templateElement = document.createElement('template');
+  templateElement.innerHTML = template;
+  const nodes = document.createNodeIterator(
+    templateElement.content,
     NodeFilter.COMMENT_NODE
   );
 
@@ -131,15 +132,15 @@ function buildVirtualDOM(template) {
     switch (node.nodeType) {
       case Node.COMMENT_NODE:
         // replace signal comment with textNode
-        if (node.data === '#') {
-          const textNode = doc.createTextNode(signalTextNodeString);
+        if (node.data === signalString) {
+          const textNode = document.createTextNode(signalString);
           node.parentElement.replaceChild(textNode, node);
         }
         break;
     }
   }
 
-  return doc;
+  return templateElement;
 }
 
 function adjustTemplateForAttributes(template) {
@@ -147,18 +148,18 @@ function adjustTemplateForAttributes(template) {
     let attrNameCounter = 0; // ensures unique attr names <div ${page.disabled ? 'disabled' : ''}
     return all
       .replace(attrRegex, function (attr, _name, _value, expr) {
-        if (expr) return attr.replace(signalCommentRegex, attrReplaceString + attrNameCounter++)
-        return attr.replace(signalCommentRegex, attrReplaceString);
+        if (expr) return attr.replace(signalCommentRegex, attrString + attrNameCounter++)
+        return attr.replace(signalCommentRegex, attrString);
       }).replace(twoSpaceRegex, ' ');
   });
 }
 
-function prepareDOM(doc, args, subDocs) {
+function prepareTemplateElement(templateElement, args, subClonedNodes) {
   args.reverse();
-  subDocs.reverse();
-  const importedNode = document.importNode(doc.body, true);
+  subClonedNodes.reverse();
+  const clonedNode = templateElement.content.cloneNode(true);
   const nodes = document.createNodeIterator(
-    importedNode,
+    clonedNode,
     NodeFilter.SHOW_ALL
   );
 
@@ -166,21 +167,21 @@ function prepareDOM(doc, args, subDocs) {
   while (node = nodes.nextNode()) {
     switch (node.nodeType) {
       case Node.COMMENT_NODE:
-        if (node.data === '#doc#') {
-          const subDoc = subDocs.pop();
-          node.parentElement.insertBefore(...subDoc, node);
+        if (node.data === subTemplateString) {
+          const subClonedNode = subClonedNodes.pop();
+          node.parentElement.insertBefore(subClonedNode, node);
         }
         break;
       case Node.TEXT_NODE:
-        if (node.textContent === signalTextNodeString) {
+        if (node.textContent === signalString) {
           const signal = args.pop();
 
           if (isMapHTML(signal)) {
             const nodeList = signal.untrackValue;
             const activeNodes = [];
             for (const subNode of nodeList) {
-              activeNodes.push(...subNode);
-              node.parentElement.insertBefore(...subNode, node);
+              activeNodes.push(...subNode.childNodes);
+              node.parentElement.insertBefore(subNode, node);
             }
             signalCache.get(signal).push([node, nodeList, activeNodes]);
             node.textContent = '\n';
@@ -197,7 +198,7 @@ function prepareDOM(doc, args, subDocs) {
 
         let i = 0;
         for (; i < node.attributes.length; i++) {
-          if (node.attributes[i].value.includes(attrReplaceString)) {
+          if (node.attributes[i].value.includes(attrString)) {
             const signals = new Set();
             const expressions = [];
             const templateValue = node.attributes[i].value;
@@ -220,10 +221,10 @@ function prepareDOM(doc, args, subDocs) {
             }
 
           // handle expression attr <div ${this.var}>
-          } else if (node.attributes[i].name.includes(attrReplaceString)) {
+          } else if (node.attributes[i].name.includes(attrString)) {
             const signal = args.pop();
             signalCache.get(sig).push([node.attributes[i], expressions]);
-            toAdd.push(node.ownerDocument.createAttribute(signal));
+            toAdd.push(document.createAttribute(signal));
             toRemove.push(node.attributes[i]);
           }
         }
@@ -241,5 +242,5 @@ function prepareDOM(doc, args, subDocs) {
     }
   }
 
-  return importedNode.childNodes;
+  return clonedNode;
 }

@@ -85,7 +85,7 @@ export default class Component extends HTMLElement {
       this.#root = this.shadowRoot;
 
       if (this.constructor.shadowRootStyleSheets instanceof CSSStyleSheet || this.constructor.shadowRootStyleSheets[0] instanceof CSSStyleSheet) {
-        this.shadowRoot.adoptedStyleSheets = [].concat(this.constructor.shadowRootStyleSheets);
+        this.shadowRoot.adoptedStyleSheets.push(...[].concat(this.constructor.shadowRootStyleSheets));
       }
     }
   }
@@ -155,7 +155,10 @@ export default class Component extends HTMLElement {
     destroySignalCache();
 
     const parsed = this.template();
-    this.#root.replaceChildren(...parsed);
+    this.#root.replaceChildren(parsed);
+
+    // for html_dom.js
+    // this.#root.replaceChildren(...parsed);
 
     watchSignals();
 

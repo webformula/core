@@ -1,4 +1,4 @@
-import { parseHTML, NodeFilter, Node, DOMParser, NodeList } from 'linkedom';
+import { parseHTML, NodeFilter, Node, DOMParser, NodeList, HTMLTemplateElement, DocumentFragment } from 'linkedom';
 
 // TODO do i need to inject the app index.html
 const dom = parseHTML(`<!doctype html>
@@ -171,4 +171,6 @@ function pollyFill() {
   global.NodeFilter = NodeFilter;
   global.NodeList = NodeList;
   global.Node = Node;
+  global.HTMLTemplateElement = HTMLTemplateElement;
+  global.DocumentFragment = DocumentFragment;
 }
