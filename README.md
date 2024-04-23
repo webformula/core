@@ -3,13 +3,10 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 ### Highlights
-- ⚡ Lightweight - 5KB compressed (GZIP)
-- ⚡ Fast - leverages native browser features
+- ⚡ Lightweight - 6.7KB compressed
+- ⚡ Fast - optimized FCP and low overhead
 - ⚡ Simple - No complex concepts
-- ⚡ Signals and template binding
-- ⚡ Optimized FCP (first contentful paint)
-- ⚡ Includes bundling
-- ⚡ Route level chunk optimization or single file builds
+- ⚡ Full features - Signals, internationalization, routing, bundling
 
 ### About
 Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (5KB).
@@ -98,7 +95,8 @@ Check out the [page.js section](#page.js) for details on how to get url paramete
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
     <title></title>
-    <!-- load js and css. app.js and app.css will automatically be updated to match bundle outputs -->
+
+    <!-- app.js and app.css will automatically be updated to match bundle outputs -->
     <link href="app.css" rel="stylesheet">
     <script src="app.js" type="module"></script>
   </head>
@@ -159,19 +157,25 @@ body {
 <a name="page.js"></a>
 
 ```javascript
-  import { Component, Signal } from '@webformula/core';
-  import html from './page.html'; // automatically bundles
+  import { Component, Signal, html } from '@webformula/core';
+  import htmlTemplate from './page.html'; // automatically bundles
 
   // imported component
   import './component.js';
   
   export default class extends Component {
-    static pageTitle = 'Home'; // html page title
-    static html = html; // hook up imported html. Supports template literals (undefined)
+    // html page title
+    static pageTitle = 'Home';
+
+    /**
+     * Pass in HTML string. Use for imported .HTML
+     * Supports template literals: <div>\${this.var}</div>
+     * @type {String}
+     */
+    static htmlTemplate = htmlTemplate;
 
     someVar = new Signal('Some var');
     clickIt_bound = this.clickIt.bind(this);
-    userInput;
     
     
     constructor() {
@@ -179,7 +183,6 @@ body {
     }
     
     connectedCallback() {
-      this.userInput = 'some user input';
       console.log(this.urlParameters); // { id: 'value' }
       console.log(this.searchParameters); // { id: 'value' }
     }
@@ -199,30 +202,32 @@ body {
     }
     
     // look below to how it is invoked on a button
-    changeValueAndRender() {
-      this.someVar.value = 'Re-rendered';
-      this.render(); // initial render is automatic
+    changeValue() {
+      this.someVar.value = 'Value updated';
     }
     
     /**
-     * If not importing html you can use this template method.
-     * Imported html also supports template literals (undefined)
+     * Alternative method for html templates, instead of importing html file
      */
     template() {
       return /*html*/`
         <div>Page Content</div>
         <div>${this.someVar}</div>
         
-        <!-- escape html input -->
-        <div>${this.escape(this.userInput)}</div>
+        ${
+          // nested html
+          this.show ? html`<div>Showing</div>` : ''
+        }
+
+        <!--
+          You can comment out expressions
+          ${`text`}
+        -->
         
         <!-- "page" will reference the current page class -->
         <button onclick="page.clickIt()">Click Method</button>
         <button id="event-listener-button">Event listener</button>
-        <button onclick="page.changeValueAndRender()">Change value and render</button>
-
-        <!-- web component -->
-        <custom-button>Click</custom-button>
+        <button onclick="page.changeValue()">Change value</button>
       `;
     }
   }
@@ -237,13 +242,20 @@ body {
 <div>Page Content</div>
 <div>${this.someVar}</div>
 
-<!-- escape html input -->
-<div>${this.escape(this.userInput)}</div>
+${
+  // nested html
+  this.show ? html`<div>Showing</div>` : ''
+}
+
+<!--
+  You can comment out expressions
+  ${`text`}
+-->
 
 <!-- "page" will reference the current page class -->
 <button onclick="page.clickIt()">Click Method</button>
 <button id="event-listener-button">Event listener</button>
-<button onclick="page.changeValueAndRender()">Change value and render</button>
+<button onclick="page.changeValue()">Change value</button>
 ```
 
 <br/>
@@ -261,7 +273,7 @@ body {
       * Supports template literals: <div>${this.var}</div>
       * @type {String}
       */
-    static html = html;
+    static htmlTemplate = html;
 
 
     /**
@@ -275,14 +287,6 @@ body {
       * @type {Boolean}
       */
     static shadowRootDelegateFocus = false;
-
-
-    /**
-      * Store template string in template element
-      * Using this will break dynamic rendering from values that change: <div>${this.var}</div>
-      * @type {Boolean}
-      */
-    static useTemplate = true;
 
 
     /**
@@ -345,7 +349,7 @@ body {
      * Imported html also supports template literals (undefined)
      */
     template() {
-      return /*html*/`
+      return html`
         <button><slot></slot></button>
       `;
     }
@@ -435,6 +439,14 @@ build({
   devServerLiveReload: true,
   
   devServerPort: 3000,
+
+  /**
+   * devWarnings
+   * Enable console warning
+   * only html sanitization currently
+   * otherwise it defaults to 'false'
+   */
+  devWarnings: false,
 
   // supports regex's with wildcards (*, **)
   copyFiles: [

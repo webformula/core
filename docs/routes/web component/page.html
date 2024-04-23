@@ -21,16 +21,19 @@
 
       <pre>
         <code class="language-javascript">
-  ${`import { Component } from '@webformula/core';
+  ${`import { Component, html } from '@webformula/core';
   /* HTML imports will bundle with the build */
-  import html from './page.html';
+  import htmlTemplate from './page.html';
 
   // imported component
   import './component.js';
   
   export default class extends Component {
-    static pageTitle = 'Page'; // html page title
-    static htmlTemplate = html; // you can set the html from and import or use the template method (see below)
+    // html page title
+    static pageTitle = 'Page';
+
+    // you can set the html from and import or use the template method (see below)
+    static htmlTemplate = htmlTemplate;
     
     constructor() {
       super();
@@ -38,7 +41,7 @@
 
     // this can be used in place of import the html file
     template() {
-      return /*html*/\`${`
+      return html\`${`
         <div>Page Content</div>
 
         <!-- custom component -->
@@ -64,7 +67,7 @@
       <pre>
         <code class="language-javascript">
   ${`import { Component } from '@webformula/core';
-  import html from './component.html';
+  import htmlTemplate from './component.html';
   
   class CustomButton extends Component {
     /**
@@ -72,7 +75,7 @@
       * Supports template literals: <div>${this.var}</div>
       * @type {String}
       */
-    static htmlTemplate = html;
+    static htmlTemplate = htmlTemplate;
 
 
     /**
@@ -86,14 +89,6 @@
       * @type {Boolean}
       */
     static shadowRootDelegateFocus = false;
-
-
-    /**
-      * Store template string in template element
-      * Using this will break dynamic rendering from values that change: <div>${this.var}</div>
-      * @type {Boolean}
-      */
-    static useTemplate = true;
 
 
     /**

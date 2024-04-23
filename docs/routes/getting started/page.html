@@ -13,7 +13,6 @@
       <li><a href="#pagejs">Page</a></li>
       <li><a href="#build">build</a></li>
       <li><a href="#middleware">Server middleware</a></li>
-      <li><a href="#devtools">Devtools</a></li>
     </ul>
   </nav>
 
@@ -94,7 +93,7 @@
     
       <title></title>
       
-      <!-- load js and css. app.js and app.css will automatically be updated to match bundle outputs -->
+      <!-- app.js and app.css will automatically be updated to match bundle outputs -->
       <\link href="app.css" rel="stylesheet">
       <\script src="app.js" type="module"><\/script>
     </head>
@@ -168,19 +167,22 @@
 
       <pre>
         <code class="language-javascript" wfc-no-binding>
-  ${`import { Component, Signal } from '@webformula/core';
-  import html from './page.html'; // automatically bundles
+  ${`import { Component, Signal, html } from '@webformula/core';
+  import htmlTemplate from './page.html'; // automatically bundles
   
   export default class extends Component {
     // html page title
     static pageTitle = 'Page';
 
-    // hook up imported html. Supports template literals (\${this.someVar})
-    static htmlTemplate = html;
+    /**
+     * Pass in HTML string. Use for imported .HTML
+     * Supports template literals: <div>\${this.var}</div>
+     * @type {String}
+     */
+    static htmlTemplate = htmlTemplate;
 
     someVar = new Signal('Some var');
     clickIt_bound = this.clickIt.bind(this);
-    userInput;
     
     
     constructor() {
@@ -188,7 +190,6 @@
     }
     
     connectedCallback() {
-      this.userInput = 'some user input';
       console.log(this.urlParameters); // { id: 'value' }
       console.log(this.searchParameters); // { id: 'value' }
     }
@@ -211,21 +212,27 @@
     }
     
     /**
-    * If not importing html you can use this template method.
-    * Imported html also supports template literals (${this.someVar})
+    * Alternative method for html templates, instead of importing html file
     */
     template() {
-      return /*html*/\`
+      return html\`
         <div>Page Content</div>
         <div>\${this.someVar}</div>
-        
-        <!-- escape html input -->
-        <div>\${this.escape(this.userInput)}</div>
+
+        \${
+          // nested html
+          this.show ? html\`<div>Showing</div>\` : ''
+        }
+
+        <!--
+          You can comment out expressions
+          ${`text`}
+        -->
         
         <!-- "page" will reference the current page class -->
         <button onclick="page.clickIt()">Click Method</button>
         <button id="event-listener-button">Event listener</button>
-        <button onclick="page.changeValueAndRender()">Change value and render</button>
+        <button onclick="page.changeValue()">Change value</button>
       \`;
     }
   }`}
@@ -330,21 +337,6 @@
         <code class="language-bash">
   ${`# Simply use node --watch to enable livereload
   node --watch-path=./src --watch-path=./docs server.js`}
-        </code>
-      </pre>
-    </wfc-card>
-
-    <wfc-card id="devtools">
-      <div slot="headline">Devtools</div>
-      <div slot="supporting-text">A small set of helper functions</div>
-
-      <pre>
-        <code class="language-javascript">
-  ${`// View current page template string
-  window.getPageTemplate();
-  
-  // Get all pages route details
-  window.getRoutes();`}
         </code>
       </pre>
     </wfc-card>
