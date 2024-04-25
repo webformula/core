@@ -17,17 +17,17 @@
       <div slot="headline">Signal</div>
       <div slot="supporting-text">A signal is a wrapper around a value that can notify interested consumers when that value changes</div>
 
-      <wfc-textfield class="wfc-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}"
+      <wfc-textfield a class="wfc-raise-label" style="margin-top: 24px;" label="Type something" value="${page.basicBind}"
         oninput="page.basicBind.value = this.value">
       </wfc-textfield>
       
-      <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
+      <div a style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.basicBind}</div>
       
       <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>
       
       <pre>
         <code class="language-html">
-  ${page.escape(`<!-- Signals automatically update the HTML -->
+  ${`<!-- Signals automatically update the HTML -->
 
   <wfc-textfield
     label="Type something"
@@ -36,17 +36,17 @@
   ></wfc-textfield>
 
   <div>Value: \${page.basicBind}</div>
-  <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>`)}
+  <wfc-button onclick="page.updateValue()">Set value to Updated</wfc-button>`}
         </code>
       </pre>
       <pre>
         <code class="language-javascript">
   ${`import { Component, Signal } from '@webformula/core';
-  import html from './page.html';
+  import htmlTemplate from './page.html';
 
   export default class extends Component {
     static pageTitle = 'Signal';
-    static html = html;
+    static htmlTemplate = htmlTemplate;
     
     basicBind = new Signal('');
     
@@ -68,11 +68,11 @@
   // quick example of using Signal, Compute, and effect
     
   import { Component, Signal, Compute, effect } from '@webformula/core';
-  import html from './page.html';
+  import htmlTemplate from './page.html';
 
   export default class extends Component {
     static pageTitle = 'Signal Compute effect';
-    static html = html;
+    static htmlTemplate = htmlTemplate;
     
     one = new Signal(1);
     // Compute will run when first created
@@ -104,15 +104,15 @@
       <div slot="headline">Compute</div>
       <div slot="supporting-text">Compute provides a way to interact with multiple signals to provide a single value</div>
     
-      <wfc-textfield class="wfc-raise-label" type="number" style="margin-top: 24px;" label="Type something" value="${page.number}"
+      <wfc-textfield b class="wfc-raise-label" type="number" style="margin-top: 24px;" label="Type something" value="${page.number}"
         oninput="page.number.value = this.value">
       </wfc-textfield>
     
-      <div style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.numberTimesTwo}</div>
+      <div b style="margin-bottom: 12px; margin-left: 16px;">Value: ${page.numberTimesTwo}</div>
 
       <pre>
         <code class="language-html">
-  ${page.escape(`<!-- Computes automatically update the HTML -->
+  ${`<!-- Computes automatically update the HTML -->
   
   <wfc-textfield
     type="number"
@@ -121,7 +121,7 @@
     oninput="page.number.value = this.value">
   </wfc-textfield>
 
-  <div>Value: \${page.numberTimesTwo}</div>`)}
+  <div>Value: \${page.numberTimesTwo}</div>`}
         </code>
       </pre>
       <pre>
@@ -131,7 +131,7 @@
 
   export default class extends Component {
     static pageTitle = 'Compute';
-    static html = html;
+    static htmlTemplate = html;
     
     number = new Signal(1);
     // Compute will run when first created
@@ -159,7 +159,7 @@
 
   export default class extends Component {
     static pageTitle = 'Effect';
-    static html = html;
+    static htmlTemplate = html;
     
     one = new Signal(1);
     two = new Signal(2);

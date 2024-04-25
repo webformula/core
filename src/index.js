@@ -19,5 +19,4 @@ export {
   setSecurityLevel
 }
 
-
 window.html = html;

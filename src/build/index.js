@@ -90,7 +90,7 @@ export default async function build(config = {
     splitting: config.chunks,
     sourcemap: config.sourcemap
   });
-
+  
   const appCSSContext = !hasAppCSS ? undefined : await esbuild.build({
     entryPoints: [appCSSPath],
     bundle: true,

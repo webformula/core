@@ -1,10 +1,13 @@
-import { isSignal, isMapHTML } from './signals.js';
+import { isSignal, Compute } from './signals.js';
 
+const HTMLCOMPUTE = Symbol('HTMLCOMPUTE');
 const attrString = '###';
 const signalString = '#signal#';
 const signalComment = `<!--${signalString}-->`;
 const subTemplateString = '#template#';
 const subTemplateComment = `<!--${subTemplateString}-->`;
+const htmlComputeString = '#htmlcompute#';
+const htmlComputeComment = `<!--${htmlComputeString}-->`;
 const tagRegex = new RegExp(`<\\w+([^<>]*${signalComment}[^<\\/>]*)+\\/?>`, 'g');
 const attrRegex = new RegExp(`(?:(\\s+[^\\s\\/>"=]+)\\s*=\\s*"([\\w\\s]*${signalComment}[\\w\\s]*)")|(\\s*${signalComment}\\s*)`, 'g');
 const signalCommentRegex = new RegExp(signalComment, 'g');
@@ -28,30 +31,35 @@ export function setSecurityLevel(level = 1) {
 }
 
 export function html(strings, ...args) {
+  if (typeof strings === 'function') return htmlCompute(strings);
   args.reverse();
 
   const signals = [];
   const subClonedNodes = [];
   let template = '';
   let i = 0;
-
   for (; i < strings.length - 1; i++) {
-    const arg = args.pop();
     template = template + strings[i];
+    const arg = args.pop();
 
     // replace commented out expression
-    const lastCommentOpen = template.match(insideCommentRegex);
-    if (lastCommentOpen) {
+    if (template.match(insideCommentRegex)) {
       template += '\${commented expression}';
+
+
     } else if (isSignal(arg)) {
       signals.push(arg);
       if (!signalCache.has(arg)) {
         signalCache.set(arg, []);
         signalsToWatch.add(arg);
       }
-      template += signalComment;
-    } else if (arg instanceof DocumentFragment) {
-      subClonedNodes.push(arg);
+
+      if (arg[HTMLCOMPUTE] === true) template += htmlComputeComment;
+      else template += signalComment;
+
+
+    } else if (Array.isArray(arg) ? arg[0] instanceof DocumentFragment : arg instanceof DocumentFragment) {
+      subClonedNodes.push([].concat(arg));
       template += subTemplateComment;
     } else {
       template += escape(arg);
@@ -63,6 +71,12 @@ export function html(strings, ...args) {
   const templateElement = templateCache.get(template);
 
   return prepareTemplateElement(templateElement, signals, subClonedNodes);
+}
+
+export function htmlCompute(callback) {
+  const compute = new Compute(callback);
+  compute[HTMLCOMPUTE] = true;
+  return compute;
 }
 
 export function watchSignals() {
@@ -91,29 +105,22 @@ function signalChange(signal) {
   if (!signalItems) return;
 
   for (const item of signalItems) {
-    // TODO im not sure i can assume the an element not connected can be ignored
-    //      Could be temporally removed, like reordering list
-    // if (!item[0].isConnected) {
-    //   signalItems.splice(signalItems.indexOf(item), 1);
-    //   continue;
-    // }
-
     if (item[0].nodeType === Node.ATTRIBUTE_NODE) {
       let i = 0;
       item[0].value = item[1].replace(attrString, function () {
         return item[2][i++].untrackValue;
       });
-    } else if (isMapHTML(signal)) {
-      for (const node of item[2]) {
+
+    } else if (signal[HTMLCOMPUTE] === true) {
+      for (const node of item[1]) {
         node.remove();
       }
-      const nodeList = signal.untrackValue;
-      const activeNodes = [];
-      for (const subNode of nodeList) {
-        activeNodes.push(...subNode.childNodes);
-        item[0].parentElement.insertBefore(subNode, item[0]);
+      item[1] = [];
+      for (const frag of [].concat(signal.untrackValue)) {
+        item[1].push(...frag.childNodes);
+        item[0].parentElement.insertBefore(frag, item[0]);
       }
-      item[2] = activeNodes;
+
     } else {
       item[0].textContent = signal.untrackValue;
     }
@@ -137,7 +144,6 @@ function buildTemplateElement(template) {
         break;
 
       case Node.COMMENT_NODE:
-        // replace signal comment with textNode
         if (node.data === signalString) {
           const textNode = document.createTextNode(signalString);
           node.parentElement.replaceChild(textNode, node);
@@ -173,79 +179,73 @@ function prepareTemplateElement(templateElement, args, subClonedNodes) {
   while (node = nodes.nextNode()) {
     switch (node.nodeType) {
       case Node.COMMENT_NODE:
-        if (node.data === subTemplateString) {
-          const subClonedNode = subClonedNodes.pop();
-          node.parentElement.insertBefore(subClonedNode, node);
-        }
-        break;
       case Node.TEXT_NODE:
-        if (node.textContent === signalString) {
-          const signal = args.pop();
-
-          if (isMapHTML(signal)) {
-            const nodeList = signal.untrackValue;
-            const activeNodes = [];
-            for (const subNode of nodeList) {
-              activeNodes.push(...subNode.childNodes);
-              node.parentElement.insertBefore(subNode, node);
+        switch (node.textContent) {
+          case subTemplateString:
+            for (const frag of subClonedNodes.pop()) {
+              node.parentElement.insertBefore(frag, node);
             }
-            signalCache.get(signal).push([node, nodeList, activeNodes]);
-            node.textContent = '\n';
+            break;
 
-          } else {
-            signalCache.get(signal).push([node]);
+          case htmlComputeString:
+            const compute = args.pop();
+            const activeNodes = [];
+            for (const frag of [].concat(compute.untrackValue)) {
+              activeNodes.push(...frag.childNodes);
+              node.parentElement.insertBefore(frag, node);
+            }
+            signalCache.get(compute).push([node, activeNodes]);
+            break;
+
+          case signalString:
+            const signal = args.pop();
             node.textContent = signal.untrackValue;
-          }
+            signalCache.get(signal).push([node]);
+            break;
         }
         break;
+
       case Node.ELEMENT_NODE:
         const toRemove = []
         const toAdd = []
-
         let i = 0;
         for (; i < node.attributes.length; i++) {
-          if (node.attributes[i].value.includes(attrString)) {
+          const attr = node.attributes[i];
+          if (attr.value.includes(attrString)) {
             const signals = new Set();
             const expressions = [];
-            const templateValue = node.attributes[i].value;
+            const templateValue = attr.value;
 
-            node.attributes[i].value = templateValue.replace(attrPlaceholderRegex, function () {
-              const signal = args.pop();
-              expressions.push(signal)
-              if (isSignal(signal)) {
-                signals.add(signal);
-                return signal.untrackValue;
+            attr.value = templateValue.replace(attrPlaceholderRegex, function () {
+              const arg = args.pop();
+              expressions.push(arg)
+              if (isSignal(arg)) {
+                signals.add(arg);
+                return arg.untrackValue;
               }
-              return signal;
+              return arg;
             });
 
-            if (signals.size > 0) {
-              for (const sig of signals) {
-                signalCache.get(sig).push([node.attributes[i], templateValue, expressions]);
-              }
-              signals.clear();
+            for (const sig of signals) {
+              signalCache.get(sig).push([attr, templateValue, expressions]);
             }
+            signals.clear();
 
+          
           // handle expression attr <div ${this.var}>
-          } else if (node.attributes[i].name.includes(attrString)) {
+          // TODO handle signals?
+          } else if (attr.name.includes(attrString)) {
             const expressionValue = args.pop();
-            // TODO handle signals?
-            // signalCache.get(sig).push([node.attributes[i], expressions]);
             toAdd.push(document.createAttribute(expressionValue));
             toRemove.push(node.attributes[i]);
           }
         }
 
         // Add and remove after to prevent node attributes from being modified on parse
-        i = 0;
-        for (; i < toAdd.length; i++) {
+        for (i = 0; i < toAdd.length; i++) {
           node.setAttributeNode(toAdd[i]);
-        }
-        i = 0;
-        for (; i < toRemove.length; i++) {
           node.removeAttributeNode(toRemove[i]);
         }
-        break;
     }
   }
 
