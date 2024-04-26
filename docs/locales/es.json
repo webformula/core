@@ -1,4 +1,4 @@
-{ "types": {
+{ "formatters": {
     "itemPlural": {
       "type": "cardinal",
       "zero": "elementos",
@@ -32,13 +32,14 @@
       "unit": "day",
       "options": {
         "style": "short" } } },
-
-  "About": "Acerca de",
-  "Label days": "Días de etiqueta",
-  "key_string": "Esta es una cadena clave",
-  "item_count": "${count} ${itemPlural(count)}",
-  "place_ordinal": "${place} ${placeOrdinal(place)}",
-  "time_from_now": "${time} ${minutesCardinal(minutes)} desde ahora",
-  "date_key": "${dateFormat(date)}",
-  "currency_key": "${currencyFormat(currency)}",
-  "relativeTime_key": "${relativeTimeFormat(days)}" }
+  
+  "messages": {
+    "About": "Acerca de",
+    "Label days": "Días de etiqueta",
+    "key_string": "Esta es una cadena clave",
+    "item_count": "$1 $itemPlural($1)",
+    "place_ordinal": "$1 $placeOrdinal($1)",
+    "time_from_now": "$1 $minutesCardinal($1) desde ahora",
+    "date_key": "$dateFormat($1)",
+    "currency_key": "$currencyFormat($1)",
+    "relativeTime_key": "$relativeTimeFormat($1)" } }

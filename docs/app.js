@@ -6,23 +6,32 @@ import '@webformula/material/components/button';
 import '@webformula/material/components/switch';
 import '@webformula/material/components/textfield';
 
+if (typeof hljs === 'undefined') {
+  const hljsTag = document.querySelector('#hljsscript');
+  hljsTag.onload = () => {
+    initHLJS();
+  };
+} else {
+  window.addEventListener('DOMContentLoaded', () => {
+    initHLJS();
+  });
+}
 
-if (typeof hljs !== 'undefined') {
+function initHLJS() {
   hljs.configure({ ignoreUnescapedHTML: true });
   hljs.highlightAll();
 }
+
 window.addEventListener('load', () => {
-  hljs.configure({ ignoreUnescapedHTML: true });
-  hljs.highlightAll();
   if (location.hash) handleHashAnchor(location.hash, false);
 });
 
 window.addEventListener('locationchange', () => {
-  setTimeout(() => {
+  // setTimeout(() => {
     hljs.highlightAll();
     if (!location.hash) return;
     handleHashAnchor(location.hash, false);
-  });
+  // });
 });
 
 window.addEventListener('hashchange', () => {

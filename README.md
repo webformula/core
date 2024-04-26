@@ -3,16 +3,13 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 ### Highlights
-- ⚡ Lightweight - 5.8KB compressed (GZIP)
-- ⚡ Fast - leverages native browser features
+- ⚡ Lightweight - 5.9KB compressed
+- ⚡ Fast - optimized FCP and low overhead
 - ⚡ Simple - No complex concepts
-- ⚡ Single page app with index HTML for each route
-- ⚡ Includes bundling. No need for Webpack
-- ⚡ Bundles with route level chunk optimization or single file
-- ⚡ Server middleware
+- ⚡ Full features - Signals, internationalization, routing, bundling
 
 ### About
-Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (2KB). You can create your web application and decide weather to build it as a single page app or server it.
+Browsers, javascript, css, and html provide a robust set of features these days. With the addition of a couple of features like routing, we can build small performant applications without a steep learning curve. Webformula core provides the tools to achieve this in a tiny package (5KB).
 
 
 ## Table of Contents  
@@ -98,7 +95,8 @@ Check out the [page.js section](#page.js) for details on how to get url paramete
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
     <title></title>
-    <!-- load js and css -->
+
+    <!-- app.js and app.css will automatically be updated to match bundle outputs -->
     <link href="app.css" rel="stylesheet">
     <script src="app.js" type="module"></script>
   </head>
@@ -106,6 +104,9 @@ Check out the [page.js section](#page.js) for details on how to get url paramete
   <body>
     <!-- page template render into this element -->
     <page-content></page-content>
+
+    <!-- Alternative using id attribute -->
+    <div id="page-content"></div>
   </body>
 </html>
 ```
@@ -156,19 +157,25 @@ body {
 <a name="page.js"></a>
 
 ```javascript
-  import { Component } from '@webformula/core';
-  import html from './page.html'; // automatically bundles
+  import { Component, Signal, html } from '@webformula/core';
+  import htmlTemplate from './page.html'; // automatically bundles
 
   // imported component
   import './component.js';
   
   export default class extends Component {
-    static pageTitle = 'Home'; // html page title
-    static html = html; // hook up imported html. Supports template literals (undefined)
+    // html page title
+    static pageTitle = 'Home';
 
-    someVar = 'Some var';
+    /**
+     * Pass in HTML string. Use for imported .HTML
+     * Supports template literals: <div>\${this.var}</div>
+     * @type {String}
+     */
+    static htmlTemplate = htmlTemplate;
+
+    someVar = new Signal('Some var');
     clickIt_bound = this.clickIt.bind(this);
-    userInput;
     
     
     constructor() {
@@ -176,24 +183,16 @@ body {
     }
     
     connectedCallback() {
-      // called on element hookup to dome. May not be rendered yet
-    
-      this.userInput = 'some user input';
       console.log(this.urlParameters); // { id: 'value' }
       console.log(this.searchParameters); // { id: 'value' }
     }
     
-    disconnectedCallback() {
-      // called on element removal
-    }
+    disconnectedCallback() { }
     
     // not called on initial render
-    beforeRender() {
-      // Do work before render
-    }
+    beforeRender() { }
     
     afterEnder() {
-      // Do work after render
       this.querySelector('#event-listener-button').addEventListener('click', this.clickIt_bound);
     }
     
@@ -203,30 +202,32 @@ body {
     }
     
     // look below to how it is invoked on a button
-    changeValueAndRender() {
-      this.someVar = 'Re-rendered';
-      this.render(); // initial render is automatic
+    changeValue() {
+      this.someVar.value = 'Value updated';
     }
     
     /**
-     * If not importing html you can use this template method.
-     * Imported html also supports template literals (undefined)
+     * Alternative method for html templates, instead of importing html file
      */
     template() {
       return /*html*/`
         <div>Page Content</div>
         <div>${this.someVar}</div>
         
-        <!-- escape html input -->
-        <div>${this.escape(this.userInput)}</div>
+        ${
+          // nested html
+          this.show ? html`<div>Showing</div>` : ''
+        }
+
+        <!--
+          You can comment out expressions
+          ${`text`}
+        -->
         
         <!-- "page" will reference the current page class -->
         <button onclick="page.clickIt()">Click Method</button>
         <button id="event-listener-button">Event listener</button>
-        <button onclick="page.changeValueAndRender()">Change value and render</button>
-
-        <!-- web component -->
-        <custom-button>Click</custom-button>
+        <button onclick="page.changeValue()">Change value</button>
       `;
     }
   }
@@ -241,13 +242,20 @@ body {
 <div>Page Content</div>
 <div>${this.someVar}</div>
 
-<!-- escape html input -->
-<div>${this.escape(this.userInput)}</div>
+${
+  // nested html
+  this.show ? html`<div>Showing</div>` : ''
+}
+
+<!--
+  You can comment out expressions
+  ${`text`}
+-->
 
 <!-- "page" will reference the current page class -->
 <button onclick="page.clickIt()">Click Method</button>
 <button id="event-listener-button">Event listener</button>
-<button onclick="page.changeValueAndRender()">Change value and render</button>
+<button onclick="page.changeValue()">Change value</button>
 ```
 
 <br/>
@@ -257,20 +265,64 @@ body {
 
 ```javascript
   import { Component } from '@webformula/core';
+  import html from './component.html';
   
   export default class extends Component {
     /**
-      * Defaults to false.
-      * If this is false then the component will render directly in root element
+      * Pass in HTML string. Use for imported .HTML
+      * Supports template literals: <div>${this.var}</div>
+      * @type {String}
       */
-    static useShadowRoot = true;
+    static htmlTemplate = html;
+
 
     /**
-    * Defaults to true.
-    * Use global template element
-    * This should be set to false if the template is dynamic (<div>\${this.var}</div>)
-    */
-    static useTemplate = true;
+      * Hook up shadow root
+      * @type {Boolean}
+      */
+    static useShadowRoot = false;
+
+    
+    /**
+      * @type {Boolean}
+      */
+    static shadowRootDelegateFocus = false;
+
+
+    /**
+      * Pass in styles for shadow root.
+      * Can use imported stylesheets: import styles from '../styles.css' assert { type: 'css' };
+      * @type {CSSStyleSheet}
+      */
+    static shadowRootStyleSheets;
+
+
+    /**
+      * @typedef {String} AttributeType
+      * @value '' default handling
+      * @value 'string' Convert to a string. null = ''
+      * @value 'number' Convert to a number. isNaN = ''
+      * @value 'int' Convert to a int. isNaN = ''
+      * @value 'boolean' Convert to a boolean. null = false
+      * @value 'event' Allows code to be executed. Similar to onchange="console.log('test')"
+      */
+      /**
+      * Enhances observedAttributes, allowing you to specify types
+      * You can still use \`observedAttributes\` in stead of this.
+      * @type {Array.<[name:String, AttributeType]>}
+      */
+    static get observedAttributesExtended() { return []; }; // static observedAttributesExtended = [['required', 'boolean']];
+
+    /**
+      * Use with observedAttributesExtended
+      * You can still use \`attributeChangedCallback\` in stead of this.
+      * @function
+      * @param {String} name - Attribute name
+      * @param {String} oldValue - Old attribute value
+      * @param {String} newValue - New attribute value
+      */
+    attributeChangedCallbackExtended(name, oldValue, newValue) { }
+
 
     // need to bind events to access \`this\`
     #onClick_bound = this.#onClick.bind(this);
@@ -297,7 +349,7 @@ body {
      * Imported html also supports template literals (undefined)
      */
     template() {
-      return /*html*/`
+      return html`
         <button><slot></slot></button>
       `;
     }
@@ -388,6 +440,14 @@ build({
   
   devServerPort: 3000,
 
+  /**
+   * devWarnings
+   * Enable console warning
+   * only html sanitization currently
+   * otherwise it defaults to 'false'
+   */
+  devWarnings: false,
+
   // supports regex's with wildcards (*, **)
   copyFiles: [
     {
@@ -425,7 +485,7 @@ node build.js
 # Development run with watch to enable livereload
 node --watch-path=./app build.js
 
-# Production run. minifies, gzips, and writes files
+# Production run. minifies and gzips
 NODE_ENV=production node build.js
 ```
 

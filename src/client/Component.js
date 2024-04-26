@@ -1,14 +1,12 @@
-import BindPage from './page-binding.js';
-import i18n from './i18n.js';
+import { html, watchSignals, destroySignalCache } from './html.js';
 
-
-const templateElements = [];
 
 /**
  * Component class used for pages and web components
  * @extends HTMLElement
  */
 export default class Component extends HTMLElement {
+  static _html = html;
   /**
     * Page title
     * @type {String}
@@ -20,7 +18,7 @@ export default class Component extends HTMLElement {
     *   Supports template literals: <div>${this.var}</div>
     * @type {String}
     */
-  static html = '';
+  static htmlTemplate = '';
 
   /**
     * Pass in styles for shadow root.
@@ -39,13 +37,6 @@ export default class Component extends HTMLElement {
     * @type {Boolean}
     */
   static shadowRootDelegateFocus = false;
-
-  /**
-    * Store template string in template element
-    *   Using this will break dynamic rendering from values that change: <div>${this.var}</div>
-    * @type {Boolean}
-    */
-  static useTemplate = true;
 
   /**
   * @typedef {String} AttributeType
@@ -72,14 +63,10 @@ export default class Component extends HTMLElement {
   // static get observedAttributesExtended() { }
 
   
-  #classId;
-  #pageBinding;
   #root = this;
   #attributeEvents = {};
   #attributesLookup;
   #prepared;
-  #templateElement;
-  #templateString;
 
   constructor() {
     super();
@@ -90,10 +77,14 @@ export default class Component extends HTMLElement {
       const pageContent = document.querySelector('page-content') || document.querySelector('#page-content');
       if (!pageContent) throw Error('Could not find page-content');
       this.#root = pageContent;
+    }
 
-      this.#pageBinding = new BindPage(this);
-      if (this.#pageBinding) {
-        return this.#pageBinding.proxy;
+    if (this.constructor.useShadowRoot) {
+      this.attachShadow({ mode: 'open', delegatesFocus: this.constructor.shadowRootDelegateFocus });
+      this.#root = this.shadowRoot;
+
+      if (this.constructor.shadowRootStyleSheets instanceof CSSStyleSheet || this.constructor.shadowRootStyleSheets[0] instanceof CSSStyleSheet) {
+        this.shadowRoot.adoptedStyleSheets.push(...[].concat(this.constructor.shadowRootStyleSheets));
       }
     }
   }
@@ -102,7 +93,7 @@ export default class Component extends HTMLElement {
 
 
   /**
-   * Method that returns a html template string. This is an alternative to use static html
+   * Method that returns a html template string. This is an alternative to use static htmlTemplate
    *    template() {
    *       return `<div>${this.var}</div>`;
    *    }
@@ -111,7 +102,7 @@ export default class Component extends HTMLElement {
    * @return {String}
    */
   template() {
-    return this.constructor.html;
+    return this.constructor.htmlTemplate;
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -158,15 +149,17 @@ export default class Component extends HTMLElement {
   /** Render Component. This is automatically called for pages */
   render() {
     if (!this.#prepared) this.#prepareRender();
-    if (this.constructor._isBuild) return;
-    
-    !this.#pageBinding ? this.beforeRender() : this.beforeRender.call(this.#pageBinding.proxy);
-    if (!this.constructor.useTemplate) this.#templateElement.innerHTML = this.template(); // always re-render
-    this.#root.replaceChildren(this.#templateElement.content.cloneNode(true));
-    if (this.#pageBinding) this.#pageBinding.postRender();
-    if (this.constructor._isPage) i18n.localizeDocument();
-    !this.#pageBinding ? this.afterRender() : this.afterRender.call(this.#pageBinding.proxy);
-    if (this.constructor._isPage) window.dispatchEvent(new Event('webformulacorepagerender'));
+
+    this.beforeRender();
+    destroySignalCache();
+
+    const parsed = this.template();
+    this.#root.replaceChildren(parsed);
+
+    watchSignals();
+
+    this.afterRender();
+    if (this.constructor._isPage) window.dispatchEvent(new CustomEvent('webformulacorepagerender'));
   }
 
   /** Escape html. <div>${page.escape('some string')}</div> */
@@ -174,63 +167,24 @@ export default class Component extends HTMLElement {
     return str.replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
   };
 
-  /** Translate string. <div>${page.translate('some key string')}</div> */
-  localize(key) {
-    return i18n.localize(key, this);
+  /** @private */
+  _internalDisconnectedCallback() {
+    destroySignalCache();
   }
 
-  /** @private */
-  bindAttrVal(str, id) {
-    if (this.#pageBinding) {
-      if (!this.#pageBinding.refValues[id]) this.#pageBinding.refValues[id] = {};
-      this.#pageBinding.refValues[id].lastValue = this.#pageBinding.refValues[id].value;
-      this.#pageBinding.refValues[id].value = str;
-      return str;
-    }
-  }
 
   #prepareRender() {
-    // set on constructor?
     this.#prepared = true;
-    
-    if (this.#pageBinding?.enabled && !this.#pageBinding?.parsed) {
-      this.template = this.#pageBinding.parseTemplate();
-      this.#templateString = this.#pageBinding.templateString;
-    } else {
-      this.#templateString = this.constructor.html || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
-      this.template = () => new Function('page', `return \`${this.#templateString}\`;`).call(this, this);
-    }
 
-    if (this.constructor._isBuild) return;
+    const templateString = this.constructor.htmlTemplate || this.template.toString().replace(/^[^`]*/, '').replace(/[^`]*$/, '').slice(1, -1);
+    this.template = () => new Function('page', `return page.constructor._html\`${templateString}\`;`).call(this, this);
 
     if (this.constructor._isPage) {
-      const title = document.querySelector('title');
-      title.innerText = this.constructor.pageTitle;
-      this.#templateElement = document.createElement('template');
+      const title = document.documentElement.querySelector('title');
+      title.textContent = this.constructor.pageTitle;
       return;
     }
-
-    if (this.constructor.useTemplate) {
-      if (!this.#classId) this.#classId = btoa(this.constructor.toString().replace(/\s/g, ''));
-      if (!templateElements[this.#classId]) {
-        templateElements[this.#classId] = document.createElement('template');
-        templateElements[this.#classId].innerHTML = this.template();
-      }
-      this.#templateElement = templateElements[this.#classId];
-    } else {
-      this.#templateElement = document.createElement('template');
-    }
-
-    if (this.constructor.useShadowRoot) {
-      this.attachShadow({ mode: 'open', delegatesFocus: this.constructor.shadowRootDelegateFocus });
-      this.#root = this.shadowRoot;
-
-      if ((Array.isArray(this.constructor.shadowRootStyleSheets) && this.constructor.shadowRootStyleSheets.length > 0) || this.constructor.shadowRootStyleSheets instanceof CSSStyleSheet) {
-        this.#root.adoptedStyleSheets = [].concat(this.constructor.shadowRootStyleSheets);
-      }
-    }
   }
-
 
   #attributeDescriptorTypeConverter(value, type) {
     switch (type) {

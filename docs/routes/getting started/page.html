@@ -7,14 +7,12 @@
     <ul class="links">
       <li><a href="#install">Install</a></li>
       <li><a href="#routing">Routing</a></li>
-      <li><a href="#config">Config app</a></li>
       <li><a href="#indexhtml">index.html</a></li>
       <li><a href="#appjs">app.js</a></li>
       <li><a href="#appcss">app.css</a></li>
       <li><a href="#pagejs">Page</a></li>
       <li><a href="#build">build</a></li>
       <li><a href="#middleware">Server middleware</a></li>
-      <li><a href="#devtools">Devtools</a></li>
     </ul>
   </nav>
 
@@ -30,43 +28,13 @@
     </wfc-card>
 
 
-    <wfc-card id="indexhtml">
-      <div slot="headline">index.html</div>
-
-      <pre>
-        <code class="language-html">
-  ${page.escape(`<!doctype html>
-    <html lang="en">
-    
-    <head>
-      <meta charset="UTF-8">
-      <meta http-equiv="Cache-Control" content="no-store" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-      <title></title>
-      
-      <!-- load js and css -->
-      <\link href="app.css" rel="stylesheet">
-      <\script src="app.js" type="module"><\/script>
-    </head>
-    
-    <body>
-      <!-- page template render into this element -->
-      <page-content></page-content>
-    </body>
-  </html>`)}
-        </code>
-      </pre>
-    </wfc-card>
-
-
     <wfc-card id="routing">
       <div slot="headline">Routing</div>
       <div slot="supporting-text">@Webformula/core uses directory based routing. All routes go in a 'routes' folder.</div>
 
       <pre>
         <code class="language-yaml">
-  ${page.escape(`app/
+  app/
   └── routes/
       ├── index/
       │   └── index.js     # /
@@ -81,7 +49,7 @@
       │       └── index.js # three/:id
       └── four/
           └── [...all]/
-              └── index.js # four/* (four/a/b/)`)}
+              └── index.js # four/* (four/a/b/)
         </code>
       </pre>
 
@@ -110,34 +78,34 @@
     </wfc-card>
 
 
-    <wfc-card id="config">
-      <div slot="headline">Config app</div>
-      <div slot="supporting-text">Change settings for binding and routing</div>
-
+    <wfc-card id="indexhtml">
+      <div slot="headline">index.html</div>
+    
       <pre>
         <code class="language-html">
-  ${page.escape(`<!-- Add script tag with configuration to index.html -->
-  <head>
-    ...
-    <script>
-      /* If false then variable binding will be disabled
-      * 
-      * Default: true
-      */
-      window.webformulaCoreBinding = true;
+  ${`<!doctype html>
+    <html lang="en">
+    
+    <head>
+      <meta charset="UTF-8">
+      <meta http-equiv="Cache-Control" content="no-store" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+      <title></title>
+      
+      <!-- app.js and app.css will automatically be updated to match bundle outputs -->
+      <\link href="app.css" rel="stylesheet">
+      <\script src="app.js" type="module"><\/script>
+    </head>
+    
+    <body>
+      <!-- page template render into this element -->
+      <page-content></page-content>
 
-
-      /* If false then navigation will retrieve pages from the server
-      *   Application code and styles will be cached, only the page html will be retrieved
-      * 
-      * Default: true
-      */
-      window.webformulaCoreSpa = true;
-    </script>
-    ...
-  </head>
-  <body>...</body>
-  `)}
+      <!-- Alternative using id attribute -->
+      <div id="page-content"></div>
+    </body>
+  </html>`}
         </code>
       </pre>
     </wfc-card>
@@ -156,7 +124,7 @@
   
   import someModule from './someModule.js';
   
-  // routes are automatically loaded based on directory routing`}
+  // routes are automatically loaded`}
         </code>
       </pre>
 
@@ -165,20 +133,12 @@
       </div>
       <pre>
         <code class="language-javascript">
-  ${`import { routes, preventNavigation } from '@webformula/core';
-  import home from './routes/home/index.js';
-  import login from './routes/login/index.js';
-  
-  routes([
-    { path: '/', component: home },
-    { path: '/login', component: login }
-  ]);
+  ${`import { preventNavigation } from '@webformula/core';
   
   // if not authenticated redirect to login and prevent navigation
   if (!document.cookie.includes('authenticated=true')) {
     if (location.pathname !== '/login') location.href = '/login';
     preventNavigation(true);
-    // preventNavigation(false);
   }`}
         </code>
       </pre>
@@ -207,16 +167,22 @@
 
       <pre>
         <code class="language-javascript" wfc-no-binding>
-  ${`import { Component } from '@webformula/core';
-  import html from './page.html'; // automatically bundles
+  ${`import { Component, Signal, html } from '@webformula/core';
+  import htmlTemplate from './page.html'; // automatically bundles
   
   export default class extends Component {
-    static pageTitle = 'Page'; // html page title
-    static html = html; // hook up imported html. Supports template literals (\${this.someVar})
+    // html page title
+    static pageTitle = 'Page';
 
-    someVar = 'Some var';
+    /**
+     * Pass in HTML string. Use for imported .HTML
+     * Supports template literals: <div>\${this.var}</div>
+     * @type {String}
+     */
+    static htmlTemplate = htmlTemplate;
+
+    someVar = new Signal('Some var');
     clickIt_bound = this.clickIt.bind(this);
-    userInput;
     
     
     constructor() {
@@ -224,55 +190,50 @@
     }
     
     connectedCallback() {
-      // called on element hookup to dome. May not be rendered yet
-    
-      this.userInput = 'some user input';
       console.log(this.urlParameters); // { id: 'value' }
       console.log(this.searchParameters); // { id: 'value' }
     }
     
-    disconnectedCallback() {
-      // called on element removal
-    }
+    disconnectedCallback() { }
     
     // not called on initial render
-    beforeRender() {
-      // Do work before render
-    }
+    beforeRender() { }
     
     afterEnder() {
-      // Do work after render
       this.querySelector('#event-listener-button').addEventListener('click', this.clickIt_bound);
     }
     
-    // look below to how it is invoked on a button
     clickIt() {
       console.log('clicked it!');
     }
     
-    // look below to how it is invoked on a button
-    changeValueAndRender() {
-      this.someVar = 'Re-rendered';
-      this.render(); // initial render is automatic
+    changeValue() {
+      this.someVar.value = 'Value updated';
     }
     
     /**
-    * If not importing html you can use this template method.
-    * Imported html also supports template literals (${this.someVar})
+    * Alternative method for html templates, instead of importing html file
     */
     template() {
-      return /*html*/\`${page.escape(`
+      return html\`
         <div>Page Content</div>
         <div>\${this.someVar}</div>
-        
-        <!-- escape html input -->
-        <div>\${this.escape(this.userInput)}</div>
+
+        \${
+          // nested html
+          this.show ? html\`<div>Showing</div>\` : ''
+        }
+
+        <!--
+          You can comment out expressions
+          ${`text`}
+        -->
         
         <!-- "page" will reference the current page class -->
         <button onclick="page.clickIt()">Click Method</button>
         <button id="event-listener-button">Event listener</button>
-        <button onclick="page.changeValueAndRender()">Change value and render</button>
-      `)}\`;
+        <button onclick="page.changeValue()">Change value</button>
+      \`;
     }
   }`}
         </code>
@@ -309,7 +270,7 @@
   # Development run with watch to enable livereload
   node --watch-path=./app build.js
 
-  # Production run. minifies, gzips, and writes files
+  # Production run. minifies and gzips
   NODE_ENV=production node build.js
   `}
         </code>
@@ -340,7 +301,7 @@
   });
   
   createServer(async (req, res) => {
-  const handled = await middleware(req, res);
+    const handled = await middleware(req, res);
     if (handled === true) return;
     
     // Do other stuff
@@ -376,24 +337,6 @@
         <code class="language-bash">
   ${`# Simply use node --watch to enable livereload
   node --watch-path=./src --watch-path=./docs server.js`}
-        </code>
-      </pre>
-    </wfc-card>
-
-    <wfc-card id="devtools">
-      <div slot="headline">Devtools</div>
-      <div slot="supporting-text">A small set of helper functions</div>
-
-      <pre>
-        <code class="language-javascript">
-  ${`// Look at variable binding info for current page
-  window.getBoundVariables();
-  
-  // View current page template string
-  window.getPageTemplate();
-  
-  // Get all pages route details
-  window.getRoutes();`}
         </code>
       </pre>
     </wfc-card>

@@ -11,17 +11,13 @@
   <title></title>
 
   <style>
-    html {
+    html:not(.wfc-initiated) {
       display: none;
-    }
-  
-    html.wfc-initiated {
-      display: block;
     }
   </style>
 
-  <link href="/app.css" rel="stylesheet">
   <script src="app.js"></script>
+  <link href="/app.css" rel="stylesheet">
   <script id="hljsscript" src="/highlight-11.8.0.js" async></script>
 </head>
 
@@ -33,8 +29,9 @@
     <wfc-anchor href="/getting-started">Getting started</wfc-anchor>
     <wfc-anchor href="/routing">Routing</wfc-anchor>
     <wfc-anchor href="/build">Serve / Build</wfc-anchor>
-    <wfc-anchor href="/binding">Binding variables</wfc-anchor>
+    <wfc-anchor href="/binding">Signals and binding</wfc-anchor>
     <wfc-anchor href="/web-component">Web component</wfc-anchor>
+    <wfc-anchor href="/templates">Templates</wfc-anchor>
     <wfc-anchor href="/fetcher">Fetcher</wfc-anchor>
     <wfc-anchor href="/multi-language">Multiple languages</wfc-anchor>
     <wfc-anchor href="https://github.com/webformula/core" target="_blank">

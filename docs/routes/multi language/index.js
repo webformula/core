@@ -1,32 +1,33 @@
-import { Component } from '@webformula/core';
-import html from './page.html';
+import { Component, Signal } from '@webformula/core';
+import htmlTemplate from './page.html';
 import { i18n } from '@webformula/core';
 import en from '../../locales/en.json' assert { type: "json" };
 import es from '../../locales/es.json' assert { type: "json" };
 
 export default class extends Component {
   static pageTitle = 'Multiple languages';
-  static html = html;
+  static htmlTemplate = htmlTemplate;
 
   languagesChecked = false;
   time = 30
   date = new Date();
   currency = '123.45';
-  days = 3;
+  days = new Signal(3);
+  count = new Signal(1);
 
   constructor() {
     super();
-
-    i18n.loadMessages('en', en);
-    i18n.loadMessages('es', es);
+    window.i18n = i18n;
+    i18n.addTranslation('en', en);
+    i18n.addTranslation('es', es);
   }
 
   changeLanguage(checked) {
     this.languagesChecked = checked;
-    i18n.locale = checked ? 'es' : 'en';
+    i18n.setLocale(checked ? 'es' : 'en');
   }
 
   disconnectedCallback() {
-    i18n.locale = navigator.language;
+    i18n.setLocale(navigator.language);
   }
 }
