@@ -4,83 +4,13 @@
   <nav class="links-nav" aria-label="page-content">
     <div class="wfc-font-headline-small page-secondary-header">Links</div>
     <ul class="links">
-      <li><a href="#templates">Templates</a></li>
       <li><a href="#expressions">Expressions and bindings</a></li>
+      <li><a href="#templates">Templates</a></li>
     </ul>
   </nav>
 
   <div class="page-content-container">
-    <wfc-card id="templates">
-      <div slot="headline">Templates</div>
-      <div slot="supporting-text">There are two methods for including templates in pages and components</div>
-      <ul slot="supporting-text">
-        <li>HTML file</li>
-        <li>Page function</li>
-      </ul>
-      
-
-
-      <div style="margin-top: 42px; margin-bottom: -8px;">
-        <div style="font-size: 24px;">HTML file</div>
-      </div>
-      <pre>
-        <code class="language-html" wfc-no-binding>
-  ${`<!-- page.html -->
-  <h3>Page</h3>
-  <div>Content</div>`}
-        </code>
-      </pre>
-      <pre>
-        <code class="language-javascript" wfc-no-binding>
-  ${`// page.js
-  import { Component } from '@webformula/core';
-  import htmlTemplate from './page.html';
-
-  export default class extends Component {
-    static pageTitle = 'Template html file';
-
-    // Load HTML template file
-    static htmlTemplate = htmlTemplate;
     
-    constructor() {
-      super();
-    }
-  }`}
-        </code>
-      </pre>
-
-      <div style="margin-top: 42px; margin-bottom: 12px;">
-        <div style="font-size: 24px;">Page function</div>
-      </div>
-
-      <pre>
-        <code class="language-javascript" wfc-no-binding>
-  ${`// page.js page function
-  import { Component, html } from '@webformula/core';
-
-  export default class extends Component {
-    static pageTitle = 'Template function';
-
-    // Load HTML template file
-    static htmlTemplate = htmlTemplate;
-    
-    constructor() {
-      super();
-    }
-
-    // Template function
-    template() {
-      return html\`
-        <h3>Page</h3>
-        <div>Content</div>
-      \`;
-    }
-  }`}
-        </code>
-      </pre>
-    </wfc-card>
-
-
     <wfc-card id="expressions">
       <div slot="headline">Expressions and bindings</div>
       <div slot="supporting-text">Templates are simply Javascript template literals. This means building template expressions is familiar and strait forward. There is a <strong>html</strong> tag function for rendering text as html.</div>
@@ -192,6 +122,77 @@
     addValue(value) {
       if (!value) return;
       this.loopVar.value = [...this.loopVar.value, {value}];
+    }
+  }`}
+        </code>
+      </pre>
+    </wfc-card>
+
+
+    <wfc-card id="templates">
+      <div slot="headline">Templates</div>
+      <div slot="supporting-text">There are two methods for including templates in pages and components</div>
+      <ul slot="supporting-text">
+        <li>HTML file</li>
+        <li>Page function</li>
+      </ul>
+      
+
+
+      <div style="margin-top: 42px; margin-bottom: -8px;">
+        <div style="font-size: 24px;">HTML file</div>
+      </div>
+      <pre>
+        <code class="language-html" wfc-no-binding>
+  ${`<!-- page.html -->
+  <h3>Page</h3>
+  <div>Content</div>`}
+        </code>
+      </pre>
+      <pre>
+        <code class="language-javascript" wfc-no-binding>
+  ${`// page.js
+  import { Component } from '@webformula/core';
+  import htmlTemplate from './page.html';
+
+  export default class extends Component {
+    static pageTitle = 'Template html file';
+
+    // Load HTML template file
+    static htmlTemplate = htmlTemplate;
+    
+    constructor() {
+      super();
+    }
+  }`}
+        </code>
+      </pre>
+
+      <div style="margin-top: 42px; margin-bottom: 12px;">
+        <div style="font-size: 24px;">Page function</div>
+      </div>
+
+      <pre>
+        <code class="language-javascript" wfc-no-binding>
+  ${`// page.js page function
+  import { Component, html } from '@webformula/core';
+
+  export default class extends Component {
+    static pageTitle = 'Template function';
+
+    // Load HTML template file
+    static htmlTemplate = htmlTemplate;
+    
+    constructor() {
+      super();
+    }
+
+    // Template function
+    template() {
+      return html\`
+        <h3>Page</h3>
+        <div>Content</div>
+      \`;
     }
   }`}
         </code>
