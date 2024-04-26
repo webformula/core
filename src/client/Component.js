@@ -150,15 +150,18 @@ export default class Component extends HTMLElement {
   render() {
     if (!this.#prepared) this.#prepareRender();
 
-    this.beforeRender();
-    destroySignalCache();
+    if (!this.constructor._isBuild) {
+      this.beforeRender();
+      destroySignalCache();
+    }
 
     const parsed = this.template();
     this.#root.replaceChildren(parsed);
 
-    watchSignals();
-
-    this.afterRender();
+    if (!this.constructor._isBuild) {
+      watchSignals();
+      this.afterRender();
+    }
     if (this.constructor._isPage) window.dispatchEvent(new CustomEvent('webformulacorepagerender'));
   }
 

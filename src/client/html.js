@@ -314,7 +314,7 @@ function sanitizeAttributeName(name, value) {
   if (
     window.wfcDev === true &&
     (securityLevel === 1 && shouldRemoveLevel2 && !shouldRemoveLevel1)
-    || (securityLevel === 0 && (!shouldRemoveLevel2 || !shouldRemoveLevel1))
+    || (window.wfcDev === true && securityLevel === 0 && (!shouldRemoveLevel2 || !shouldRemoveLevel1))
   ) {
     console.warn(`Template sanitizer (WARNING): Potentially dangerous attribute NOT removed because of current level (${securityLevel}) "${name}: ${value}"`);
   }
@@ -325,7 +325,7 @@ function sanitizeAttributeName(name, value) {
 function sanitizeAttributeValue(name, value) {
   value = value.replace(/\s+/g, '').toLowerCase();
   if (value.match(dangerousAttributeValueRegex) !== null) {
-    if (securityLevel === 0) {
+    if (window.wfcDev === true && securityLevel === 0) {
       console.warn(`Template sanitizer (WARNING): Potentially dangerous attribute NOT removed because of current level (${securityLevel}) "${name}: ${value}"`);
     } else return true;
   }

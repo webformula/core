@@ -17,7 +17,7 @@ export default class extends Component {
 
   constructor() {
     super();
-    window.i18n = i18n;
+    
     i18n.addTranslation('en', en);
     i18n.addTranslation('es', es);
   }

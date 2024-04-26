@@ -20,3 +20,4 @@ export {
 }
 
 window.html = html;
+window.i18n = i18n;

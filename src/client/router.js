@@ -155,6 +155,7 @@ async function route(locationObject, back = false, initial = false) {
 
   if (!initial) {
     document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
     nextPage.render();
   } else {
     nextPage.render();
