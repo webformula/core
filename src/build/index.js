@@ -200,7 +200,7 @@ async function buildIndexHTML(appJSOutput, appCSSOutput, routeConfigs, config) {
 
     return {
       fileName: route.indexHTMLFileName,
-      content: document.documentElement.outerHTML
+      content: `<!doctype html>\n${document.documentElement.outerHTML}`
     };
   }));
 
