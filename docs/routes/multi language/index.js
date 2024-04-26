@@ -13,20 +13,21 @@ export default class extends Component {
   date = new Date();
   currency = '123.45';
   days = new Signal(3);
+  count = new Signal(1);
 
   constructor() {
     super();
-
-    i18n.loadMessages('en', en);
-    i18n.loadMessages('es', es);
+    window.i18n = i18n;
+    i18n.addTranslation('en', en);
+    i18n.addTranslation('es', es);
   }
 
   changeLanguage(checked) {
     this.languagesChecked = checked;
-    i18n.locale = checked ? 'es' : 'en';
+    i18n.setLocale(checked ? 'es' : 'en');
   }
 
   disconnectedCallback() {
-    i18n.locale = navigator.language;
+    i18n.setLocale(navigator.language);
   }
 }

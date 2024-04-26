@@ -13,7 +13,6 @@
       <div slot="headline">Localization</div>
       <div slot="supporting-text">Localization allows to configure multiple locales with local message configurations</div>
       <ul slot="supporting-text">
-        <li>Variables (Data is pulled from page variables)</li>
         <li>Pluralization</li>
         <li>Date formatting</li>
         <li>Number formatting</li>
@@ -22,17 +21,19 @@
 
       <wfc-switch ${page.languagesChecked ? 'checked' : '' } onchange="page.changeLanguage(this.checked)">en / es</wfc-switch>
 
-      <div i18n>About</div>
-      <div i18n>key_string</div>
-      <div i18n count="1">item_count</div>
-      <div i18n count="2">item_count</div>
-      <div i18n>time_from_now</div>
-      <div i18n>date_key</div>
-      <div i18n>currency_key</div>
-      <div i18n>relativeTime_key</div>
-      
-      <wfc-textfield i18n-attr="label" label="Label days" value="${page.days}"
-        oninput="page.days.value = this.value"></wfc-textfield>
+      <div>${i18n('About')}</div>
+      <div>${i18n('key_string')}</div>
+      <div>${page.count} ${i18n.format('itemPlural', page.count)}</div>
+      <div>${i18n('time_from_now', page.time)}</div>
+      <div>${i18n('date_key', page.date)}</div>
+      <div>${i18n('currency_key', page.currency)}</div>
+
+      <div style="margin-top: 24px">
+        <div class="wfc-font-title-medium">Dynamic pluralization with signals</div>
+        <wfc-textfield label="${i18n('Label days')}" type="number" value="${page.days}" style="margin-top: 12px; margin-bottom: 12px;"
+          oninput="page.days.value = this.value"></wfc-textfield>
+        <div>${i18n('relativeTime_key', page.days)}</div>
+      </div>
     
       <pre>
         <code class="language-javascript" wfc-no-binding>
@@ -42,36 +43,40 @@
    *   Defaults to browser if not set
    *   You can use language only locale 'en' and 'en-US'
    */
-  i18n.locale = 'en-US';
+  i18n.setLocale('en-US');
 
   // turn on cache. This will load and save data to localStorage
-  i18n.cache = true;
+  i18n.cache();
 
   // Load local messages
-  i18n.loadMessages('en', en);
-  i18n.loadMessages('es', es);`}
+  i18n.addTranslation('en', en);
+  i18n.addTranslation('es', es);`}
         </code>
       </pre>
 
       <pre>
         <code class="language-html" wfc-no-binding>
-  ${`<!-- Add i18n attribute to an element to enable translations -->
-  <div i18n>About</div>
-  <div i18n>key_string</div>
+  ${`<!-- Use i18n method to translate keys -->
+  <div>\${i18n('About')}</div>
+  <div>\${i18n('key_string')}</div>
 
-  <!--
-    you can set message variables as element attributes
-    By default variables will be pulled from current page
-  -->
-  <div i18n count="1">item_count</div>
-  <div i18n count="2">item_count</div>
-  <div i18n>date_key</div>
-  <div i18n>currency_key</div>
-  <div i18n>time_from_now</div>
-  <div i18n>relativeTime_key</div>
+  <!-- Use i18n.format method to handle individual formatting -->
+  <div>\${page.count} \${i18n.format('itemPlural', page.count)}</div>
+
+  <!-- Use message variables and formatters: "time_from_now": "$1 $minutesCardinal($1) from now" -->
+  <div>\${i18n('time_from_now', page.time)}</div>
+  <div>\${i18n('date_key', page.date)}</div>
+  <div>\${i18n('currency_key', page.currency)}</div>
+  
+  <div>
+    <div class="wfc-font-title-medium">Dynamic pluralization with signals</div>
+    <wfc-textfield label="\${i18n('Label days')}" type="number" value="\${page.days}"
+      oninput="page.days.value = this.value"></wfc-textfield>
+    <div>\${i18n('relativeTime_key', page.days)}</div>
+  </div>
   
   <!-- Attribute binding -->
-  <wfc-textfield i18n-attr="label" label="Label days" value="${page.days}" oninput="page.days = this.value"></wfc-textfield>
+  <wfc-textfield i18n-attr="label" label="Label days" value="\${page.days}" oninput="page.days = this.value"></wfc-textfield>
   
   <!-- Attribute binding multiple -->
   <div i18n-attr="one,two" one="one" two="two"></div>`}
@@ -84,7 +89,7 @@
   ${`// en
   
   // type configuration
-  { "types": {
+  { "formatters": {
     "itemPlural": {
       "type": "cardinal",
       "zero": "items",
@@ -119,18 +124,16 @@
       "options": {
         "style": "short" } } },
   
-  // keys
-  "About": "About",
-  "Label days": "Label",
-  "key_string": "This is a key string",
-
-  // use types
-  "item_count": "\${count} \${itemPlural(count)}",
-  "place_ordinal": "\${place} \${placeOrdinal(place)}",
-  "time_from_now": "\${time} \${minutesCardinal(minutes)} from now",
-  "date_key": "\${dateFormat(date)}",
-  "currency_key": "\${currencyFormat(currency)}",
-  "relativeTime_key": "\${relativeTimeFormat(days)}" }`}
+  "messages": {
+    "About": "About",
+    "Label days": "Label days",
+    "key_string": "This is a key string",
+    "time_from_now": "$1 $minutesCardinal($1) from now",
+    "date_key": "$dateFormat($1)",
+    "item_count": "$1 $itemPlural($1)",
+    "place_ordinal": "$1 $placeOrdinal($1)",
+    "currency_key": "$currencyFormat($1)",
+    "relativeTime_key": "$relativeTimeFormat($1)" } }` }
         </code>
       </pre>
 
@@ -139,7 +142,7 @@
   ${`// es
   
   // type configuration
-  { "types": {
+  { "formatters": {
     "itemPlural": {
       "type": "cardinal",
       "zero": "elementos",
@@ -174,18 +177,16 @@
       "options": {
         "style": "short" } } },
   
-  // keys
-  "About": "Acerca de",
-  "Label days": "Etiqueta",
-  "key_string": "Esta es una cadena clave",
-
-  // use types
-  "item_count": "\${count} \${itemPlural(count)}",
-  "place_ordinal": "\${place} \${placeOrdinal(place)}",
-  "time_from_now": "\${time} \${minutesCardinal(minutes)} desde ahora",
-  "date_key": "\${dateFormat(date)}",
-  "currency_key": "\${currencyFormat(currency)}",
-  "relativeTime_key": "\${relativeTimeFormat(days)}" }`}
+  "messages": {
+    "About": "Acerca de",
+    "Label days": "Días de etiqueta",
+    "key_string": "Esta es una cadena clave",
+    "item_count": "$1 $itemPlural($1)",
+    "place_ordinal": "$1 $placeOrdinal($1)",
+    "time_from_now": "$1 $minutesCardinal($1) desde ahora",
+    "date_key": "$dateFormat($1)",
+    "currency_key": "$currencyFormat($1)",
+    "relativeTime_key": "$relativeTimeFormat($1)" } }` }
         </code>
       </pre>
     </wfc-card>

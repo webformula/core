@@ -73,7 +73,7 @@ export function html(strings, ...args) {
   return prepareTemplateElement(templateElement, signals, subClonedNodes);
 }
 
-export function htmlCompute(callback) {
+function htmlCompute(callback) {
   const compute = new Compute(callback);
   compute[HTMLCOMPUTE] = true;
   return compute;

@@ -3,7 +3,7 @@ Simple no thrills micro framework. Super performant and light-weight!
 [Webformula core docs](http://webformula.io/)
 
 ### Highlights
-- ⚡ Lightweight - 6.7KB compressed
+- ⚡ Lightweight - 5.9KB compressed
 - ⚡ Fast - optimized FCP and low overhead
 - ⚡ Simple - No complex concepts
 - ⚡ Full features - Signals, internationalization, routing, bundling

@@ -1,311 +1,166 @@
-import { isSignal } from './signals.js';
+import { isSignal, Compute } from './signals.js';
+
+// TODO Fetcher adding accept-language header
+const translations = {};
+const signals = new Set();
+const valueRegex = /\$(\d)|\$(\w+)\(\$(\d)\)/g;
+let useCache = false;
+let currentLocal = Intl.getCanonicalLocales(navigator.language)[0].split('-')[0];
+let currentTranslations;
 
 
-const varRegex = /(?!{|\()\w+(?=\)|})/g;
-const typeRegex = /(?!{)\w+(?=\()/g;
-
-/** Ia8n language class */
-export default new class i18n {
-  #cache = false;
-  #locale = navigator.language;
-  #localeSet;
-  #cardinalRules;
-  #ordinalRules;
-  #localeMessages = {};
-  #sortedMessages = [];
-  #types = {};
-  #localeTypes = {};
-  #localizedRef = [];
-  #mutationObserver;
-  #observerConnected;
-  #languageChange_bound = this.#languageChange.bind(this);
-  #observeHandler_bound = this.#observeHandler.bind(this);
-  #checkForSignalChanges_bound = this.#checkForSignalChanges.bind(this);
-  #signals = new Map();
-
-  constructor() {
-    this.locale = navigator.language;
-    window.addEventListener('languagechange', this.#languageChange_bound);
-    window.addEventListener('wfc-signal-change-ids', this.#checkForSignalChanges_bound);
-    window.addEventListener('locationchange', this.#checkForSignalChanges_bound);
-  }
-
-
-  /**
-   * Get locale
-   * @returns {String} locale
-   */
-  get locale() { return this.#locale; }
-
-  /**
-   * Set locale. Example: en-US
-   * @param {String} value locale
-   */
-  set locale(value) {
-    const change = value !== this.#locale;
-    this.#locale = this.#cleanLocale(value);
-    this.#cardinalRules = new Intl.PluralRules(this.#locale);
-    this.#ordinalRules = new Intl.PluralRules(this.#locale, { type: 'ordinal' });
-    if (!change) return;
-
-    this.#localeSet = true;
-    this.#sortedMessages = this.#getSortedMessages();
-    this.#localeTypes = this.#types[this.#locale] || this.#types[this.#locale.split('-')[0]];
-    this.localizeDocument();
-    window.dispatchEvent(new Event('wfclanguagechange'));
-    if (this.cache) localStorage.setItem('wfc-locale', this.#locale);
-  }
-
-  /**
-   * Get is cache enabled
-   * @returns {Boolean} Is cache enabled
-   */
-  get cache() { return this.#cache; }
-  set cache(value) {
-    if (!!value) {
-      if (this.#localeSet) {
-        localStorage.setItem('wfc-locale', this.locale);
-        if (Object.keys(this.#localeMessages).length > 0) localStorage.setItem('wfc-locale-messages', JSON.stringify(this.#localeMessages));
-      } else {
-        const locale = localStorage.getItem('wfc-locale');
-        if (locale) this.local = locale;
-      }
-
-      // pull local messages from cache if they do not exist already
-      if (Object.keys(this.#localeMessages).length === 0) {
-        try {
-          const messages = JSON.parse(localStorage.getItem('wfc-locale-messages') || '{}');
-          Object.entries(messages).forEach(item => this.loadMessages(...item));
-        } catch { }
-      }
-    } else {
-      localStorage.removeItem('wfc-locale');
-      localStorage.removeItem('wfc-locale-messages');
-    }
-
-    // set after so we do not duplicate interactions with localStorage from this.local or this.loadMessages
-    this.#cache = !!value;
-  }
+window.addEventListener('languagechange', languageChange);
 
 
 
-  /**
-   * Set locale messages
-   * @param {String} locale Locale
-   * @param {Object} messages Locale messages
-   */
-  loadMessages(locale, messages) {
-    locale = this.#cleanLocale(locale);
-    if (typeof messages !== 'object' || messages === null) throw Error('messages must be an object');
-    this.#localeMessages[locale] = Object.entries(messages).map(([key, value]) => {
-      if (key === 'types') {
-        this.#types[locale] = this.#parseTypes(value);
-        return;
-      }
-
-      const variables = value.match(varRegex) || [];
-      const types = value.match(typeRegex) || [];
-
-      return {
-        key,
-        value,
-        variables,
-        types,
-        template: new Function(...[...variables, ...types], `return \`${value}\`;`)
-      };
-    }).filter(v => !!v);
-
-    if (this.cache) localStorage.setItem('wfc-locale-messages', JSON.stringify(this.#localeMessages));
-    if (locale === this.locale || this.#sortedMessages.length === 0) {
-      this.#sortedMessages = this.#getSortedMessages();
-      this.#localeTypes = this.#types[this.#locale] || this.#types[this.#locale.split('-')[0]];
-    }
-  }
-
-  /**
-   * Localize key
-   * @param {String} key Locale key
-   */
-  localize(key, element) {
-    if (this.#sortedMessages.length === 0) return key;
-
-    // try matching exact key then use loose regex
-    const match = (
-      this.#sortedMessages.find(({ key: itemKey }) => itemKey === key)
-      || this.#sortedMessages.forEach(({ matcher }) => key.match(matcher))
-    );
-    if (!match) {
-      console.warn(`Cannot localize. Missing key: ${key}`);
+export function i18n(key, ...variables) {
+  const compute = new Compute(() => {
+    const message = currentTranslations.messages[key];
+    if (!message) {
+      if (window.wfcDev) console.warn(`Cannot localize. Missing key: ${key}`);
       return key;
     }
 
-    if (element && !this.#localizedRef.find(v => v[0] === element)) {
-      this.#localizedRef.push([element, match]);
-    }
-
-    const variables = match.variables.map(key => {
-      if (element && element.hasAttribute(key)) return element.getAttribute(key);
-      let val = window.page[key];
-      if (isSignal(val)) {
-        if (element) {
-          if (!this.#signals.has(val.id)) this.#signals.set(val.id, new Set());
-          this.#signals.get(val.id).add(element);
-        }
-        val = val.untrackValue;
+    return message.replace(valueRegex, function (_, varIndex, formatterName, formatterVarIndex) {
+      if (varIndex) {
+        const variable = variables[parseInt(varIndex) - 1];
+        if (isSignal(variable)) return variable.value;
+        return variable
       }
-      return val;
+      if (formatterName && formatterVarIndex) {
+        const formatMethod = translations[currentLocal].formatters[formatterName].method;
+        const variable = variables[parseInt(formatterVarIndex) - 1];
+        if (isSignal(variable)) return formatMethod(variable.value);
+        return formatMethod(variable);
+      }
+      return '';
     });
-    const methods = match.types.map(key => this.#localeTypes[key].method);
+  });
+  signals.add(compute);
+  return compute;
+}
 
-    return match.template.call(null, ...[...variables, ...methods]);
-  }
-
-
-  /**
-   * Localize entire document. This is called by component render
-   * @param {String} key Locale key
-   */
-  localizeDocument() {
-    const elements = [...document.querySelectorAll('[i18n]')];
-
-    if (!this.#observerConnected && elements.length > 0) {
-      if (!this.#mutationObserver) this.#mutationObserver = new MutationObserver(this.#observeHandler_bound);
-      if (!this.#observerConnected) {
-        this.#mutationObserver.observe(document.body, { subtree: true, childList: true });
-        this.#observerConnected = true;
-      }
-    }
-
-    for (const element of elements) {
-      this.#localizeElement(element);
-    }
-
-    const elementAttrs = [...document.querySelectorAll('[i18n-attr]')];
-    for (const element of elementAttrs) {
-      const attrs = element.getAttribute('i18n-attr').split(',');
-      attrs.forEach(name => {
-        const elementMatch = this.#localizedRef.find(v => v[0] === element);
-        const key = elementMatch ? elementMatch[1].key : element.getAttribute(name);
-        const message = this.localize(key, element);
-        element.setAttribute(name, message);
-      });
+i18n.setLocale = locale => {
+  locale = Intl.getCanonicalLocales(locale)[0].split('-')[0];
+  const changed = locale !== currentLocal;
+  if (changed) {
+    if (useCache) localStorage.setItem('wfc-locale', locale);
+    currentLocal = locale;
+    currentTranslations = translations[currentLocal];
+    for (const signal of signals) {
+      signal.updateValueVersion(true);
     }
   }
+}
 
-  #observeHandler(mutationList) {
-    for (let mutationRecord of mutationList) {
-      if (mutationRecord.removedNodes) {
-        for (let removedNode of mutationRecord.removedNodes) {
-          this.#localizedRef = this.#localizedRef.filter(v => !(v[0] === removedNode || removedNode.contains(v[0])));
-        }
-      }
-    }
-    if (this.#localizedRef.length === 0 && this.#observerConnected) {
-      this.#mutationObserver.disconnect();
-      this.#observerConnected = false;
+i18n.cache = () => {
+  useCache = true;
+  const storedMessages = localStorage.getItem('wfc-locale-messages');
+  if (storedMessages) {
+    for (const [_local, config] of Object.entries(JSON.parse(storedMessages))) {
+      addTranslation(_local, config);
     }
   }
+  const locale = localStorage.getItem('wfc-locale');
+  if (locale) setLocale(locale);
+}
 
-  #localizeElement(element) {
-    const elementMatch = this.#localizedRef.find(v => v[0] === element);
-    const key = elementMatch ? elementMatch[1].key : element.textContent;
-    const message = this.localize(key, element);
-    element.textContent = message;
-  }
+i18n.format = (formatterName, value) => {
+  const compute = new Compute(() => {
+    const formatter = translations[currentLocal].formatters[formatterName];
+    if (!formatter) {
+      if (window.wfcDev) console.warn(`Cannot find formatter: ${formatterName}`);
+      return '';
+    }
 
-  #parseTypes(types) {
-    Object.entries(types).forEach(([key, value]) => {
-      switch (value.type) {
-        case 'cardinal':
-          value.method = data => {
-            const cardinal = this.#cardinalRules.select(parseInt(data));
-            return value[cardinal] || value.other;
-          };
-          break;
-        case 'ordinal':
-          value.method = data => {
-            const ordinal = this.#ordinalRules.select(parseInt(data));
-            return value[ordinal] || value.other;
-          };
-          break;
-        case 'date':
-          value.method = data => {
-            return this.#getDateFormatter(this.locale, value.options).format(data);
-          };
-          break;
-        case 'number':
-          value.method = data => {
-            return this.#getNumberFormatter(this.locale, value.options).format(data);
-          };
-          break;
-        case 'relativeTime':
-          value.method = data => {
-            return this.#getRelativeTimeFormatter(this.locale, value.options).format(data || '', value.unit);
-          };
-          break;
+    if (isSignal(value)) return formatter.method(value.value);
+    return formatter.method(value);
+  })
+  signals.add(compute);
+  return compute;
+};
 
-        default:
-          value.method = data => data;
-      }
-    });
-    return types;
-  }
+i18n.addTranslation = (locale, data) => {
+  locale = Intl.getCanonicalLocales(locale)[0].split('-')[0];
+  if (typeof data !== 'object' || data === null) throw Error('data must be an object');
 
-  #getSortedMessages() {
-    return (
-      this.#localeMessages[this.locale]
-      || this.#localeMessages[this.locale.split('-')[0]]
-    ).sort((a, b) => b.key.length - a.key.length);
-  }
+  translations[locale] = data;
+  data.cardinalRules = new Intl.PluralRules(locale);
+  data.ordinalRules = new Intl.PluralRules(locale, { type: 'ordinal' });
 
-  #cleanLocale(locale) {
-    if (!locale) throw Error('locale required');
-    locale = Intl.getCanonicalLocales(locale)[0];
-    return locale;
-  }
-
-  #languageChange() {
-    const locale = navigator.language;
-    if (locale === this.locale) return;
-    this.locale = locale;
-    window.dispatchEvent(new Event('wfclanguagechange'));
-  }
-
-  #dateFormatters = [];
-  #getDateFormatter(locale, options) {
-    const key = `${locale}${JSON.stringify(options || '')}`;
-    if (!this.#dateFormatters[key])  this.#dateFormatters[key] = new Intl.DateTimeFormat(locale, options);
-    return this.#dateFormatters[key];
-  }
-
-  #numberFormatters = [];
-  #getNumberFormatter(locale, options) {
-    const key = `${locale}${JSON.stringify(options || '')}`;
-    if (!this.#numberFormatters[key]) this.#numberFormatters[key] = new Intl.NumberFormat(locale, options);
-    return this.#numberFormatters[key];
-  }
-
-  #relativeTimeFormatters = [];
-  #getRelativeTimeFormatter(locale, options) {
-    const key = `${locale}${JSON.stringify(options || '')}`;
-    if (!this.#relativeTimeFormatters[key]) this.#relativeTimeFormatters[key] = new Intl.RelativeTimeFormat(locale, options);
-    return this.#relativeTimeFormatters[key];
-  }
-  
-
-  // loop over all elements associated with a signal id
-  // also used on locationchange to cleanup
-  #checkForSignalChanges(event) {
-    const signalIds = event?.detail || [];
-
-    for (const [key, elements] of this.#signals.entries()) {
-      const exists = signalIds.includes(key);
-      for (const element of elements) {
-        if (!element.isConnected) elements.delete(element);
-        else if (exists) this.#localizeElement(element);
-      }
-
-      if (elements.size === 0) this.#signals.delete(key);
+  if (data.formatters) {
+    for (const [key, value] of Object.entries(data.formatters)) {
+      translations[locale].formatters[key] = buildFormatter(value, locale);
     }
   }
+
+  if (locale === currentLocal) currentTranslations = translations[locale];
+  if (useCache) {
+    const current = JSON.parse(localStorage.getItem('wfc-locale-messages') || {});
+    current[locale] = translations[locale];
+    localStorage.setItem('wfc-locale-messages', JSON.stringify(current));
+  }
+}
+
+function buildFormatter(config, locale) {
+  switch (config.type) {
+    case 'cardinal':
+      config.method = data => {
+        const cardinal = translations[locale].cardinalRules.select(parseInt(data));
+        return config[cardinal] || config.other;
+      };
+      break;
+    case 'ordinal':
+      config.method = data => {
+        const ordinal = translations[locale].ordinalRules.select(parseInt(data));
+        return config[ordinal] || config.other;
+      };
+      break;
+    case 'date':
+      config.method = data => {
+        return getDateFormatter(locale, config.options).format(data);
+      };
+      break;
+    case 'number':
+      config.method = data => {
+        return getNumberFormatter(locale, config.options).format(data);
+      };
+      break;
+    case 'relativeTime':
+      config.method = data => {
+        return getRelativeTimeFormatter(locale, config.options).format(data || '', config.unit);
+      };
+      break;
+
+    default:
+      config.method = data => data;
+  }
+
+  return config;
+}
+
+const dateFormatters = [];
+function getDateFormatter(locale, options) {
+  const key = `${locale}${JSON.stringify(options || '')}`;
+  if (!dateFormatters[key]) dateFormatters[key] = new Intl.DateTimeFormat(locale, options);
+  return dateFormatters[key];
+}
+
+const numberFormatters = [];
+function getNumberFormatter(locale, options) {
+  const key = `${locale}${JSON.stringify(options || '')}`;
+  if (!numberFormatters[key]) numberFormatters[key] = new Intl.NumberFormat(locale, options);
+  return numberFormatters[key];
+}
+
+const relativeTimeFormatters = [];
+function getRelativeTimeFormatter(locale, options) {
+  const key = `${locale}${JSON.stringify(options || '')}`;
+  if (!relativeTimeFormatters[key]) relativeTimeFormatters[key] = new Intl.RelativeTimeFormat(locale, options);
+  return relativeTimeFormatters[key];
+}
+
+function languageChange() {
+  setLocale(navigator.language);
+  // window.dispatchEvent(new Event('wfclanguagechange'));
 }

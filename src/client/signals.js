@@ -199,7 +199,8 @@ export class Compute extends Base {
     return super.dirty;
   }
 
-  updateValueVersion() {
+  updateValueVersion(force = false) {
+    if (force) super.dirty = true;
     this.updateDirty();
     if (super.dirty) {
       // TODO can i move the recompute to the read?
@@ -290,7 +291,7 @@ function runQueue() {
     queue.clear();
 
     if (signalChangeIds.size > 0) {
-      window.dispatchEvent(new CustomEvent('wfc-signal-change-ids', { detail: Array.from(signalChangeIds) }))
+      window.dispatchEvent(new CustomEvent('wfcsignalchange', { detail: Array.from(signalChangeIds) }))
       signalChangeIds.clear();
     }
 

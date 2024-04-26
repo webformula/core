@@ -1,4 +1,3 @@
-import i18n from './i18n.js';
 import { html, watchSignals, destroySignalCache } from './html.js';
 
 
@@ -159,7 +158,6 @@ export default class Component extends HTMLElement {
 
     watchSignals();
 
-    if (this.constructor._isPage) i18n.localizeDocument();
     this.afterRender();
     if (this.constructor._isPage) window.dispatchEvent(new CustomEvent('webformulacorepagerender'));
   }
@@ -168,11 +166,6 @@ export default class Component extends HTMLElement {
   escape(str) {
     return str.replace(/[^\w. ]/gi, c => '&#' + c.charCodeAt(0) + ';');
   };
-
-  /** Translate string. <div>${page.translate('some key string')}</div> */
-  localize(key) {
-    return i18n.localize(key, this);
-  }
 
   /** @private */
   _internalDisconnectedCallback() {
